@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.DS_Store
+# runtime data / evidence / signing keys never belong in the repo
+/data/
+/evidence/
+/keys/

@@ -1,0 +1,34 @@
+/* Design tokens (M0 seed). Navy/neutral, high contrast; extended in M4. */
+:root {
+  --bg: #0b1426;
+  --panel: #111d36;
+  --text: #e8edf7;
+  --text-muted: #a9b5cc;
+  --focus: #6cb6ff;
+  color-scheme: dark;
+  font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+main {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
