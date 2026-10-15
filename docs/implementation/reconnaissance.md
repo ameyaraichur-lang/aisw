@@ -48,3 +48,6 @@ Embedded Postgres 16.2 via `pgserver` (dev dependency) resolved the missing-Post
 
 ## M2 update
 Added `cryptography` (Ed25519). `pip-audit`: no known vulnerabilities (run locally 2026-10-15). Probe finding recorded in ADR-013: Python `ipaddress.is_global` misclassifies multicast and NAT64-wrapped addresses, so `net_guard` does not rely on it alone.
+
+## M3 update
+Process findings worth remembering: (1) a mutation check showed a slow worker could double-write after losing its lease, fixed by fencing (ADR-014); (2) a silent no-op string replacement during editing was caught only because a test asserted the behaviour, a reminder to keep behavioural tests for every control; (3) the shared task queue made tests order-dependent until each test started from a drained queue.

@@ -85,6 +85,19 @@ def app_engine(pg_server: Any, owner_engine: Engine) -> Iterator[Engine]:
     eng.dispose()
 
 
+@pytest.fixture(scope="session")
+def worker_engine(pg_server: Any, owner_engine: Engine, app_engine: Engine) -> Iterator[Engine]:
+    """Connects as aisw_worker: inherits app grants, plus cross-tenant discovery of open work."""
+    pw = secrets.token_hex(16)
+    with owner_engine.begin() as c:
+        c.execute(text(f"ALTER ROLE aisw_worker LOGIN PASSWORD '{pw}'"))
+    eng = create_engine(
+        _url("aisw_worker", pw, "aisw_test", _socket_dir(pg_server.get_uri())), future=True
+    )
+    yield eng
+    eng.dispose()
+
+
 @pytest.fixture()
 def client(app_engine: Engine) -> TestClient:
     settings = Settings(env="test", dev_auth_stub=True)
@@ -105,3 +118,10 @@ def env(app_engine: Engine) -> Any:
     from tests.support import make_env
 
     return make_env(app_engine)
+
+
+@pytest.fixture()
+def sl(app_engine: Engine, worker_engine: Engine, tmp_path: Any) -> Any:
+    from tests.slice import Slice
+
+    return Slice(app_engine, worker_engine, tmp_path / "evidence")

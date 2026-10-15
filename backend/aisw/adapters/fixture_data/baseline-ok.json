@@ -1,0 +1,12 @@
+{
+  "scanner": "fixture-scanner",
+  "version": "1.0.0",
+  "hosts": [
+    {"id": "host-1", "hostname": "web-01", "os_family": "linux", "state": "scanned",
+     "checks": {"ssh.permit_root_login": "no", "password.min_length": 14, "audit.logging_enabled": true}},
+    {"id": "host-2", "hostname": "db-01", "os_family": "linux", "state": "scanned",
+     "checks": {"ssh.permit_root_login": "yes", "password.min_length": 8, "audit.logging_enabled": true}},
+    {"id": "host-3", "hostname": "win-01", "os_family": "windows", "state": "scanned",
+     "checks": {"password.min_length": 12, "audit.logging_enabled": true}}
+  ]
+}

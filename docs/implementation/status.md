@@ -32,7 +32,18 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Real adapters (url_smoke, nmap, prowler, ...) | Planned (M3 fixture, M5/M6 others) | none exist yet; gateway verified only against fakes |
 | Gateway quota state | Mocked | in-memory per process; durable counters arrive with the orchestrator (M3) |
 | Egress firewall enforcement | Planned (M8 runbook) | application-layer checks only so far |
-| Vertical slice, orchestrator, policy, coverage, report | Planned (M3) | |
+| Migration 0002: inventory, runs, task queue, events, evidence, assets, observations, controls, findings, assurance, coverage, reports (forced RLS, worker role) | Implemented (M3) | `tests/integration/test_migrations.py` (independently reversible) |
+| Durable PostgreSQL worker (lease, bounded attempts, backoff+jitter, fencing, crash resume) | Implemented (M3) | `tests/security/test_pipeline_security.py` (crash, repeated crash, late worker, retries) |
+| Run state machine + persisted replayable events (cursor) | Implemented (M3) | polling API only; SSE Planned (M4) |
+| Evidence ingest: validate, redact, canonicalise, hash, write-once content-addressed store | Implemented (M3) | `tests/unit/test_evidence.py`; secret never reaches disk/DB/report |
+| Deterministic policy evaluation (JSON packs, pinned + hashed) | Implemented (M3) interim | Python evaluator behind `PolicyEvaluator`; OPA not installed (ADR-003) |
+| Findings, controls, coverage ledger (per segment) | Implemented (M3) | partial/zero/unreachable/unsupported/absent/unexpected all visible |
+| Minimal independent assurance (hash, freshness, scope, control IDs) | Implemented (M3 subset) | tamper/missing/stale/outage tests; full Agent 7 Planned (M7) |
+| Report JSON + escaped HTML, partial banner, approval bound to report hash, SoD | Implemented (M3) | counts reconcile to DB in tests |
+| API: scope manifests, inventory, assessments, events, cancel, coverage, findings, reports | Implemented (M3) | `tests/integration/test_vertical_slice.py` |
+| Fixture adapter (synthetic scanner replay; non-prod only) | Implemented (M3), **Mocked data** | proves the pipeline, not any real tool |
+| Worker process entry point (`python -m aisw.orchestrator`) | Unverified | written, not run live |
+| Permit renewal for runs longer than 15 min | Planned (M8) | permits are not renewed mid-run |
 | UI features, Playwright | Planned (M4) | |
 | URL smoke adapter | Planned (M5) | |
 | Scanner/CMDB import adapters | Planned (M6) | |

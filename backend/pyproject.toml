@@ -38,12 +38,13 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "S", "SIM"]
+ignore = ["E501"]  # the formatter wraps code; long SQL/message strings are acceptable
 
 [tool.ruff.lint.flake8-bugbear]
-extend-immutable-calls = ["fastapi.Depends", "fastapi.Header"]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "SIM117", "S608", "S105", "E501"]
+"tests/**" = ["S101", "SIM117", "S608", "S105"]
 
 [tool.mypy]
 python_version = "3.12"

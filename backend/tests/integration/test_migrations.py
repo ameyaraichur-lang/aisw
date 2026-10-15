@@ -9,7 +9,19 @@ from sqlalchemy import text
 
 from tests.conftest import make_db, migrate
 
-TABLES = {"projects", "scope_manifests", "execution_permits", "idempotency_records", "audit_events"}
+FOUNDATION = {
+    "projects",
+    "scope_manifests",
+    "execution_permits",
+    "idempotency_records",
+    "audit_events",
+}
+PIPELINE = {
+    "inventory_entries", "assessment_runs", "run_tasks", "run_events", "evidence_artifacts",
+    "assets", "run_asset_status", "observations", "control_assessments", "findings",
+    "assurance_results", "coverage_ledger", "reports",
+}  # fmt: skip
+TABLES = FOUNDATION | PIPELINE
 
 
 def _tables(engine) -> set[str]:  # type: ignore[no-untyped-def]
@@ -24,6 +36,8 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     eng = make_db(pg_server, f"mig_{uuid.uuid4().hex[:8]}")
     migrate(eng, "head")
     assert _tables(eng) == TABLES
+    migrate(eng, "0001", down=True)
+    assert _tables(eng) == FOUNDATION  # pipeline migration is independently reversible
     migrate(eng, "base", down=True)
     assert _tables(eng) == set()
     migrate(eng, "head")

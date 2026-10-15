@@ -1,0 +1,14 @@
+{
+  "scanner": "fixture-scanner",
+  "version": "1.0.0",
+  "hosts": [
+    {"id": "host-1", "hostname": "web-01", "os_family": "linux", "state": "scanned",
+     "checks": {"ssh.permit_root_login": "no", "password.min_length": 14, "audit.logging_enabled": true}},
+    {"id": "host-2", "hostname": "db-01", "os_family": "linux", "state": "unreachable",
+     "reason": "connection timed out"},
+    {"id": "host-3", "hostname": "legacy-01", "os_family": "aix", "state": "unsupported",
+     "reason": "no compatible collector for this OS"},
+    {"id": "host-9", "hostname": "rogue-01", "os_family": "linux", "state": "scanned",
+     "checks": {"ssh.permit_root_login": "no", "password.min_length": 12, "audit.logging_enabled": null}}
+  ]
+}

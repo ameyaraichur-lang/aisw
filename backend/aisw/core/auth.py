@@ -16,6 +16,10 @@ _SEEDED: dict[str, ActorContext] = {
     ),
     "dev-bob": ActorContext("tenant-a", "bob", frozenset({Role.APPROVER})),
     "dev-carol": ActorContext("tenant-a", "carol", frozenset({Role.REPORT_READER})),
+    "dev-rita": ActorContext("tenant-a", "rita", frozenset({Role.REVIEWER})),
+    "dev-sam": ActorContext(
+        "tenant-a", "sam", frozenset({Role.ASSESSMENT_OPERATOR, Role.REVIEWER})
+    ),
     "dev-erin": ActorContext("tenant-a", "erin", frozenset({Role.AUDITOR})),
     "dev-dave": ActorContext("tenant-b", "dave", frozenset({Role.PROJECT_ADMIN})),
 }

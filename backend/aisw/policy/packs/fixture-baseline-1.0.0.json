@@ -1,0 +1,40 @@
+{
+  "pack_id": "fixture-baseline",
+  "version": "1.0.0",
+  "description": "Synthetic baseline used by the fixture adapter. Not a real benchmark; external mappings need policy-owner review.",
+  "framework": {"name": "AISW-FIXTURE-BASELINE", "version": "1.0.0"},
+  "rules": [
+    {
+      "rule_id": "ssh.permit_root_login",
+      "control_id": "FB-1",
+      "title": "Direct root login over SSH is disabled",
+      "category": "host_configuration",
+      "severity": "HIGH",
+      "applies_to": {"os_family": ["linux"]},
+      "check": {"op": "equals", "value": "no"},
+      "mappings": [
+        {"framework": "CIS Controls", "version": "customer-pinned", "control_id": "REVIEW_REQUIRED", "mapping_status": "NEEDS_REVIEW"}
+      ]
+    },
+    {
+      "rule_id": "password.min_length",
+      "control_id": "FB-2",
+      "title": "Minimum password length is at least 12",
+      "category": "identity_configuration",
+      "severity": "MEDIUM",
+      "applies_to": {},
+      "check": {"op": "gte", "value": 12},
+      "mappings": []
+    },
+    {
+      "rule_id": "audit.logging_enabled",
+      "control_id": "FB-3",
+      "title": "Host audit logging is enabled",
+      "category": "logging",
+      "severity": "MEDIUM",
+      "applies_to": {},
+      "check": {"op": "equals", "value": true},
+      "mappings": []
+    }
+  ]
+}

@@ -8,9 +8,10 @@ declared profile classes are inconsistent with its read-only guarantees.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from datetime import datetime
+from typing import Any, Literal, Protocol
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from aisw.contracts.enums import ProfileClass
 
@@ -78,3 +79,17 @@ class AdapterRegistry:
 
     def ids(self) -> list[str]:
         return sorted(self._adapters)
+
+
+class AdapterOutput(BaseModel):
+    """What every adapter returns. ``raw`` is untrusted tool output and is never interpreted."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    status: Literal["SUCCEEDED", "PARTIAL", "FAILED"]
+    tool: str
+    tool_version: str
+    collected_at: datetime
+    raw: dict[str, Any]
+    warnings: list[str] = []
+    errors: list[str] = []

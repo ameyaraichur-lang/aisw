@@ -44,6 +44,7 @@ class LaunchAuthorization:
 
 
 Clock = Callable[[], datetime]
+AuthorizedHook = Callable[[Connection, str, ExecutionPermit, ScopeManifest], None]
 _SELECT_MANIFEST = "SELECT * FROM scope_manifests WHERE manifest_id=:m"
 _SELECT_MANIFEST_LOCKED = _SELECT_MANIFEST + " FOR UPDATE"
 
@@ -323,11 +324,14 @@ class ScopeService:
         task_types: list[str] | None,
         idempotency_key: str,
         cid: str,
+        on_authorized: AuthorizedHook | None = None,
+        request_extra: dict[str, Any] | None = None,
     ) -> LaunchAuthorization:
         self._authorize(actor, Permission.ASSESSMENT_LAUNCH, "assessment.launch", cid)()
         request_body = {
             "project_id": project_id, "manifest_id": manifest_id,
             "manifest_hash": manifest_hash, "task_types": sorted(task_types or []),
+            "extra": request_extra or {},
         }  # fmt: skip
         denial: ScopeDenied | None = None
         try:
@@ -363,6 +367,8 @@ class ScopeService:
                         action="assessment.authorize", resource=f"run:{run_id}",
                         result="SUCCESS", correlation_id=cid, after_hash=m.canonical_hash,
                     )  # fmt: skip
+                    if on_authorized is not None:  # same transaction as the permit
+                        on_authorized(conn, run_id, permit, m)
                     return 202, {"run_id": run_id, "permit": permit.model_dump(mode="json")}
 
                 result = run_idempotent(

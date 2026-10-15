@@ -14,6 +14,7 @@ python3 tools/secret_scan.py .
 Run the API: `cd backend && AISW_ENV=dev uv run uvicorn --factory aisw.api.app:create_app`
 Tests use an embedded PostgreSQL 16 (pgserver, dev dependency) so row-level-security behaviour is tested for real; no Docker needed.
 Export JSON Schemas: `cd backend && uv run python ../tools/export_schemas.py` (CI fails on drift).
+Run the worker: `cd backend && AISW_WORKER_DATABASE_URL=<dsn for role aisw_worker> uv run python -m aisw.orchestrator` (unverified live).
 Run the UI: `cd web && npm run dev`
 
 ## Safety defaults

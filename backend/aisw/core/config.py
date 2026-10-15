@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -44,6 +45,12 @@ class Settings(BaseSettings):
 
     # Reference to the database DSN supplied by the secret provider; never logged or committed.
     database_url: SecretStr | None = None
+    worker_database_url: SecretStr | None = None
+
+    # Filesystem locations (paths only; key material stays in the file, never in settings).
+    evidence_dir: Path | None = None
+    signing_key_path: Path | None = None
+    worker_enabled: bool = False
 
     evidence_retention_days: int = Field(default=365, ge=1)
     max_assessment_concurrency: int = Field(default=2, ge=1, le=32)
