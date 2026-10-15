@@ -22,7 +22,7 @@ def body_dict(**over: Any) -> dict[str, Any]:
         "tenant_id": "tenant-a", "project_id": "proj-1",
         "targets": [{"kind": "url", "selector": "https://example.com"}],
         "domains": ["url"], "allowed_adapters": ["url_smoke"],
-        "profiles": {"url_smoke": "READ_ONLY"}, "allowed_ports": [443],
+        "profiles": {"url_smoke": {"profile_id": "PASSIVE_HTTP_SMOKE", "profile_class": "READ_ONLY"}}, "allowed_ports": [443],
         "evidence_retention_days": 30, "policy_version": "baseline-1",
         "expires_at": (NOW + timedelta(days=1)).isoformat(),
     }  # fmt: skip
@@ -62,7 +62,9 @@ def test_tampered_body_fails_hash_check() -> None:
         {"targets": []},
         {"allowed_ports": [0]},
         {"allowed_ports": [443, 443]},
-        {"profiles": {"nmap": "ACTIVE"}},  # adapter not allowlisted
+        {
+            "profiles": {"nmap": {"profile_id": "p", "profile_class": "ACTIVE"}}
+        },  # adapter not allowlisted
         {"targets": [{"kind": "url", "selector": "a"}, {"kind": "url", "selector": "a"}]},
         {"expires_at": "2026-10-16T12:00:00"},
         {"surprise": True},
@@ -75,7 +77,10 @@ def test_invalid_bodies_rejected(over: dict[str, Any]) -> None:
 
 def test_active_profile_detection() -> None:
     b = ScopeManifestBody.model_validate(
-        body_dict(allowed_adapters=["zap"], profiles={"zap": "ACTIVE"})
+        body_dict(
+            allowed_adapters=["zap"],
+            profiles={"zap": {"profile_id": "ACTIVE_SCAN", "profile_class": "ACTIVE"}},
+        )
     )
     assert b.has_active_profile()
 

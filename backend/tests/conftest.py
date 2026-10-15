@@ -98,3 +98,10 @@ def uid() -> str:
 
 def auth(user: str) -> dict[str, str]:
     return {"Authorization": f"Bearer dev-{user}"}
+
+
+@pytest.fixture()
+def env(app_engine: Engine) -> Any:
+    from tests.support import make_env
+
+    return make_env(app_engine)

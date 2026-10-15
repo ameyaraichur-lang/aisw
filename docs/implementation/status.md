@@ -23,7 +23,15 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Domain data tables (assets, findings, coverage, evidence, runs) | Planned (M3) | contracts exist; persistence deferred per plan |
 | OIDC / Keycloak authentication | Planned | dev stub only; refused unless env in dev/test and flag on |
 | Manifest signing/key custody | Planned (M2) | contract fields exist, no signer yet |
-| Agent 0, tool gateway, net_guard | Planned (M2) | |
+| `net_guard` URL canonicalisation + SSRF/egress vetting (A/AAAA at preflight and dispatch, redirects, rebinding, IPv4-mapped/6to4/NAT64) | Implemented (M2) | `tests/security/test_net_guard.py` (98 cases, fake resolver; no real DNS/network touched) |
+| Agent 0 scope gate (resolve, policy caps, wildcard/exclusion rules, approvals, hash of resolved manifest) | Implemented (M2) | `tests/security/test_agent0_gate.py` (43 cases) |
+| Manifest signing (Ed25519, payload bound to tenant/project/id/version/hash) + key ring | Implemented (M2) dev/test custody only | `tests/unit/test_signing.py`; OpenBao Transit custody Planned (M8) |
+| Manifest/permit lifecycle service (draft, preflight, approve, idempotent launch authorisation, revoke) | Implemented (M2) | persisted with RLS + audit; no HTTP routes yet (M3) |
+| Tool gateway (allowlist, permit/manifest/signature re-check, scope, windows, params, quotas, audit) + zero-dispatch guarantee | Implemented (M2) | `tests/security/test_tool_gateway.py`; adapters are test doubles |
+| Adapter registry refuses mutating adapters (no remediation path) | Implemented (M2) | `test_mutating_adapters_cannot_be_registered` |
+| Real adapters (url_smoke, nmap, prowler, ...) | Planned (M3 fixture, M5/M6 others) | none exist yet; gateway verified only against fakes |
+| Gateway quota state | Mocked | in-memory per process; durable counters arrive with the orchestrator (M3) |
+| Egress firewall enforcement | Planned (M8 runbook) | application-layer checks only so far |
 | Vertical slice, orchestrator, policy, coverage, report | Planned (M3) | |
 | UI features, Playwright | Planned (M4) | |
 | URL smoke adapter | Planned (M5) | |

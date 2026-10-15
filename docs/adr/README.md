@@ -12,5 +12,6 @@
 - [ADR-010: Graph storage](ADR-010-graph-storage.md)
 - [ADR-011: Tool gateway](ADR-011-tool-gateway.md)
 - [ADR-012: URL and SSRF safety](ADR-012-url-and-ssrf-safety.md)
+- [ADR-013: Scope gate policy defaults and manifest profile contract](ADR-013-scope-gate-policy-defaults.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

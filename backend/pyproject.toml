@@ -5,6 +5,7 @@ description = "Agentic Infrastructure Security Warden - read-only, evidence-firs
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "alembic>=1.14",
+  "cryptography>=43",
   "fastapi>=0.115",
   "psycopg[binary]>=3.2",
   "pydantic>=2.9",

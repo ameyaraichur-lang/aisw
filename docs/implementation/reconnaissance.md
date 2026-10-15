@@ -45,3 +45,6 @@ None existing. New M0 assets: typed fail-closed `Settings`, FastAPI app factory 
 
 ## M1 update
 Embedded Postgres 16.2 via `pgserver` (dev dependency) resolved the missing-Postgres constraint for tests. Known quirk: pgserver's own `psql` helper breaks on paths containing spaces (this workspace path has one); we use psycopg/SQLAlchemy only. pgserver's licence (and bundled PostgreSQL) goes through the SBOM/licence gate in M8.
+
+## M2 update
+Added `cryptography` (Ed25519). `pip-audit`: no known vulnerabilities (run locally 2026-10-15). Probe finding recorded in ADR-013: Python `ipaddress.is_global` misclassifies multicast and NAT64-wrapped addresses, so `net_guard` does not rely on it alone.

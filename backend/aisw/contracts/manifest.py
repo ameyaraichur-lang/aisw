@@ -40,6 +40,17 @@ class Quotas(StrictModel):
     max_duration_seconds: int = Field(default=3600, ge=1, le=86_400)
 
 
+class ManifestProfile(StrictModel):
+    """The adapter profile a manifest authorises, with its claimed read-only/active class.
+
+    The class is re-verified against the adapter's registered capability by the gate and the
+    tool gateway; the claim being inside the signed body makes any tampering detectable.
+    """
+
+    profile_id: Slug
+    profile_class: ProfileClass
+
+
 class ScopeManifestBody(StrictModel):
     """The hashed/signed content. Edits create a new version (blueprint section 8)."""
 
@@ -49,7 +60,7 @@ class ScopeManifestBody(StrictModel):
     exclusions: list[ScopeTarget] = Field(default_factory=list)
     domains: list[Slug] = Field(min_length=1)
     allowed_adapters: list[Slug] = Field(min_length=1)
-    profiles: dict[Slug, ProfileClass] = Field(min_length=1)
+    profiles: dict[Slug, ManifestProfile] = Field(min_length=1)  # adapter_id -> profile
     allowed_ports: list[int] = Field(default_factory=list)
     internal_range_authorization: list[NonEmpty] = Field(default_factory=list)  # gap G9
     windows: list[MaintenanceWindow] = Field(default_factory=list)
@@ -74,7 +85,7 @@ class ScopeManifestBody(StrictModel):
         return self
 
     def has_active_profile(self) -> bool:
-        return any(p is ProfileClass.ACTIVE for p in self.profiles.values())
+        return any(p.profile_class is ProfileClass.ACTIVE for p in self.profiles.values())
 
     def hash(self) -> str:
         return canonical_hash(self.model_dump(mode="json"))

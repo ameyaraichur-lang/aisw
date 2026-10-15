@@ -21,6 +21,26 @@
       "title": "MaintenanceWindow",
       "type": "object"
     },
+    "ManifestProfile": {
+      "additionalProperties": false,
+      "description": "The adapter profile a manifest authorises, with its claimed read-only/active class.\n\nThe class is re-verified against the adapter's registered capability by the gate and the\ntool gateway; the claim being inside the signed body makes any tampering detectable.",
+      "properties": {
+        "profile_class": {
+          "$ref": "#/$defs/ProfileClass"
+        },
+        "profile_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+          "title": "Profile Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_id",
+        "profile_class"
+      ],
+      "title": "ManifestProfile",
+      "type": "object"
+    },
     "ManifestStatus": {
       "enum": [
         "DRAFT",
@@ -133,7 +153,7 @@
           "minProperties": 1,
           "patternProperties": {
             "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$": {
-              "$ref": "#/$defs/ProfileClass"
+              "$ref": "#/$defs/ManifestProfile"
             }
           },
           "title": "Profiles",
