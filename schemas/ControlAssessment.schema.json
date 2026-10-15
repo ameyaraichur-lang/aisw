@@ -1,0 +1,82 @@
+{
+  "$defs": {
+    "PolicyOutcome": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "NOT_APPLICABLE",
+        "NOT_ASSESSED",
+        "UNKNOWN",
+        "ERROR",
+        "EXCEPTION"
+      ],
+      "title": "PolicyOutcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "applicability": {
+      "title": "Applicability",
+      "type": "string"
+    },
+    "control_id": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Control Id",
+      "type": "string"
+    },
+    "evidence_refs": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "framework": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Framework",
+      "type": "string"
+    },
+    "outcome": {
+      "$ref": "#/$defs/PolicyOutcome"
+    },
+    "policy_version": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "version": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "run_id",
+    "framework",
+    "version",
+    "control_id",
+    "applicability",
+    "outcome",
+    "policy_version"
+  ],
+  "title": "ControlAssessment",
+  "type": "object"
+}

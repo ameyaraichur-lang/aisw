@@ -1,0 +1,172 @@
+{
+  "$defs": {
+    "EffortEstimate": {
+      "additionalProperties": false,
+      "properties": {
+        "basis": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Basis"
+        },
+        "is_estimate": {
+          "default": true,
+          "title": "Is Estimate",
+          "type": "boolean"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "EffortEstimate",
+      "type": "object"
+    },
+    "RecommendationStatus": {
+      "enum": [
+        "DRAFT",
+        "NEEDS_REVIEW",
+        "APPROVED_FOR_PLANNING",
+        "REJECTED",
+        "IMPLEMENTED_PENDING_VALIDATION"
+      ],
+      "title": "RecommendationStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "acceptance_test": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Acceptance Test"
+    },
+    "action": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Action",
+      "type": "string"
+    },
+    "alternatives": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Alternatives",
+      "type": "array"
+    },
+    "assumptions": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Assumptions",
+      "type": "array"
+    },
+    "dependencies": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Dependencies",
+      "type": "array"
+    },
+    "effort": {
+      "$ref": "#/$defs/EffortEstimate"
+    },
+    "finding_refs": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Finding Refs",
+      "type": "array"
+    },
+    "owner_questions": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Owner Questions",
+      "type": "array"
+    },
+    "recommendation_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Recommendation Id",
+      "type": "string"
+    },
+    "rollback": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rollback"
+    },
+    "status": {
+      "$ref": "#/$defs/RecommendationStatus",
+      "default": "DRAFT"
+    },
+    "target_pattern": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target Pattern"
+    },
+    "tenant_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Tenant Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "recommendation_id",
+    "tenant_id",
+    "finding_refs",
+    "action"
+  ],
+  "title": "Recommendation",
+  "type": "object"
+}

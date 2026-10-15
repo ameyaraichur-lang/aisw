@@ -1,0 +1,68 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "allowed_task_types": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Allowed Task Types",
+      "type": "array"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "issued_at": {
+      "format": "date-time",
+      "title": "Issued At",
+      "type": "string"
+    },
+    "manifest_hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Manifest Hash",
+      "type": "string"
+    },
+    "permit_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Permit Id",
+      "type": "string"
+    },
+    "policy_version": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Tenant Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "permit_id",
+    "tenant_id",
+    "project_id",
+    "run_id",
+    "manifest_hash",
+    "allowed_task_types",
+    "issued_at",
+    "expires_at",
+    "policy_version"
+  ],
+  "title": "ExecutionPermit",
+  "type": "object"
+}

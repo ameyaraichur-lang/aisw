@@ -1,0 +1,88 @@
+{
+  "$defs": {
+    "PolicyOutcome": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "NOT_APPLICABLE",
+        "NOT_ASSESSED",
+        "UNKNOWN",
+        "ERROR",
+        "EXCEPTION"
+      ],
+      "title": "PolicyOutcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "asset_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Asset Id",
+      "type": "string"
+    },
+    "evidence_ref": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Evidence Ref",
+      "type": "string"
+    },
+    "expected_value": {
+      "default": null,
+      "title": "Expected Value"
+    },
+    "observation_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Observation Id",
+      "type": "string"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "observed_value": {
+      "default": null,
+      "title": "Observed Value"
+    },
+    "outcome": {
+      "$ref": "#/$defs/PolicyOutcome"
+    },
+    "rule_id": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Rule Id",
+      "type": "string"
+    },
+    "source": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Source",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "observation_id",
+    "tenant_id",
+    "asset_id",
+    "source",
+    "rule_id",
+    "outcome",
+    "observed_at",
+    "evidence_ref",
+    "tool_version"
+  ],
+  "title": "Observation",
+  "type": "object"
+}

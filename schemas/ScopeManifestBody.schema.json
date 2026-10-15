@@ -1,0 +1,215 @@
+{
+  "$defs": {
+    "MaintenanceWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "format": "date-time",
+          "title": "End",
+          "type": "string"
+        },
+        "start": {
+          "format": "date-time",
+          "title": "Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "title": "MaintenanceWindow",
+      "type": "object"
+    },
+    "ProfileClass": {
+      "enum": [
+        "READ_ONLY",
+        "ACTIVE"
+      ],
+      "title": "ProfileClass",
+      "type": "string"
+    },
+    "Quotas": {
+      "additionalProperties": false,
+      "properties": {
+        "max_concurrency": {
+          "default": 1,
+          "maximum": 32,
+          "minimum": 1,
+          "title": "Max Concurrency",
+          "type": "integer"
+        },
+        "max_duration_seconds": {
+          "default": 3600,
+          "maximum": 86400,
+          "minimum": 1,
+          "title": "Max Duration Seconds",
+          "type": "integer"
+        },
+        "max_requests": {
+          "default": 100,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Max Requests",
+          "type": "integer"
+        }
+      },
+      "title": "Quotas",
+      "type": "object"
+    },
+    "ScopeTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "cloud_account",
+            "region",
+            "asset_group",
+            "cidr",
+            "host",
+            "url"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "resolved_asset_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolved Asset Id"
+        },
+        "selector": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Selector",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "selector"
+      ],
+      "title": "ScopeTarget",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The hashed/signed content. Edits create a new version (blueprint section 8).",
+  "properties": {
+    "allowed_adapters": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Allowed Adapters",
+      "type": "array"
+    },
+    "allowed_ports": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Allowed Ports",
+      "type": "array"
+    },
+    "domains": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Domains",
+      "type": "array"
+    },
+    "evidence_retention_days": {
+      "minimum": 1,
+      "title": "Evidence Retention Days",
+      "type": "integer"
+    },
+    "exclusions": {
+      "items": {
+        "$ref": "#/$defs/ScopeTarget"
+      },
+      "title": "Exclusions",
+      "type": "array"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "internal_range_authorization": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Internal Range Authorization",
+      "type": "array"
+    },
+    "policy_version": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "profiles": {
+      "minProperties": 1,
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$": {
+          "$ref": "#/$defs/ProfileClass"
+        }
+      },
+      "title": "Profiles",
+      "type": "object"
+    },
+    "project_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "quotas": {
+      "$ref": "#/$defs/Quotas"
+    },
+    "targets": {
+      "items": {
+        "$ref": "#/$defs/ScopeTarget"
+      },
+      "minItems": 1,
+      "title": "Targets",
+      "type": "array"
+    },
+    "tenant_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "windows": {
+      "items": {
+        "$ref": "#/$defs/MaintenanceWindow"
+      },
+      "title": "Windows",
+      "type": "array"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "project_id",
+    "targets",
+    "domains",
+    "allowed_adapters",
+    "profiles",
+    "evidence_retention_days",
+    "policy_version",
+    "expires_at"
+  ],
+  "title": "ScopeManifestBody",
+  "type": "object"
+}

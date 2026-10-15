@@ -4,9 +4,12 @@ version = "0.0.1"
 description = "Agentic Infrastructure Security Warden - read-only, evidence-first assessment platform"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+  "alembic>=1.14",
   "fastapi>=0.115",
+  "psycopg[binary]>=3.2",
   "pydantic>=2.9",
   "pydantic-settings>=2.6",
+  "sqlalchemy>=2.0",
   "uvicorn>=0.32",
 ]
 
@@ -18,6 +21,7 @@ dev = [
   "mypy>=1.13",
   "ruff>=0.8",
   "pip-audit>=2.7",
+  "pgserver>=0.1.4",
 ]
 
 [build-system]
@@ -34,8 +38,11 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "S", "SIM"]
 
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Header"]
+
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+"tests/**" = ["S101", "SIM117", "S608", "S105", "E501"]
 
 [tool.mypy]
 python_version = "3.12"

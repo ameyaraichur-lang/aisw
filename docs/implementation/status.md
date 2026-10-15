@@ -9,8 +9,20 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Health/readiness endpoints | Implemented | `tests/unit/test_health.py` |
 | UI shell + outcome vocabulary (no data) | Implemented | `web/src/lib/status.test.ts`; build passes |
 | Repo secret scanner | Implemented (stopgap) | `tests/security/test_secret_scan.py`; gitleaks planned |
-| CI workflow | Unverified | `.github/workflows/ci.yml` written, never run on a CI runner |
-| Contracts, RLS, RBAC, audit chain, idempotency | Planned (M1) | |
+| CI workflow | Unverified | `.github/workflows/ci.yml` written (now incl. schema-drift check), never run on a CI runner |
+| Strict contracts (envelope 1.1, manifest, permit, decision, domain entities, assurance, report) + exported JSON Schemas | Implemented (M1) | `tests/contract/` (53 tests), `schemas/` drift gate |
+| Tenant isolation via PostgreSQL RLS (forced, fail-closed when no tenant set) | Implemented (M1) | `tests/security/test_tenant_isolation_db.py`; real PG 16 via pgserver |
+| RBAC roles/permissions, separation of duties, dev identity stub (dev/test only) | Implemented (M1) | `tests/security/test_api_authz.py` |
+| Hash-chained append-only audit (DB triggers + verifier) | Implemented (M1) | `tests/security/test_audit_chain.py` incl. tamper/gap detection |
+| Idempotent commands (same-txn key record, conflict on body change, race-safe) | Implemented (M1) | `tests/security/test_api_authz.py` incl. 6-thread race |
+| Scope-manifest immutability + approval invariants in DB | Implemented (M1) | `tests/security/test_manifest_db.py` |
+| Redaction (text/objects/log filter) | Implemented (M1) | `tests/security/test_redaction.py` |
+| Alembic migration 0001 (reversible) | Implemented (M1) | `tests/integration/test_migrations.py` |
+| Projects API (create/list/get, audit verify) | Implemented (M1) | first endpoints exercising the foundation |
+| Execution-permit table | Implemented structurally only (M1) | no issuance logic or behavioural tests until Agent 0 (M2) |
+| Domain data tables (assets, findings, coverage, evidence, runs) | Planned (M3) | contracts exist; persistence deferred per plan |
+| OIDC / Keycloak authentication | Planned | dev stub only; refused unless env in dev/test and flag on |
+| Manifest signing/key custody | Planned (M2) | contract fields exist, no signer yet |
 | Agent 0, tool gateway, net_guard | Planned (M2) | |
 | Vertical slice, orchestrator, policy, coverage, report | Planned (M3) | |
 | UI features, Playwright | Planned (M4) | |

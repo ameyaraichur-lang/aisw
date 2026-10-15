@@ -42,3 +42,6 @@ None existing. New M0 assets: typed fail-closed `Settings`, FastAPI app factory 
 
 ## File-level plan for M1
 `backend/aisw/contracts/*` (envelope 1.1, manifest, permit, decision, domain entities), `backend/aisw/core/{tenant,rbac,audit,idempotency,redaction}.py`, `backend/migrations/` (Alembic), `backend/tests/{contract,security}/` negative suites, `tools/export_schemas.py`.
+
+## M1 update
+Embedded Postgres 16.2 via `pgserver` (dev dependency) resolved the missing-Postgres constraint for tests. Known quirk: pgserver's own `psql` helper breaks on paths containing spaces (this workspace path has one); we use psycopg/SQLAlchemy only. pgserver's licence (and bundled PostgreSQL) goes through the SBOM/licence gate in M8.

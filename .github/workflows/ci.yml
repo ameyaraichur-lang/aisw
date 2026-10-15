@@ -15,6 +15,7 @@ jobs:
       - run: uv run mypy
       - run: uv run pytest -q
       - run: uv run pip-audit
+      - run: uv run python ../tools/export_schemas.py --check
   web:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: web } }

@@ -1,0 +1,78 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "collected_at": {
+      "format": "date-time",
+      "title": "Collected At",
+      "type": "string"
+    },
+    "content_hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "evidence_ref": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Evidence Ref",
+      "type": "string"
+    },
+    "media_type": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Media Type",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "redacted": {
+      "title": "Redacted",
+      "type": "boolean"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "size_bytes": {
+      "minimum": 0,
+      "title": "Size Bytes",
+      "type": "integer"
+    },
+    "source": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Source",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "evidence_ref",
+    "tenant_id",
+    "project_id",
+    "run_id",
+    "content_hash",
+    "size_bytes",
+    "media_type",
+    "source",
+    "tool_version",
+    "collected_at",
+    "redacted"
+  ],
+  "title": "EvidenceArtifact",
+  "type": "object"
+}

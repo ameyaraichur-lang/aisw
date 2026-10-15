@@ -11,7 +11,10 @@ import re
 import sys
 from pathlib import Path
 
-SKIP_DIRS = {".git", ".venv", "node_modules", "dist", "__pycache__", ".mypy_cache", ".ruff_cache"}
+SKIP_DIRS = {
+    ".git", ".venv", "node_modules", "dist", "__pycache__", ".mypy_cache", ".ruff_cache",
+    ".pytest_cache",
+}  # fmt: skip
 PATTERNS = {
     "private-key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"),
     "aws-access-key": re.compile(r"\bAKIA[0-9A-Z]{16}\b"),

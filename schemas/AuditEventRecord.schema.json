@@ -1,0 +1,109 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Action",
+      "type": "string"
+    },
+    "actor": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Actor",
+      "type": "string"
+    },
+    "after_hash": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "After Hash"
+    },
+    "before_hash": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Before Hash"
+    },
+    "correlation_id": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Correlation Id",
+      "type": "string"
+    },
+    "event_hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Event Hash",
+      "type": "string"
+    },
+    "event_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Event Id",
+      "type": "string"
+    },
+    "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+    },
+    "prev_hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Prev Hash",
+      "type": "string"
+    },
+    "resource": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Resource",
+      "type": "string"
+    },
+    "result": {
+      "enum": [
+        "SUCCESS",
+        "DENIED",
+        "FAILURE"
+      ],
+      "title": "Result",
+      "type": "string"
+    },
+    "seq": {
+      "minimum": 1,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "tenant_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Tenant Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "event_id",
+    "tenant_id",
+    "seq",
+    "actor",
+    "action",
+    "resource",
+    "correlation_id",
+    "result",
+    "occurred_at",
+    "prev_hash",
+    "event_hash"
+  ],
+  "title": "AuditEventRecord",
+  "type": "object"
+}

@@ -1,0 +1,231 @@
+{
+  "$defs": {
+    "Confidence": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "title": "Confidence",
+      "type": "string"
+    },
+    "ControlMapping": {
+      "additionalProperties": false,
+      "properties": {
+        "control_id": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Control Id",
+          "type": "string"
+        },
+        "framework": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Framework",
+          "type": "string"
+        },
+        "mapping_status": {
+          "default": "NEEDS_REVIEW",
+          "title": "Mapping Status",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "framework",
+        "version",
+        "control_id"
+      ],
+      "title": "ControlMapping",
+      "type": "object"
+    },
+    "FindingLifecycle": {
+      "enum": [
+        "NEW",
+        "TRIAGED",
+        "ACCEPTED",
+        "FALSE_POSITIVE",
+        "EXCEPTION_PENDING",
+        "IN_REMEDIATION",
+        "PENDING_VALIDATION",
+        "RESOLVED",
+        "REOPENED"
+      ],
+      "title": "FindingLifecycle",
+      "type": "string"
+    },
+    "PolicyOutcome": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "NOT_APPLICABLE",
+        "NOT_ASSESSED",
+        "UNKNOWN",
+        "ERROR",
+        "EXCEPTION"
+      ],
+      "title": "PolicyOutcome",
+      "type": "string"
+    },
+    "Severity": {
+      "enum": [
+        "INFO",
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "severity (source), business_risk, confidence, outcome and lifecycle are distinct fields.",
+  "properties": {
+    "affected_assets": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Affected Assets",
+      "type": "array"
+    },
+    "assumptions": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Assumptions",
+      "type": "array"
+    },
+    "business_risk": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Business Risk"
+    },
+    "category": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Category",
+      "type": "string"
+    },
+    "confidence": {
+      "$ref": "#/$defs/Confidence"
+    },
+    "control_mappings": {
+      "items": {
+        "$ref": "#/$defs/ControlMapping"
+      },
+      "title": "Control Mappings",
+      "type": "array"
+    },
+    "evidence_refs": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "finding_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Finding Id",
+      "type": "string"
+    },
+    "first_observed": {
+      "format": "date-time",
+      "title": "First Observed",
+      "type": "string"
+    },
+    "last_observed": {
+      "format": "date-time",
+      "title": "Last Observed",
+      "type": "string"
+    },
+    "lifecycle": {
+      "$ref": "#/$defs/FindingLifecycle",
+      "default": "NEW"
+    },
+    "outcome": {
+      "$ref": "#/$defs/PolicyOutcome"
+    },
+    "policy_version": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "severity": {
+      "$ref": "#/$defs/Severity"
+    },
+    "severity_source": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Severity Source",
+      "type": "string"
+    },
+    "stable_dedupe_key": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Stable Dedupe Key",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "finding_id",
+    "stable_dedupe_key",
+    "tenant_id",
+    "project_id",
+    "run_id",
+    "title",
+    "category",
+    "severity",
+    "severity_source",
+    "confidence",
+    "outcome",
+    "affected_assets",
+    "evidence_refs",
+    "policy_version",
+    "first_observed",
+    "last_observed"
+  ],
+  "title": "Finding",
+  "type": "object"
+}

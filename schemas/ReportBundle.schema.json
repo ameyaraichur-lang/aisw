@@ -1,0 +1,113 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "approval_state": {
+      "default": "PENDING",
+      "title": "Approval State",
+      "type": "string"
+    },
+    "coverage_complete": {
+      "title": "Coverage Complete",
+      "type": "boolean"
+    },
+    "evidence_manifest_hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Evidence Manifest Hash",
+      "type": "string"
+    },
+    "finding_counts": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Finding Counts",
+      "type": "object"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "limitations": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "model_versions": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Model Versions",
+      "type": "array"
+    },
+    "policy_versions": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Policy Versions",
+      "type": "array"
+    },
+    "project_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "report_hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "report_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Report Id",
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "scope_manifest_hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Scope Manifest Hash",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "tool_versions": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Tool Versions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "report_id",
+    "tenant_id",
+    "project_id",
+    "run_id",
+    "scope_manifest_hash",
+    "policy_versions",
+    "coverage_complete",
+    "finding_counts",
+    "evidence_manifest_hash",
+    "report_hash",
+    "generated_at"
+  ],
+  "title": "ReportBundle",
+  "type": "object"
+}

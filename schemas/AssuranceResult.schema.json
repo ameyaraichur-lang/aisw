@@ -1,0 +1,82 @@
+{
+  "$defs": {
+    "AssuranceVerdict": {
+      "enum": [
+        "ACCEPT",
+        "REJECT",
+        "NEEDS_REVIEW"
+      ],
+      "title": "AssuranceVerdict",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "defect_codes": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Defect Codes",
+      "type": "array"
+    },
+    "item_ref": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Item Ref",
+      "type": "string"
+    },
+    "missing_refs": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Missing Refs",
+      "type": "array"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "stale_refs": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Stale Refs",
+      "type": "array"
+    },
+    "tenant_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "validated_at": {
+      "format": "date-time",
+      "title": "Validated At",
+      "type": "string"
+    },
+    "validation_version": {
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$",
+      "title": "Validation Version",
+      "type": "string"
+    },
+    "verdict": {
+      "$ref": "#/$defs/AssuranceVerdict"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "run_id",
+    "item_ref",
+    "verdict",
+    "validation_version",
+    "validated_at"
+  ],
+  "title": "AssuranceResult",
+  "type": "object"
+}

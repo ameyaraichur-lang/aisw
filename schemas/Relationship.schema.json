@@ -1,0 +1,97 @@
+{
+  "$defs": {
+    "Confidence": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "title": "Confidence",
+      "type": "string"
+    },
+    "EdgeBasis": {
+      "enum": [
+        "OBSERVED",
+        "CONFIGURED",
+        "INFERRED"
+      ],
+      "title": "EdgeBasis",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "basis": {
+      "$ref": "#/$defs/EdgeBasis"
+    },
+    "confidence": {
+      "$ref": "#/$defs/Confidence"
+    },
+    "evidence_ref": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Evidence Ref"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "relationship_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Relationship Id",
+      "type": "string"
+    },
+    "relationship_type": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Relationship Type",
+      "type": "string"
+    },
+    "source_asset_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Source Asset Id",
+      "type": "string"
+    },
+    "target_asset_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Target Asset Id",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "validation_steps": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Validation Steps",
+      "type": "array"
+    }
+  },
+  "required": [
+    "relationship_id",
+    "tenant_id",
+    "source_asset_id",
+    "target_asset_id",
+    "relationship_type",
+    "basis",
+    "confidence",
+    "observed_at"
+  ],
+  "title": "Relationship",
+  "type": "object"
+}

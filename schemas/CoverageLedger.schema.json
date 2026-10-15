@@ -1,0 +1,117 @@
+{
+  "$defs": {
+    "PolicyOutcome": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "NOT_APPLICABLE",
+        "NOT_ASSESSED",
+        "UNKNOWN",
+        "ERROR",
+        "EXCEPTION"
+      ],
+      "title": "PolicyOutcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Counts per scope segment. Completeness is derived, never asserted.",
+  "properties": {
+    "assessed_by_outcome": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "propertyNames": {
+        "$ref": "#/$defs/PolicyOutcome"
+      },
+      "title": "Assessed By Outcome",
+      "type": "object"
+    },
+    "discovered_count": {
+      "minimum": 0,
+      "title": "Discovered Count",
+      "type": "integer"
+    },
+    "excluded_count": {
+      "minimum": 0,
+      "title": "Excluded Count",
+      "type": "integer"
+    },
+    "expected_count": {
+      "minimum": 0,
+      "title": "Expected Count",
+      "type": "integer"
+    },
+    "last_success_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Success At"
+    },
+    "reasons": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Reasons",
+      "type": "array"
+    },
+    "reconciled_count": {
+      "minimum": 0,
+      "title": "Reconciled Count",
+      "type": "integer"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "segment": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Segment",
+      "type": "string"
+    },
+    "source_ok": {
+      "title": "Source Ok",
+      "type": "boolean"
+    },
+    "tenant_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "unknown_count": {
+      "minimum": 0,
+      "title": "Unknown Count",
+      "type": "integer"
+    },
+    "unsupported_count": {
+      "minimum": 0,
+      "title": "Unsupported Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "run_id",
+    "segment",
+    "expected_count",
+    "discovered_count",
+    "reconciled_count",
+    "excluded_count",
+    "unsupported_count",
+    "unknown_count",
+    "source_ok"
+  ],
+  "title": "CoverageLedger",
+  "type": "object"
+}

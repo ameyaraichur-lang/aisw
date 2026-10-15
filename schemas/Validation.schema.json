@@ -1,0 +1,88 @@
+{
+  "$defs": {
+    "PolicyOutcome": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "NOT_APPLICABLE",
+        "NOT_ASSESSED",
+        "UNKNOWN",
+        "ERROR",
+        "EXCEPTION"
+      ],
+      "title": "PolicyOutcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "actual_state": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Actual State",
+      "type": "string"
+    },
+    "evidence_ref": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Evidence Ref",
+      "type": "string"
+    },
+    "expected_state": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Expected State",
+      "type": "string"
+    },
+    "result": {
+      "$ref": "#/$defs/PolicyOutcome"
+    },
+    "target": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Target",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "test_method": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Test Method",
+      "type": "string"
+    },
+    "validation_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Validation Id",
+      "type": "string"
+    },
+    "verified_at": {
+      "format": "date-time",
+      "title": "Verified At",
+      "type": "string"
+    },
+    "verifier": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Verifier",
+      "type": "string"
+    }
+  },
+  "required": [
+    "validation_id",
+    "tenant_id",
+    "target",
+    "expected_state",
+    "test_method",
+    "actual_state",
+    "result",
+    "verifier",
+    "verified_at",
+    "evidence_ref"
+  ],
+  "title": "Validation",
+  "type": "object"
+}
