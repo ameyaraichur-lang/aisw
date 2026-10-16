@@ -14,11 +14,15 @@ export interface RunStream {
   lastEventAt: number | null
   staleSince: number | null
   reconnects: number
+  stalls: number
 }
 
 const BASE_BACKOFF_MS = Number(import.meta.env.VITE_STREAM_BACKOFF_MS ?? 1000)
 const POLL_MS = Number(import.meta.env.VITE_POLL_MS ?? 3000)
 const MAX_STREAM_FAILURES = 3
+// The server writes at least a heartbeat every 10 s; three missed beats means the stream is dead
+// even though the connection still looks open (ADR-015).
+const STALL_MS = Number(import.meta.env.VITE_STREAM_STALL_MS ?? 30000)
 
 const sleep = (ms: number, signal: AbortSignal, onWake?: (w: () => void) => void) =>
   new Promise<void>((resolve) => {
@@ -35,6 +39,7 @@ export function useRunStream(runId: string): RunStream {
   const [lastEventAt, setLastEventAt] = useState<number | null>(null)
   const [staleSince, setStaleSince] = useState<number | null>(null)
   const [reconnects, setReconnects] = useState(0)
+  const [stalls, setStalls] = useState(0)
   const cursor = useRef(0)
 
   useEffect(() => {
@@ -92,18 +97,30 @@ export function useRunStream(runId: string): RunStream {
       const reader = res.body.getReader()
       const dec = new TextDecoder()
       let buf = ''
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) return 'closed'
-        const parsed = parseSse(buf + dec.decode(value, { stream: true }))
-        buf = parsed.rest
-        const batch: RunEvent[] = []
-        for (const m of parsed.messages) {
-          if (m.event === 'end') { take(batch); return 'end' }
-          if (m.event === 'reconnect') { take(batch); return 'closed' }
-          try { batch.push(JSON.parse(m.data) as RunEvent) } catch { /* ignore a corrupt frame; the log is re-read on reconnect */ }
+      let lastByte = Date.now()
+      const watchdog = setInterval(() => {
+        if (Date.now() - lastByte <= STALL_MS) return
+        setStalls((n) => n + 1)
+        conn?.abort() // only this connection: the loop reconnects from the cursor
+      }, Math.max(250, Math.min(STALL_MS / 4, 5000)))
+      try {
+        for (;;) {
+          const { done, value } = await reader.read()
+          lastByte = Date.now()
+          if (done) return 'closed'
+          const parsed = parseSse(buf + dec.decode(value, { stream: true }))
+          buf = parsed.rest
+          const batch: RunEvent[] = []
+          for (const m of parsed.messages) {
+            if (m.event === 'end') { take(batch); return 'end' }
+            if (m.event === 'reconnect') { take(batch); return 'closed' }
+            try { batch.push(JSON.parse(m.data) as RunEvent) } catch { /* ignore a corrupt frame; the log is re-read on reconnect */ }
+          }
+          take(batch)
         }
-        take(batch)
+      } finally {
+        clearInterval(watchdog)
+        ctl.signal.removeEventListener('abort', onAbort)
       }
     }
 
@@ -152,5 +169,5 @@ export function useRunStream(runId: string): RunStream {
     }
   }, [runId, qc])
 
-  return { events: state.events, status, lastEventAt, staleSince, reconnects }
+  return { events: state.events, status, lastEventAt, staleSince, reconnects, stalls }
 }

@@ -70,7 +70,7 @@ Done on 2026-10-16:
 | Analysis | Real reachability for exposure scoring (most host findings score exposure 0); graph/attack-path reasoning (ADR-010); ~~separation of duties for recommendation decisions~~ (done: the run requester may only defer; migration 0018 enforces it) |
 | Retention | UI and scheduler; quarantine deletion is manual |
 | Evidence | Object-lock/WORM storage; externally witnessed audit-chain anchor |
-| Events | Silent-stall detection for an open but dead SSE stream (ADR-015) |
+| Events | ~~Silent-stall detection for an open but dead SSE stream (ADR-015)~~ (done: a client watchdog reopens the stream from the cursor after 30 s of silence) |
 | Authorisation | Per-project roles (roles are tenant-wide today) |
 | URL probe | Real CA, IPv6-only, HTTP/2-only and proxy behaviour (tested on local PKI only) |
 | Supply chain | Syft/ScanCode SBOM instead of the lockfile-based one; gitleaks instead of the stopgap secret scanner |

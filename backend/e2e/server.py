@@ -124,7 +124,7 @@ def main() -> None:
     )  # fmt: skip
     worker = container.make_worker(worker_engine, worker_id="e2e-worker")
 
-    state: dict[str, Any] = {"paused": False, "step_delay": 0.15}
+    state: dict[str, Any] = {"paused": False, "step_delay": 0.15, "stalls": 0}
     stop = threading.Event()
 
     def loop() -> None:
@@ -194,6 +194,31 @@ def main() -> None:
                     "itsm_token": SecretStr(f.token), "itsm_jira_project_key": "SEC"}
         )  # fmt: skip
         return {"mode": mode, "tickets": len(f.jira) + len(f.servicenow)}
+
+    import aisw.api.views as views  # noqa: PLC0415
+
+    real_stream = getattr(views, "stream_events")  # noqa: B009
+
+    def stalling_stream(*args: Any, **kw: Any) -> Any:
+        if state["stalls"] <= 0:
+            return real_stream(*args, **kw)
+        state["stalls"] -= 1
+
+        def silent() -> Any:  # headers go out, then nothing: an open but dead stream
+            end = time.monotonic() + 20
+            while time.monotonic() < end and not stop.is_set():
+                time.sleep(0.1)
+            yield from ()
+
+        return silent()
+
+    setattr(views, "stream_events", stalling_stream)  # noqa: B010
+
+    @api.post("/__e2e/stall-streams/{n}")
+    def stall_streams(n: int) -> dict[str, int]:
+        """The next ``n`` live-stream connections send headers and then nothing at all."""
+        state["stalls"] = max(0, min(n, 5))
+        return {"stalls": state["stalls"]}
 
     @api.post("/__e2e/delay/{ms}")
     def delay(ms: int) -> dict[str, float]:

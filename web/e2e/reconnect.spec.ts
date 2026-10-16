@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { approvedManifest, launch, pause, resume, seedProject, signIn } from './helpers.ts'
+import { approvedManifest, json, launch, pause, resume, seedProject, signIn } from './helpers.ts'
 
 test.afterEach(async ({ request }) => { await resume(request) })
 
@@ -59,6 +59,23 @@ test('connection loss shows a stale banner and recovery resumes from the cursor'
   expect(after.slice(0, before.length)).toEqual(before)
   expect(new Set(after).size).toBe(after.length)
   expect(after).toEqual(after.map((_, i) => i + 1))
+})
+
+test('a stream that stays open but goes silent is detected and reopened from the cursor', async ({ page, request }) => {
+  const { projectId } = await seedProject(request)
+  const m = await approvedManifest(request, projectId)
+  await pause(request)
+  const runId = await launch(request, projectId, m)
+  await json(await request.post('http://127.0.0.1:8099/__e2e/stall-streams/1'))
+  await signIn(page, 'alice')
+  await page.goto(`/assessments/${runId}/timeline`)
+  await expect(page.getByTestId('stream-stalls')).toContainText('went silent once', { timeout: 15_000 })
+  await expect(page.getByTestId('stream-status')).toContainText('Live')
+  await expect(page.getByTestId('stage-collection')).toHaveAttribute('data-status', 'running')
+  await resume(request)
+  await expect(page.getByTestId('stage-report')).toHaveAttribute('data-status', 'succeeded', { timeout: 40_000 })
+  const seqs = await eventSeqs(page)
+  expect(seqs).toEqual(seqs.map((_, i) => i + 1))
 })
 
 test('when streaming is blocked the page falls back to polling and still completes', async ({ page, request }) => {

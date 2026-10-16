@@ -109,6 +109,7 @@ function Timeline({ runId, stream }: { runId: string; stream: ReturnType<typeof 
           <Badge d={stream.status === 'live' ? { icon: '●', label: 'Live', tone: 'ok' } : stream.status === 'ended' ? { icon: '■', label: 'Stream complete', tone: 'neutral' } : { icon: '…', label: stream.status, tone: 'warn' }} />
           {latest ? <span>Latest: {describeEvent(latest)}</span> : <span className="muted">Waiting for the first event…</span>}
         </p>
+        {stream.stalls ? <p className="hint" data-testid="stream-stalls">The live stream went silent {stream.stalls === 1 ? 'once' : `${stream.stalls} times`} (no data, not even a heartbeat) and was reopened from the last event.</p> : null}
         {fin ? <p className="muted">{fin.done} of {fin.total} task(s) finished</p> : null}
         <h2>Stages</h2>
         <ol className="stages" aria-label="Run stages">
