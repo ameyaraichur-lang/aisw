@@ -17,6 +17,8 @@ from aisw.api import (
     assurance,
     auth,
     controls,
+    coverage,
+    evaluation,
     exceptions,
     imports,
     projects,
@@ -136,4 +138,6 @@ def create_app(
     app.include_router(assets.router)
     app.include_router(assurance.router)
     app.include_router(tickets.router)
+    app.include_router(evaluation.router)
+    app.include_router(coverage.router)
     return app

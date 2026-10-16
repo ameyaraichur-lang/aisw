@@ -1,0 +1,637 @@
+{
+ "scanner": "fixture-scanner",
+ "version": "1.0.0",
+ "estate": "Maple Trust hybrid estate (synthetic)",
+ "hosts": [
+  {
+   "id": "mt-web-01",
+   "hostname": "mt-web-01",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-web-02",
+   "hostname": "mt-web-02",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-web-03",
+   "hostname": "mt-web-03",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "yes",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-web-04",
+   "hostname": "mt-web-04",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-web-05",
+   "hostname": "mt-web-05",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-web-06",
+   "hostname": "mt-web-06",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-web-07",
+   "hostname": "mt-web-07",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "yes",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-web-08",
+   "hostname": "mt-web-08",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-web-09",
+   "hostname": "mt-web-09",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-web-10",
+   "hostname": "mt-web-10",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-app-01",
+   "hostname": "mt-app-01",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-app-02",
+   "hostname": "mt-app-02",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 8,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-app-03",
+   "hostname": "mt-app-03",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-app-04",
+   "hostname": "mt-app-04",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-app-05",
+   "hostname": "mt-app-05",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 10,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-app-06",
+   "hostname": "mt-app-06",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-app-07",
+   "hostname": "mt-app-07",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-app-08",
+   "hostname": "mt-app-08",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-app-09",
+   "hostname": "mt-app-09",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14
+   }
+  },
+  {
+   "id": "mt-app-10",
+   "hostname": "mt-app-10",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-db-01",
+   "hostname": "mt-db-01",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-db-02",
+   "hostname": "mt-db-02",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": false
+   }
+  },
+  {
+   "id": "mt-db-03",
+   "hostname": "mt-db-03",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-db-04",
+   "hostname": "mt-db-04",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 8,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-db-05",
+   "hostname": "mt-db-05",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-db-06",
+   "hostname": "mt-db-06",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-win-01",
+   "hostname": "mt-win-01",
+   "os_family": "windows",
+   "state": "scanned",
+   "checks": {
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-win-02",
+   "hostname": "mt-win-02",
+   "os_family": "windows",
+   "state": "scanned",
+   "checks": {
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-win-03",
+   "hostname": "mt-win-03",
+   "os_family": "windows",
+   "state": "scanned",
+   "checks": {
+    "password.min_length": 7,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-win-04",
+   "hostname": "mt-win-04",
+   "os_family": "windows",
+   "state": "scanned",
+   "checks": {
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-win-05",
+   "hostname": "mt-win-05",
+   "os_family": "windows",
+   "state": "scanned",
+   "checks": {
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-win-06",
+   "hostname": "mt-win-06",
+   "os_family": "windows",
+   "state": "scanned",
+   "checks": {
+    "password.min_length": 10,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-win-07",
+   "hostname": "mt-win-07",
+   "os_family": "windows",
+   "state": "scanned",
+   "checks": {
+    "password.min_length": 8,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-win-08",
+   "hostname": "mt-win-08",
+   "os_family": "windows",
+   "state": "scanned",
+   "checks": {
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-jump-01",
+   "hostname": "mt-jump-01",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "yes",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-jump-02",
+   "hostname": "mt-jump-02",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-k8s-01",
+   "hostname": "mt-k8s-01",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-k8s-02",
+   "hostname": "mt-k8s-02",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-k8s-03",
+   "hostname": "mt-k8s-03",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": false
+   }
+  },
+  {
+   "id": "mt-k8s-04",
+   "hostname": "mt-k8s-04",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-k8s-05",
+   "hostname": "mt-k8s-05",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": false
+   }
+  },
+  {
+   "id": "mt-k8s-06",
+   "hostname": "mt-k8s-06",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-mail-01",
+   "hostname": "mt-mail-01",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-mail-02",
+   "hostname": "mt-mail-02",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 9,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-mail-03",
+   "hostname": "mt-mail-03",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-backup-01",
+   "hostname": "mt-backup-01",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": false
+   }
+  },
+  {
+   "id": "mt-backup-02",
+   "hostname": "mt-backup-02",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-dns-01",
+   "hostname": "mt-dns-01",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-dns-02",
+   "hostname": "mt-dns-02",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-dns-03",
+   "hostname": "mt-dns-03",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": null
+   }
+  },
+  {
+   "id": "mt-log-01",
+   "hostname": "mt-log-01",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-log-02",
+   "hostname": "mt-log-02",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": false
+   }
+  },
+  {
+   "id": "mt-log-03",
+   "hostname": "mt-log-03",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-fw-01",
+   "hostname": "mt-fw-01",
+   "os_family": "panos",
+   "state": "unsupported",
+   "reason": "no compatible collector for PAN-OS"
+  },
+  {
+   "id": "mt-fw-02",
+   "hostname": "mt-fw-02",
+   "os_family": "panos",
+   "state": "unsupported",
+   "reason": "no compatible collector for PAN-OS"
+  },
+  {
+   "id": "mt-legacy-01",
+   "hostname": "mt-legacy-01",
+   "os_family": "aix",
+   "state": "unsupported",
+   "reason": "no compatible collector for AIX"
+  },
+  {
+   "id": "mt-legacy-02",
+   "hostname": "mt-legacy-02",
+   "os_family": "linux",
+   "state": "unreachable",
+   "reason": "connection timed out"
+  },
+  {
+   "id": "mt-legacy-03",
+   "hostname": "mt-legacy-03",
+   "os_family": "linux",
+   "state": "unreachable",
+   "reason": "host key changed; collection refused"
+  },
+  {
+   "id": "mt-shadow-01",
+   "hostname": "mt-shadow-01",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "yes",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  },
+  {
+   "id": "mt-shadow-02",
+   "hostname": "mt-shadow-02",
+   "os_family": "linux",
+   "state": "scanned",
+   "checks": {
+    "ssh.permit_root_login": "no",
+    "password.min_length": 14,
+    "audit.logging_enabled": true
+   }
+  }
+ ]
+}

@@ -1,0 +1,850 @@
+{
+ "key_id": "maple-trust-1.0.0",
+ "fixture_set": "maple-trust",
+ "policy_version": "fixture-baseline:1.0.0",
+ "note": "Synthetic ground truth for the Maple Trust fixture estate. Not a real organisation.",
+ "cmdb_expected_assets": [
+  "mt-web-01",
+  "mt-web-02",
+  "mt-web-03",
+  "mt-web-04",
+  "mt-web-05",
+  "mt-web-06",
+  "mt-web-07",
+  "mt-web-08",
+  "mt-web-09",
+  "mt-web-10",
+  "mt-app-01",
+  "mt-app-02",
+  "mt-app-03",
+  "mt-app-04",
+  "mt-app-05",
+  "mt-app-06",
+  "mt-app-07",
+  "mt-app-08",
+  "mt-app-09",
+  "mt-app-10",
+  "mt-db-01",
+  "mt-db-02",
+  "mt-db-03",
+  "mt-db-04",
+  "mt-db-05",
+  "mt-db-06",
+  "mt-win-01",
+  "mt-win-02",
+  "mt-win-03",
+  "mt-win-04",
+  "mt-win-05",
+  "mt-win-06",
+  "mt-win-07",
+  "mt-win-08",
+  "mt-jump-01",
+  "mt-jump-02",
+  "mt-k8s-01",
+  "mt-k8s-02",
+  "mt-k8s-03",
+  "mt-k8s-04",
+  "mt-k8s-05",
+  "mt-k8s-06",
+  "mt-mail-01",
+  "mt-mail-02",
+  "mt-mail-03",
+  "mt-backup-01",
+  "mt-backup-02",
+  "mt-dns-01",
+  "mt-dns-02",
+  "mt-dns-03",
+  "mt-log-01",
+  "mt-log-02",
+  "mt-log-03",
+  "mt-fw-01",
+  "mt-fw-02",
+  "mt-legacy-01",
+  "mt-legacy-02",
+  "mt-legacy-03",
+  "mt-retired-01",
+  "mt-retired-02"
+ ],
+ "reconciliation": {
+  "mt-web-01": "MATCHED",
+  "mt-web-02": "MATCHED",
+  "mt-web-03": "MATCHED",
+  "mt-web-04": "MATCHED",
+  "mt-web-05": "MATCHED",
+  "mt-web-06": "MATCHED",
+  "mt-web-07": "MATCHED",
+  "mt-web-08": "MATCHED",
+  "mt-web-09": "MATCHED",
+  "mt-web-10": "MATCHED",
+  "mt-app-01": "MATCHED",
+  "mt-app-02": "MATCHED",
+  "mt-app-03": "MATCHED",
+  "mt-app-04": "MATCHED",
+  "mt-app-05": "MATCHED",
+  "mt-app-06": "MATCHED",
+  "mt-app-07": "MATCHED",
+  "mt-app-08": "MATCHED",
+  "mt-app-09": "MATCHED",
+  "mt-app-10": "MATCHED",
+  "mt-db-01": "MATCHED",
+  "mt-db-02": "MATCHED",
+  "mt-db-03": "MATCHED",
+  "mt-db-04": "MATCHED",
+  "mt-db-05": "MATCHED",
+  "mt-db-06": "MATCHED",
+  "mt-win-01": "MATCHED",
+  "mt-win-02": "MATCHED",
+  "mt-win-03": "MATCHED",
+  "mt-win-04": "MATCHED",
+  "mt-win-05": "MATCHED",
+  "mt-win-06": "MATCHED",
+  "mt-win-07": "MATCHED",
+  "mt-win-08": "MATCHED",
+  "mt-jump-01": "MATCHED",
+  "mt-jump-02": "MATCHED",
+  "mt-k8s-01": "MATCHED",
+  "mt-k8s-02": "MATCHED",
+  "mt-k8s-03": "MATCHED",
+  "mt-k8s-04": "MATCHED",
+  "mt-k8s-05": "MATCHED",
+  "mt-k8s-06": "MATCHED",
+  "mt-mail-01": "MATCHED",
+  "mt-mail-02": "MATCHED",
+  "mt-mail-03": "MATCHED",
+  "mt-backup-01": "MATCHED",
+  "mt-backup-02": "MATCHED",
+  "mt-dns-01": "MATCHED",
+  "mt-dns-02": "MATCHED",
+  "mt-dns-03": "MATCHED",
+  "mt-log-01": "MATCHED",
+  "mt-log-02": "MATCHED",
+  "mt-log-03": "MATCHED",
+  "mt-fw-01": "MATCHED",
+  "mt-fw-02": "MATCHED",
+  "mt-legacy-01": "MATCHED",
+  "mt-legacy-02": "MATCHED",
+  "mt-legacy-03": "MATCHED",
+  "mt-retired-01": "ABSENT",
+  "mt-retired-02": "ABSENT",
+  "mt-shadow-01": "UNEXPECTED",
+  "mt-shadow-02": "UNEXPECTED"
+ },
+ "asset_status": {
+  "mt-web-01": "SCANNED",
+  "mt-web-02": "SCANNED",
+  "mt-web-03": "SCANNED",
+  "mt-web-04": "SCANNED",
+  "mt-web-05": "SCANNED",
+  "mt-web-06": "SCANNED",
+  "mt-web-07": "SCANNED",
+  "mt-web-08": "SCANNED",
+  "mt-web-09": "SCANNED",
+  "mt-web-10": "SCANNED",
+  "mt-app-01": "SCANNED",
+  "mt-app-02": "SCANNED",
+  "mt-app-03": "SCANNED",
+  "mt-app-04": "SCANNED",
+  "mt-app-05": "SCANNED",
+  "mt-app-06": "SCANNED",
+  "mt-app-07": "SCANNED",
+  "mt-app-08": "SCANNED",
+  "mt-app-09": "SCANNED",
+  "mt-app-10": "SCANNED",
+  "mt-db-01": "SCANNED",
+  "mt-db-02": "SCANNED",
+  "mt-db-03": "SCANNED",
+  "mt-db-04": "SCANNED",
+  "mt-db-05": "SCANNED",
+  "mt-db-06": "SCANNED",
+  "mt-win-01": "SCANNED",
+  "mt-win-02": "SCANNED",
+  "mt-win-03": "SCANNED",
+  "mt-win-04": "SCANNED",
+  "mt-win-05": "SCANNED",
+  "mt-win-06": "SCANNED",
+  "mt-win-07": "SCANNED",
+  "mt-win-08": "SCANNED",
+  "mt-jump-01": "SCANNED",
+  "mt-jump-02": "SCANNED",
+  "mt-k8s-01": "SCANNED",
+  "mt-k8s-02": "SCANNED",
+  "mt-k8s-03": "SCANNED",
+  "mt-k8s-04": "SCANNED",
+  "mt-k8s-05": "SCANNED",
+  "mt-k8s-06": "SCANNED",
+  "mt-mail-01": "SCANNED",
+  "mt-mail-02": "SCANNED",
+  "mt-mail-03": "SCANNED",
+  "mt-backup-01": "SCANNED",
+  "mt-backup-02": "SCANNED",
+  "mt-dns-01": "SCANNED",
+  "mt-dns-02": "SCANNED",
+  "mt-dns-03": "SCANNED",
+  "mt-log-01": "SCANNED",
+  "mt-log-02": "SCANNED",
+  "mt-log-03": "SCANNED",
+  "mt-fw-01": "UNSUPPORTED",
+  "mt-fw-02": "UNSUPPORTED",
+  "mt-legacy-01": "UNSUPPORTED",
+  "mt-legacy-02": "UNREACHABLE",
+  "mt-legacy-03": "UNREACHABLE",
+  "mt-shadow-01": "SCANNED",
+  "mt-shadow-02": "SCANNED"
+ },
+ "known_issues": [
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-web-03"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-web-07"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-app-02"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-app-05"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-app-09"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-db-02"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-db-04"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-win-03"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-win-06"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-jump-01"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-k8s-03"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-k8s-05"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-mail-02"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-backup-01"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-dns-03"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-log-02"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-legacy-02"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-shadow-01"
+  }
+ ],
+ "known_clean": [
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-web-01"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-web-01"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-web-01"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-web-02"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-web-02"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-web-02"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-web-03"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-web-03"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-web-04"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-web-04"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-web-04"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-web-05"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-web-05"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-web-05"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-web-06"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-web-06"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-web-06"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-web-07"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-web-07"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-web-08"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-web-08"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-web-08"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-web-09"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-web-09"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-web-09"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-web-10"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-web-10"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-web-10"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-app-01"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-app-01"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-app-01"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-app-02"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-app-02"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-app-03"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-app-03"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-app-03"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-app-04"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-app-04"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-app-04"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-app-05"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-app-05"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-app-06"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-app-06"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-app-06"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-app-07"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-app-07"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-app-07"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-app-08"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-app-08"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-app-08"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-app-09"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-app-09"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-app-10"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-app-10"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-app-10"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-db-01"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-db-01"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-db-01"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-db-02"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-db-02"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-db-03"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-db-03"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-db-03"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-db-04"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-db-04"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-db-05"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-db-05"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-db-05"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-db-06"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-db-06"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-db-06"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-win-01"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-win-01"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-win-02"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-win-02"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-win-03"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-win-04"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-win-04"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-win-05"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-win-05"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-win-06"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-win-07"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-win-07"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-win-08"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-win-08"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-jump-01"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-jump-01"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-jump-02"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-jump-02"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-jump-02"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-k8s-01"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-k8s-01"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-k8s-01"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-k8s-02"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-k8s-02"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-k8s-02"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-k8s-03"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-k8s-03"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-k8s-04"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-k8s-04"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-k8s-04"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-k8s-05"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-k8s-05"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-k8s-06"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-k8s-06"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-k8s-06"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-mail-01"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-mail-01"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-mail-01"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-mail-02"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-mail-02"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-mail-03"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-mail-03"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-mail-03"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-backup-01"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-backup-01"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-backup-02"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-backup-02"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-backup-02"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-dns-01"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-dns-01"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-dns-01"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-dns-02"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-dns-02"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-dns-02"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-dns-03"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-dns-03"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-log-01"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-log-01"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-log-01"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-log-02"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-log-02"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-log-03"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-log-03"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-log-03"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-legacy-02"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-legacy-02"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-legacy-03"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-legacy-03"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-legacy-03"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-shadow-01"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-shadow-01"
+  },
+  {
+   "rule_id": "ssh.permit_root_login",
+   "asset_id": "mt-shadow-02"
+  },
+  {
+   "rule_id": "password.min_length",
+   "asset_id": "mt-shadow-02"
+  },
+  {
+   "rule_id": "audit.logging_enabled",
+   "asset_id": "mt-shadow-02"
+  }
+ ]
+}

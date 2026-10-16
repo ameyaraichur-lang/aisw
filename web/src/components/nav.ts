@@ -5,6 +5,7 @@ export const NAV: Item[] = [
   { to: '/integrations', label: 'Integrations & Collectors' },
   { to: '/assessments', label: 'Assessments' },
   { to: '/assets', label: 'Asset Explorer' },
+  { to: '/coverage', label: 'Coverage Ledger' },
   { to: '/findings', label: 'Findings & Exposure', need: 'finding:read' },
   { to: '/architecture', label: 'Architecture & Modernization', need: 'finding:read' },
   { to: '/roadmap', label: 'Modernization Roadmap', need: 'finding:read' },
@@ -15,5 +16,6 @@ export const NAV: Item[] = [
   { to: '/reports', label: 'Reports & Evidence', need: 'report:read' },
   { to: '/audit', label: 'Policy, Users & Audit', need: 'audit:read' },
   { to: '/audit/model-calls', label: 'Model-call ledger', need: 'audit:read' },
+  { to: '/evaluation', label: 'Evaluation Lab', need: 'finding:read' },
 ]
 

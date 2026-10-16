@@ -26,6 +26,7 @@ AREAS: list[tuple[str, tuple[str, ...]]] = [
     ("Import adapters and reconciliation", ("test_import", "test_discovery", "test_adapter_contract")),
     ("Risk, correlation, recommendations, assurance (M7)", ("test_rubric", "test_correlation", "test_architecture", "test_assurance_m7", "test_analysis_pipeline", "test_analysis_api")),
     ("LLM controls (stub model only)", ("tests.evaluation.", "test_config_ai")),
+    ("Evaluation targets on the Maple Trust estate", ("test_scorecard", "test_evaluation_lab")),
     ("Hardening: retention, export, retries, cancellation", ("test_retention", "test_hardening")),
     ("Supply chain and secrets", ("test_sbom_gate", "test_secret_scan", "test_redaction")),
 ]

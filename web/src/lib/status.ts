@@ -133,3 +133,10 @@ export const MANIFEST_BADGE: Record<string, Display> = {
   SUPERSEDED: { icon: '–', label: 'Superseded', tone: 'neutral' },
   REVOKED: { icon: '✕', label: 'Revoked', tone: 'bad' },
 }
+
+export const METRIC_DISPLAY: Record<string, Display> = {
+  MET: { icon: '✓', label: 'Target met', tone: 'ok' },
+  NOT_MET: { icon: '✕', label: 'Target not met', tone: 'bad' },
+  MEASURED: { icon: '◆', label: 'Measured (no threshold)', tone: 'info' },
+  NOT_MEASURED: { icon: '?', label: 'Not measured', tone: 'neutral' },
+}

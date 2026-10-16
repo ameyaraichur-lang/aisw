@@ -324,6 +324,7 @@ function ReviewStep({ manifestId, can }: { manifestId: string; can: boolean }) {
                   <option value="baseline-partial">baseline-partial: one unreachable, one unsupported, one unexpected</option>
                   <option value="baseline-zero">baseline-zero: tool reports success with zero assets</option>
                   <option value="baseline-injection">baseline-injection: hostile text and a secret in tool output</option>
+                  <option value="maple-trust">maple-trust: 60-asset synthetic estate with an answer key (Evaluation Lab)</option>
                 </select>
               </div>
             ) : null}

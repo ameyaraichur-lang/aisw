@@ -4,6 +4,7 @@ import type {
   AgentsResponse, AiValidations, AssetDetail, AssetList, AssuranceOverview, AuditItem, Disagreement, ModelCallLedger, TriggerPolicyView, Recommendation, Scenario, AuthMode, ControlMatrix, ControlRow, ExceptionList, CoverageResponse, Connector, FindingDetail, FindingRow,
   InventoryEntry, ManifestSummary, Me, Overview, Page, PolicyPackInfo, Project, ReportBody,
   ReportList, Roadmap, RunListItem, RunStatus, TaskView, ItsmTarget, OutboxRow, RenderedTicket,
+  AnswerKeyInfo, Scorecard, TrendRow, CoverageLedgerView,
 } from './types'
 
 const qs = (o: Record<string, string | number | string[] | undefined | null>): string => {
@@ -89,3 +90,10 @@ export const useAllRecommendations = (p: { status?: string; run_id?: string; lim
     queryFn: () => api<Page<Recommendation & { run_id: string; project_name: string }>>(`/recommendations${qs(p)}`),
     placeholderData: keepPreviousData,
   })
+export const useAnswerKeys = () => useQuery({ queryKey: ['evaluation', 'keys'], queryFn: () => api<AnswerKeyInfo[]>('/evaluation/answer-keys'), staleTime: Infinity })
+export const useEvaluationTrend = (fixtureSet?: string) =>
+  useQuery({ queryKey: ['evaluation', 'trend', fixtureSet ?? ''], queryFn: () => api<TrendRow[]>(`/evaluation/runs${qs({ fixture_set: fixtureSet, limit: 20 })}`) })
+export const useScorecard = (runId?: string) =>
+  useQuery({ queryKey: ['evaluation', 'card', runId], queryFn: () => api<Scorecard>(`/evaluation/runs/${runId}/scorecard`), enabled: !!runId })
+export const useCoverageLedger = (incompleteOnly: boolean) =>
+  useQuery({ queryKey: ['coverage-ledger', incompleteOnly], queryFn: () => api<CoverageLedgerView>(`/coverage${qs({ incomplete_only: incompleteOnly ? 'true' : undefined })}`) })

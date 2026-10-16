@@ -19,7 +19,9 @@ from aisw.contracts.base import StrictModel
 from aisw.contracts.enums import ProfileClass
 from aisw.gateway.registry import AdapterCapability, AdapterJob, AdapterOutput
 
-FixtureSet = Literal["baseline-ok", "baseline-partial", "baseline-zero", "baseline-injection"]
+FixtureSet = Literal[
+    "baseline-ok", "baseline-partial", "baseline-zero", "baseline-injection", "maple-trust"
+]
 ADAPTER_ID = "fixture"
 PROFILE_ID = "FIXTURE_BASELINE"
 

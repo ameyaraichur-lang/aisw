@@ -585,3 +585,80 @@ export interface AssetDetail extends AssetRow {
   findings_visible: boolean
   relationships: null
 }
+
+export type MetricStatus = 'MET' | 'NOT_MET' | 'MEASURED' | 'NOT_MEASURED'
+export interface Metric {
+  metric: string
+  label: string
+  target: string
+  status: MetricStatus
+  value: number | null
+  display: string
+  detail: Record<string, unknown>
+}
+export interface Scorecard {
+  run_id: string
+  policy_version: string
+  fixture_set: string | null
+  answer_key: { key_id: string; note: string } | null
+  metrics: Metric[]
+  summary: Record<MetricStatus, number>
+}
+export interface TrendRow {
+  run_id: string
+  project_id: string
+  state: string
+  created_at: string
+  fixture_set: string | null
+  answer_key: string | null
+  summary: Record<MetricStatus, number>
+  metrics: Record<string, { status: MetricStatus; value: number | null }>
+}
+export interface AnswerKeyInfo {
+  key_id: string
+  fixture_set: string
+  policy_version: string
+  note: string
+  cmdb_expected_assets: string[]
+  known_issues: number
+  known_clean: number
+}
+
+export interface CoverageGap {
+  kind: string
+  label: string
+  count: number
+  items: { asset_id: string | null; detail: string | null }[]
+}
+export interface LedgerSegment {
+  segment: string
+  expected: number
+  discovered: number
+  reconciled: number
+  excluded: number
+  unsupported: number
+  unknown: number
+  source_ok: boolean
+  complete: boolean
+  assessed_by_outcome: Record<string, number>
+  last_success_at: string | null
+  age_days: number | null
+  gaps: CoverageGap[]
+}
+export interface LedgerProject {
+  project_id: string
+  name: string
+  environment: string
+  run: { run_id: string; state: string; created_at: string; partial: boolean }
+  complete: boolean
+  segments: LedgerSegment[]
+  untargeted_inventory: { kind: string; selector: string }[]
+  totals: Record<'expected' | 'discovered' | 'reconciled' | 'unsupported' | 'unknown', number>
+}
+export interface CoverageLedgerView {
+  as_of: string
+  basis: string
+  projects: LedgerProject[]
+  never_assessed: { project_id: string; name: string; environment: string; inventory_entries: number }[]
+  summary: Record<'projects' | 'assessed' | 'never_assessed' | 'complete' | 'incomplete', number>
+}
