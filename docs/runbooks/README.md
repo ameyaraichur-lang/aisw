@@ -4,6 +4,7 @@ Written from what the code does today. Steps marked **(unverified)** were not ex
 
 - [Local development and tests](local-dev-and-test.md)
 - [Sign-in (OIDC through the BFF)](sign-in.md) **(unverified against a real IdP)**
+- [Egress control](egress.md) **(firewall unverified on a real host)**
 - [Operating the worker and the task queue](worker-and-queue.md)
 - [Permits, manifests and signing keys](permits-and-keys.md)
 - [Evidence retention, legal holds and purge](evidence-retention.md)

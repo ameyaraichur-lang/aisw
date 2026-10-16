@@ -27,5 +27,6 @@
 - [ADR-025: Labelled-set evaluation of the AI reviewer and narrator; explicit Astra proxy](ADR-025-labelled-evaluation-and-proxy.md)
 - [ADR-026: Generic OIDC sign-in through the BFF](ADR-026-oidc-sign-in-through-the-bff.md)
 - [ADR-027: Manifest signing through a Transit-compatible KMS, with a rotation drill](ADR-027-kms-signing-and-rotation.md)
+- [ADR-028: Egress allow-list: app-level scan zones plus generated host-firewall rules](ADR-028-egress-allow-list.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

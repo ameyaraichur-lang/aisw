@@ -31,7 +31,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Adapter registry refuses mutating adapters (no remediation path) | Implemented (M2) | `test_mutating_adapters_cannot_be_registered` |
 | Real adapters (url_smoke, nmap, prowler, ...) | Planned (M3 fixture, M5/M6 others) | none exist yet; gateway verified only against fakes |
 | Gateway quota state | Mocked | in-memory per process; durable counters arrive with the orchestrator (M3) |
-| Egress firewall enforcement | Planned (M8 runbook) | application-layer checks only so far |
+| Egress: app-level scan zones (preflight + dispatch + redirects), IdP endpoint host binding, generated nftables/iptables rules for the service user, host probe (ADR-028) | Implemented; firewall unverified on a real host | `tests/unit/test_egress.py`, `tests/security/test_egress_zones.py`; rules never loaded into a kernel here |
 | Migration 0002: inventory, runs, task queue, events, evidence, assets, observations, controls, findings, assurance, coverage, reports (forced RLS, worker role) | Implemented (M3) | `tests/integration/test_migrations.py` (independently reversible) |
 | Durable PostgreSQL worker (lease, bounded attempts, backoff+jitter, fencing, crash resume) | Implemented (M3) | `tests/security/test_pipeline_security.py` (crash, repeated crash, late worker, retries) |
 | Run state machine + persisted replayable events (cursor) | Implemented (M3) | polling API only; SSE Planned (M4) |

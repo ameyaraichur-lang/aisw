@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import re
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
@@ -20,6 +21,7 @@ from urllib.parse import urlparse
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from aisw.authz.net_guard import NetGuardError, parse_egress_zones
 from aisw.core.rbac import Role
 
 
@@ -222,6 +224,13 @@ class Settings(BaseSettings):
     kms_key: str | None = Field(default=None, pattern=r"^[A-Za-z0-9][A-Za-z0-9_\-]{0,47}$")
     kms_token_file: Path | None = None
     kms_namespace: str | None = None
+    # Egress (ADR-028). Scan zones: CIDRs the host firewall lets the worker reach; when set, every
+    # resolved target address must fall inside one. Extra hosts: control-plane hosts beyond the
+    # configured ones (e.g. an IdP whose JWKS lives on another host). DNS: resolvers to allow.
+    egress_scan_cidrs: str | None = None
+    egress_scan_ports: str = Field(default="80,443", pattern=r"^\d{1,5}(,\d{1,5})*$")
+    egress_allowed_hosts: str | None = None
+    egress_dns_servers: str | None = None
     # Comma-separated key ids that must never verify again (compromise), e.g. transit.aisw-manifests.v1.
     signing_revoked_key_ids: str | None = None
     worker_enabled: bool = False
@@ -230,6 +239,20 @@ class Settings(BaseSettings):
     max_assessment_concurrency: int = Field(default=2, ge=1, le=32)
     enable_itsm_ticket_creation: bool = False
     log_redaction_enabled: bool = True
+
+    @property
+    def egress_zones(self) -> list[str]:
+        return [c.strip() for c in (self.egress_scan_cidrs or "").split(",") if c.strip()]
+
+    @property
+    def egress_extra_hosts(self) -> list[str]:
+        return [
+            h.strip().lower() for h in (self.egress_allowed_hosts or "").split(",") if h.strip()
+        ]
+
+    @property
+    def egress_dns(self) -> list[str]:
+        return [h.strip() for h in (self.egress_dns_servers or "").split(",") if h.strip()]
 
     @property
     def revoked_signing_keys(self) -> list[str]:
@@ -246,6 +269,25 @@ class Settings(BaseSettings):
             return {}
         raw = json.loads(self.oidc_role_map)
         return {str(k): str(v) for k, v in raw.items()}
+
+    def _check_egress(self) -> None:
+        try:
+            parse_egress_zones(self.egress_zones)
+        except NetGuardError as exc:
+            raise ValueError(f"egress_scan_cidrs: {exc.code} {exc}") from None
+        if any(not 0 < int(p) < 65536 for p in self.egress_scan_ports.split(",")):
+            raise ValueError("egress_scan_ports must be TCP ports")
+        for h in self.egress_extra_hosts:
+            host, _, port = h.rpartition(":") if h.count(":") == 1 else (h, "", "")
+            if not re.match(r"^[a-z0-9]([a-z0-9.\-]{0,252})$", host) or (
+                port and not port.isdigit()
+            ):
+                raise ValueError(f"egress_allowed_hosts entry is not host[:port]: {h!r}")
+        for d in self.egress_dns:
+            try:
+                ipaddress.ip_address(d)
+            except ValueError:
+                raise ValueError(f"egress_dns_servers must be IP addresses: {d!r}") from None
 
     def _check_oidc(self) -> None:
         if not (self.oidc_client_id and self.oidc_redirect_uri):
@@ -288,6 +330,7 @@ class Settings(BaseSettings):
             raise ValueError(problem)
         if self.oidc_issuer is not None:
             self._check_oidc()
+        self._check_egress()
         if self.signing_backend == "transit":
             if not (self.kms_addr and self.kms_key and self.kms_token_file):
                 raise ValueError(

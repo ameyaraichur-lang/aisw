@@ -64,7 +64,7 @@ class Container:
     def __post_init__(self) -> None:
         self.gate = ScopeGate(
             registry=self.registry, inventory=DbInventory(self.engine), policy=GatePolicy(),
-            resolver=self.resolver,
+            resolver=self.resolver, egress_zones=tuple(self.settings.egress_zones),
         )  # fmt: skip
         if self.signer is not None and self.keyring is not None:
             self.service = ScopeService(
@@ -77,6 +77,7 @@ class Container:
                 registry=self.registry, store=DbAuthorizationStore(self.engine),
                 verifier=self.keyring, audit=self.audit_sink or DbAuditSink(self.engine),
                 resolver=self.resolver, clock=self.clock, imports=self.imports,
+                egress_zones=tuple(self.settings.egress_zones),
             )  # fmt: skip
 
     def make_worker(self, worker_engine: Engine | None = None, **kw: Any) -> Worker:

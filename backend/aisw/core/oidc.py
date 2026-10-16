@@ -92,9 +92,21 @@ class OidcProvider:
         for key in ("authorization_endpoint", "token_endpoint", "jwks_uri"):
             if not isinstance(doc.get(key), str) or oidc_url_problem(key, doc[key], self._s.env):
                 raise OidcError(f"discovery {key} is missing or unsafe")
+        for key in ("token_endpoint", "jwks_uri"):  # the server connects to these: egress-bound
+            if not self._egress_ok(doc[key]):
+                raise OidcError(f"discovery {key} is on a host outside the egress allow-list")
         with self._lock:
             self._meta = (self._clock(), doc)
         return doc
+
+    def _egress_ok(self, url: str) -> bool:
+        u, issuer = urllib.parse.urlparse(url), urllib.parse.urlparse(self._issuer)
+        host = (u.hostname or "").lower()
+        if (host, u.port) == ((issuer.hostname or "").lower(), issuer.port):
+            return True
+        port = u.port or (443 if u.scheme == "https" else 80)
+        extras = self._s.egress_extra_hosts
+        return host in extras or f"{host}:{port}" in extras
 
     def _keyset(self, *, refresh: bool) -> jwt.PyJWKSet:
         now = self._clock()

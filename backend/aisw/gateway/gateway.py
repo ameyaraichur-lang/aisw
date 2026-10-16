@@ -103,7 +103,9 @@ class ToolGateway:
         clock: Callable[[], datetime] = _utcnow,
         quotas: QuotaTracker | None = None,
         imports: ImportStore | None = None,
+        egress_zones: tuple[str, ...] = (),
     ) -> None:
+        self.egress_zones = egress_zones
         self.registry = registry
         self.store = store
         self.verifier = verifier
@@ -228,6 +230,7 @@ class ToolGateway:
                     allowed_ports=body.allowed_ports,
                     internal_ranges=body.internal_range_authorization,
                     resolver=self.resolver,
+                    egress_zones=self.egress_zones,
                 )
             except NetGuardError as exc:
                 raise GatewayDenied([exc.code]) from exc
@@ -240,12 +243,14 @@ class ToolGateway:
         redirect_hook = None
         if req.target_kind == "url":
             ports, internal, allowed = body.allowed_ports, body.internal_range_authorization, body
+            zones = self.egress_zones
 
             def redirect_hook(cur: Any, location: str, hop: int) -> VettedTarget:
                 return vet_redirect(
                     cur, location, hop=hop,
                     in_scope=lambda u: scope_rules.in_scope(allowed, "url", str(u)),
                     allowed_ports=ports, internal_ranges=internal, resolver=self.resolver,
+                    egress_zones=zones,
                 )  # fmt: skip
 
         reader = None
