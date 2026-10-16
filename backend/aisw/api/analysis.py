@@ -302,8 +302,9 @@ def all_recommendations(
         rows = conn.execute(
             text(
                 "SELECT r.run_id, r.recommendation_id, r.body, r.status, r.decided_by, r.decided_at, "
-                "r.decision_reason, p.name, count(*) OVER () FROM recommendations r "
+                "r.decision_reason, p.name, count(*) OVER (), a.requested_by FROM recommendations r "
                 "JOIN projects p ON p.project_id = r.project_id "
+                "JOIN assessment_runs a ON a.run_id = r.run_id "
                 "WHERE r.assurance_verdict='ACCEPT' AND (CAST(:s AS text) IS NULL OR r.status=:s) "
                 "AND (CAST(:r AS text) IS NULL OR r.run_id=:r) "
                 "ORDER BY r.run_id DESC, r.recommendation_id LIMIT :l OFFSET :o"
@@ -312,7 +313,7 @@ def all_recommendations(
         ).all()
     return {
         "items": [
-            {"run_id": r[0], "project_name": r[7],
+            {"run_id": r[0], "project_name": r[7], "run_requested_by": r[9],
              **_rec_row(r[2], "ACCEPT", r[3], r[4], r[5], r[6], None)}
             for r in rows
         ],
@@ -359,6 +360,11 @@ def decide(
             return {"recommendation_id": recommendation_id, "status": status, "replayed": True}
         if status in {"APPROVED_FOR_PLANNING", "REJECTED"}:
             raise HTTPException(status_code=409, detail=f"decision already recorded: {status}")
+        if body.decision != "DEFER" and run["requested_by"] == actor.actor_id:
+            raise HTTPException(
+                status_code=403,
+                detail="separation of duties: you launched this run, so another approver decides",
+            )
         if body.decision == "ACCEPT" and (verdict != "ACCEPT" or run["state"] not in FINAL_RUN):
             raise HTTPException(
                 status_code=409,

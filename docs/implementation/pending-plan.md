@@ -67,7 +67,7 @@ Done on 2026-10-16:
 |---|---|
 | Live validation (M9) | `example.com` passive smoke, one bounded Nmap on `scanme.nmap.org` (re-check terms), ZAP against your own Juice Shop. Each needs your explicit authorisation and an approved manifest |
 | Imports | Upload/import-parameter UI; task dependency ordering (CMDB must be imported first today); real tool-version compatibility of the seven importers |
-| Analysis | Real reachability for exposure scoring (most host findings score exposure 0); graph/attack-path reasoning (ADR-010); separation of duties for recommendation decisions |
+| Analysis | Real reachability for exposure scoring (most host findings score exposure 0); graph/attack-path reasoning (ADR-010); ~~separation of duties for recommendation decisions~~ (done: the run requester may only defer; migration 0018 enforces it) |
 | Retention | UI and scheduler; quarantine deletion is manual |
 | Evidence | Object-lock/WORM storage; externally witnessed audit-chain anchor |
 | Events | Silent-stall detection for an open but dead SSE stream (ADR-015) |

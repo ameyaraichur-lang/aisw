@@ -9,7 +9,7 @@ import { RecommendationBody, RecommendationHeader } from '../components/analysis
 import { Banner, ConfirmDialog, DataState, PageHeader, Pagination } from '../components/ui'
 import { fmtTime } from '../lib/format'
 
-type Row = Recommendation & { run_id: string; project_name: string }
+type Row = Recommendation & { run_id: string; project_name: string; run_requested_by: string }
 type Decision = 'ACCEPT' | 'REJECT' | 'DEFER'
 const LABEL: Record<Decision, string> = { ACCEPT: 'Accept for planning', DEFER: 'Defer', REJECT: 'Reject' }
 
@@ -57,7 +57,7 @@ function AgentsPanel() {
 }
 
 function Decide({ r, ticketsEnabled }: { r: Row; ticketsEnabled: boolean }) {
-  const { can } = useSession()
+  const { can, me } = useSession()
   const qc = useQueryClient()
   const [pending, setPending] = useState<Decision | null>(null)
   const [reason, setReason] = useState('')
@@ -74,6 +74,7 @@ function Decide({ r, ticketsEnabled }: { r: Row; ticketsEnabled: boolean }) {
   })
   const err = (decide.error ?? ticket.error) instanceof ApiError ? ((decide.error ?? ticket.error) as ApiError) : null
   const final = r.status === 'APPROVED_FOR_PLANNING' || r.status === 'REJECTED'
+  const launcher = me?.actor_id === r.run_requested_by
   if (!can('recommendation:decide')) {
     return <p className="hint">Deciding on recommendations needs the approver role. Your role can read them.</p>
   }
@@ -81,9 +82,10 @@ function Decide({ r, ticketsEnabled }: { r: Row; ticketsEnabled: boolean }) {
     <div>
       {r.decided_by ? <p className="hint">Decided by {r.decided_by} at {fmtTime(r.decided_at ?? '')}: {r.decision_reason}</p> : null}
       {err ? <Banner tone="bad" role="alert" title="Not done">{String((err.body as { detail?: string } | null)?.detail ?? err.message)}</Banner> : null}
+      {!final && launcher ? <p className="hint">You launched this run, so another approver accepts or rejects its recommendations.</p> : null}
       {!final ? (
         <p className="row">
-          {(['ACCEPT', 'DEFER', 'REJECT'] as Decision[]).map((d) => (
+          {(launcher ? ['DEFER'] as Decision[] : ['ACCEPT', 'DEFER', 'REJECT'] as Decision[]).map((d) => (
             <button key={d} type="button" className={d === 'ACCEPT' ? 'btn btn--primary' : 'btn'} onClick={() => setPending(d)}>{LABEL[d]}</button>
           ))}
         </p>

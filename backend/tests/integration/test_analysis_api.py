@@ -269,3 +269,25 @@ def test_acceptance_needs_an_assurance_accepted_recommendation_of_a_finished_run
     assert (
         decide(sl, run_id, rid, "DEFER", "waiting").status_code == 200
     )  # non-acceptance is still allowed
+
+
+def test_the_run_requester_cannot_decide_its_recommendations(sl: Slice) -> None:
+    _, _, run_id = sl.full_run(EXPECTED, user="olga")  # operator and approver in one person
+    sl.drain()
+    a, b = (r["recommendation_id"] for r in
+            sl.call("GET", f"/api/v1/assessments/{run_id}/recommendations", "carol").json())  # fmt: skip
+    for decision in ("ACCEPT", "REJECT"):
+        r = decide(sl, run_id, a, decision, user="olga")
+        assert r.status_code == 403 and "separation of duties" in r.json()["detail"]
+    assert decide(sl, run_id, a, "DEFER", user="olga").status_code == 200
+    page = sl.call("GET", f"/api/v1/recommendations?run_id={run_id}", "olga").json()
+    assert {i["run_requested_by"] for i in page["items"]} == {"olga"}
+    assert decide(sl, run_id, b, "ACCEPT", user="bob").status_code == 200
+
+    with pytest.raises(DBAPIError, match="separation of duties"):  # holds for any writer
+        with tenant_connection(sl.app_engine, "tenant-a") as conn:
+            conn.execute(
+                text("UPDATE recommendations SET status='REJECTED', decided_by='olga', "
+                     "decided_at=now(), decision_reason='x' WHERE run_id=:r AND recommendation_id=:i"),
+                {"r": run_id, "i": a},
+            )  # fmt: skip

@@ -100,3 +100,21 @@ test('an approver records a decision with a reason; others can only read', async
   await expect(other.getByText('Deferred: needs owner input')).toBeVisible()
   await expect(other.getByRole('button', { name: 'Reject' })).toBeVisible() // a deferred item can still be decided
 })
+
+test('whoever launched a run can only defer its recommendations', async ({ page, request }) => {
+  test.setTimeout(120_000)
+  const { projectId } = await seedProject(request)
+  const runId = await launch(request, projectId, await approvedManifest(request, projectId), 'baseline-ok', false, 'olga')
+  await untilState(request, runId, ['REPORT_READY'])
+  await signIn(page, 'olga') // assessment operator and approver in one person
+  await page.goto(`/architecture?run=${runId}`)
+  const rec = page.getByRole('region').filter({ has: page.getByText(`Run ${runId.slice(0, 8)}`) }).first()
+  await expect(rec.getByText('You launched this run, so another approver accepts or rejects its recommendations.')).toBeVisible()
+  await expect(rec.getByRole('button', { name: 'Defer' })).toBeVisible()
+  await expect(rec.getByRole('button', { name: /^Accept/ })).toHaveCount(0)
+  await expect(rec.getByRole('button', { name: 'Reject' })).toHaveCount(0)
+  await signOut(page)
+  await signIn(page, 'bob')
+  await page.goto(`/architecture?run=${runId}`)
+  await expect(page.getByRole('region').filter({ has: page.getByText(`Run ${runId.slice(0, 8)}`) }).first().getByRole('button', { name: /^Accept/ })).toBeVisible()
+})

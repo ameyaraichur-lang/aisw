@@ -71,6 +71,12 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
                        "WHERE table_name='ticket_outbox' AND column_name='external_ref'")  # fmt: skip
     with eng.connect() as c:
         assert c.execute(outbox_cols).scalar() == 1
+    sod = text("SELECT 1 FROM pg_proc WHERE proname='aisw_recommendation_sod'")
+    with eng.connect() as c:
+        assert c.execute(sod).first()
+    migrate(eng, "0017", down=True)  # 0018 (recommendation separation of duties) is reversible
+    with eng.connect() as c:
+        assert not c.execute(sod).first()
     migrate(eng, "0016", down=True)  # 0017 (ticket delivery state) is reversible
     with eng.connect() as c:
         assert c.execute(outbox_cols).scalar() == 0

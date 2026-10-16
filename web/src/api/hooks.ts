@@ -87,7 +87,7 @@ export const useAiValidations = (runId: string) =>
 export const useAllRecommendations = (p: { status?: string; run_id?: string; limit: number; offset: number }) =>
   useQuery({
     queryKey: ['recommendations', p],
-    queryFn: () => api<Page<Recommendation & { run_id: string; project_name: string }>>(`/recommendations${qs(p)}`),
+    queryFn: () => api<Page<Recommendation & { run_id: string; project_name: string; run_requested_by: string }>>(`/recommendations${qs(p)}`),
     placeholderData: keepPreviousData,
   })
 export const useAnswerKeys = () => useQuery({ queryKey: ['evaluation', 'keys'], queryFn: () => api<AnswerKeyInfo[]>('/evaluation/answer-keys'), staleTime: Infinity })
