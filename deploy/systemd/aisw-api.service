@@ -1,0 +1,49 @@
+# AISW API (native install, ADR-029). Secrets via systemd credentials; see deploy/README.md.
+[Unit]
+Description=AISW API
+Documentation=file:///opt/aisw/deploy/README.md
+After=network-online.target postgresql.service aisw-bootstrap.service
+Wants=network-online.target
+Requires=aisw-bootstrap.service
+
+[Service]
+Type=exec
+User=aisw
+Group=aisw
+WorkingDirectory=/opt/aisw/backend
+EnvironmentFile=/etc/aisw/aisw.env
+LoadCredential=aisw_database_url:/etc/aisw/secrets/aisw_database_url
+LoadCredential=aisw_session_secret:/etc/aisw/secrets/aisw_session_secret
+LoadCredential=aisw_oidc_client_secret:/etc/aisw/secrets/aisw_oidc_client_secret
+LoadCredential=kms_app_token:/etc/aisw/secrets/kms_app_token
+Environment=AISW_KMS_TOKEN_FILE=%d/kms_app_token
+ExecStartPre=/opt/aisw/backend/.venv/bin/python -m aisw.doctor --role api
+ExecStart=/opt/aisw/backend/.venv/bin/python -m aisw.api
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+ReadWritePaths=/var/lib/aisw/evidence
+
+[Install]
+WantedBy=multi-user.target

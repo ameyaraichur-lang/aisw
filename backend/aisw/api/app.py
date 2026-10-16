@@ -6,7 +6,8 @@ import uuid
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import Engine
+from sqlalchemy import Engine, text
+from sqlalchemy.exc import SQLAlchemyError
 
 from aisw import __version__
 from aisw.api import analysis, assessments, auth, imports, projects, retention, scope, views
@@ -88,13 +89,25 @@ def create_app(
         return {"status": "ok", "version": __version__}
 
     @app.get("/readyz")
-    def readyz() -> dict[str, str | bool]:
-        return {
-            "status": "ready",
+    def readyz() -> JSONResponse:
+        reachable = False
+        if engine is not None:
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                reachable = True
+            except SQLAlchemyError:
+                reachable = False
+        body = {
+            "status": "ready" if reachable else "not_ready",
             "assessment_mode": cfg.assessment_mode.value,
             "ai_enabled": cfg.ai_enabled,
             "database_configured": engine is not None,
+            "database_reachable": reachable,
+            "signer_configured": container is not None and container.signer is not None,
+            "sso_configured": app.state.oidc is not None,
         }
+        return JSONResponse(body, status_code=200 if reachable else 503)
 
     app.include_router(auth.router)
     app.include_router(projects.router)

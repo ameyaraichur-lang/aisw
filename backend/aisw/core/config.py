@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import os
 import re
 from enum import StrEnum
 from functools import lru_cache
@@ -215,6 +216,11 @@ class Settings(BaseSettings):
 
     # Filesystem locations (paths only; key material stays in the file, never in settings).
     evidence_dir: Path | None = None
+    # Process settings (deploy/). The API binds loopback by default; a reverse proxy fronts it.
+    api_host: str = "127.0.0.1"
+    api_port: int = Field(default=8000, ge=1, le=65535)
+    api_trusted_proxies: str = "127.0.0.1"  # X-Forwarded-* honoured only from these
+    worker_heartbeat_file: Path | None = None
     signing_key_path: Path | None = None
     # Manifest signing custody (ADR-027). local_file: dev/test only. transit: a Transit-compatible
     # KMS (OpenBao/Vault); the token is read from a 0600 file written by the secret provider.
@@ -378,5 +384,15 @@ class Settings(BaseSettings):
 
 
 @lru_cache
+def secrets_dir() -> str | None:
+    """Secrets as files (``aisw_database_url``, ``aisw_session_secret`` ...): a mounted directory
+    (AISW_SECRETS_DIR, e.g. /run/secrets) or systemd's credentials directory."""
+    return os.environ.get("AISW_SECRETS_DIR") or os.environ.get("CREDENTIALS_DIRECTORY")
+
+
+def load_settings(env_file: str | Path | None = None) -> Settings:
+    return Settings(_env_file=env_file, _secrets_dir=secrets_dir())
+
+
 def get_settings() -> Settings:
-    return Settings()
+    return load_settings()

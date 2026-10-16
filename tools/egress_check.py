@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 from aisw.core import egress
-from aisw.core.config import Settings
+from aisw.core.config import load_settings
 
 
 def _target(text: str) -> tuple[str, int]:
@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", type=Path)
     args = ap.parse_args(argv)
     try:
-        settings = Settings(_env_file=args.env_file)  # type: ignore[call-arg]
+        settings = load_settings(args.env_file)
     except ValueError as exc:
         print(f"misconfigured: {exc}", file=sys.stderr)
         return 2

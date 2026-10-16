@@ -47,6 +47,12 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     eng = make_db(pg_server, f"mig_{uuid.uuid4().hex[:8]}")
     migrate(eng, "head")
     assert _tables(eng) == TABLES
+    grant = text("SELECT has_table_privilege('aisw_app', 'alembic_version', 'SELECT')")
+    with eng.connect() as c:
+        assert c.execute(grant).scalar() is True
+    migrate(eng, "0011", down=True)  # 0012 (ops grants) is independently reversible
+    with eng.connect() as c:
+        assert c.execute(grant).scalar() is False
     migrate(eng, "0010", down=True)  # 0011 (session revocations) is independently reversible
     assert _tables(eng) == TABLES - SESSIONS
     migrate(eng, "0009", down=True)  # 0010 (generation agents) is independently reversible

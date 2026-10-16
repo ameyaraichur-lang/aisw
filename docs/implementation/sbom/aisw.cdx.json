@@ -1165,6 +1165,26 @@
    "licenses": [
     {
      "license": {
+      "id": "MIT"
+     }
+    }
+   ],
+   "name": "pyyaml",
+   "properties": [
+    {
+     "name": "aisw:licence-status",
+     "value": "allow"
+    }
+   ],
+   "purl": "pkg:pypi/pyyaml@6.0.3",
+   "scope": "excluded",
+   "type": "library",
+   "version": "6.0.3"
+  },
+  {
+   "licenses": [
+    {
+     "license": {
       "id": "Apache-2.0"
      }
     }
@@ -1340,6 +1360,26 @@
    "scope": "excluded",
    "type": "library",
    "version": "0.7.0.20260504"
+  },
+  {
+   "licenses": [
+    {
+     "license": {
+      "id": "Apache-2.0"
+     }
+    }
+   ],
+   "name": "types-pyyaml",
+   "properties": [
+    {
+     "name": "aisw:licence-status",
+     "value": "allow"
+    }
+   ],
+   "purl": "pkg:pypi/types-pyyaml@6.0.12.20260906",
+   "scope": "excluded",
+   "type": "library",
+   "version": "6.0.12.20260906"
   },
   {
    "licenses": [
@@ -4368,7 +4408,7 @@
    }
   ]
  },
- "serialNumber": "urn:uuid:0a1b8676-a5a8-5dd1-956d-f8f677dc093c",
+ "serialNumber": "urn:uuid:28b9849f-be80-5014-89a3-7b06112eb09d",
  "specVersion": "1.5",
  "version": 1
 }

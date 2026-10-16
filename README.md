@@ -149,6 +149,10 @@ flowchart LR
 | Evidence retention (dry-run, hash-pinned execute, holds, **soft purge**) | 🟡 | API only; no scheduler or UI; final deletion is a manual act |
 | SBOM (CycloneDX) and licence gate | 🟡 | Lockfile-based, **not Syft/ScanCode** |
 | Threat model, 7 runbooks, generated scorecard, mutation log | ✅ | Runbook steps not exercised on a deployed system |
+| Generic OIDC sign-in through the BFF ([ADR-026](docs/adr/ADR-026-oidc-sign-in-through-the-bff.md)) | 🟡 | PKCE, nonce, signed session cookies, CSRF, revocation; tested against a **local mock IdP only**, no real tenant registered |
+| Manifest signing through a Transit KMS, rotation drill ([ADR-027](docs/adr/ADR-027-kms-signing-and-rotation.md)) | 🟡 | Drill passes against a **local emulator only**; no real KMS provisioned |
+| Egress: scan zones, IdP host binding, generated firewall rules ([ADR-028](docs/adr/ADR-028-egress-allow-list.md)) | 🟡 | App-level checks enforced; nftables/iptables rules generated and drift-tested, **never loaded on a real host** |
+| Deployment: images, compose, systemd, bootstrap, doctor ([ADR-029](docs/adr/ADR-029-deployment-packaging.md), [`deploy/`](deploy/README.md)) | 🟡 | API and worker proven as **live processes** against Postgres (run to REPORT_READY); images **never built**, units **never loaded** (no Docker or systemd here) |
 
 ### Not prepared
 
@@ -156,11 +160,8 @@ flowchart LR
 |---|---|---|
 | **Live validation (M9)**: `example.com` smoke, `scanme.nmap.org` bounded Nmap, ZAP on your own Juice Shop | ⛔ | Needs your explicit authorisation for each target |
 | Real scanner execution (Nmap, ZAP, Greenbone, Wazuh, Prowler) | ⛔ | Not in the MVP; only imports and the passive URL probe exist |
-| **Production sign-in (OIDC/Keycloak)** | ⛔ | Only the dev identity picker; the app refuses it outside dev/test. **Not deployable to production** |
-| Signing-key custody and rotation (OpenBao/HSM) | ⛔ | Local key file only; no tested rotation procedure |
-| Egress firewall enforcement | ⛔ | Application-layer checks only; runbook describes it |
 | A real language model run on real evidence | ⛔ | Astra has run on synthetic fixtures only; real evidence needs the data-handling approval (ADR-020). No local model has been run |
-| Docker/compose deployment, container images, CI proof | ❓ | `deploy/` is empty; the CI workflow is written but has never run on a runner |
+| CI proof | ❓ | The CI workflow is written but has never run on a runner |
 | Asset/relationship explorer UI, graph reasoning, attack paths | ⛔ | Reconciliation runs in the backend; no explorer UI |
 | Import upload UI; task dependency ordering between imports | ⛔ | Import the CMDB first through the API |
 | Retention UI/scheduler; ticket delivery (drafts only, by design) | ⛔ | |
@@ -267,7 +268,7 @@ web/        React/TypeScript console, Playwright specs, README screenshot captur
 schemas/    JSON Schemas exported from the contracts
 docs/       plan, status matrix, ADRs 001-020, threat model, runbooks, SBOM and licence report, scorecard, screenshots
 tools/      secret scan, schema export, SBOM, scorecard, stale-Postgres cleanup
-deploy/     reserved (empty: no Docker locally)
+deploy/     images, compose, systemd units, egress rule examples; install runbook in deploy/README.md
 ```
 
 | Read | For |
@@ -285,7 +286,7 @@ Configuration is fail-closed (`backend/aisw/core/config.py`): read-only mode, sc
 ## Roadmap
 
 1. **M9 live validation**, only with your explicit authorisation per target: (a) passive smoke of `example.com`, (b) one bounded Nmap run on `scanme.nmap.org` after re-checking its terms, (c) ZAP baseline then active against your own Juice Shop. Each step needs an approved manifest and produces an evidence package.
-2. **Before any real use:** OIDC sign-in, key custody and rotation, egress firewall, a Docker/compose deployment, a real CI run, approval of the risk rubric and architecture catalog by the policy owner, legal review of licences.
+2. **Before any real use:** register a real IdP client, provision a real KMS key and run the drill, load the egress rules on the hosts, a first install from `deploy/README.md`, a real CI run, approval of the risk rubric and architecture catalog by the policy owner, legal review of licences.
 3. **Optional:** Astra token budget, routing and replay (pending plan §4); asset explorer UI; import upload UI; retention UI. The full list of pending work is in [`docs/implementation/pending-plan.md`](docs/implementation/pending-plan.md).
 
 ---
