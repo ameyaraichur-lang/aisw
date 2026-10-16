@@ -100,6 +100,17 @@
       "label_while_pending": "Delivery is off; tickets are drafts that can be previewed for Jira or ServiceNow. Delivery is tested against a loopback fake only.",
       "next_step": "ITSM owner approves a rendered payload and a create-and-search-only service account; network owner approves the itsm egress destination; first ticket created in a sandbox project per docs/runbooks/itsm-delivery.md.",
       "decision": null
+    },
+    {
+      "id": "retention-auto-execute",
+      "subject": "Automatic soft purge by the scheduled retention check: tenants, confirmation window and quarantine handling",
+      "plan_ref": "E-Retention",
+      "artefact": "docs/runbooks/evidence-retention.md",
+      "owner": "Retention owner (records management) with the security programme lead",
+      "status": "PENDING",
+      "label_while_pending": "Auto-execute is off; the daily check only records the dry-run plan and a retention manager executes a reviewed plan.",
+      "next_step": "Retention owner approves AISW_RETENTION_AUTO_EXECUTE=true per tenant and the AISW_RETENTION_CONFIRM_HOURS window, and names who removes quarantined files and when, per docs/runbooks/evidence-retention.md.",
+      "decision": null
     }
   ]
 }

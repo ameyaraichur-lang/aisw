@@ -675,3 +675,38 @@ export interface CoverageLedgerView {
   never_assessed: { project_id: string; name: string; environment: string; inventory_entries: number }[]
   summary: Record<'projects' | 'assessed' | 'never_assessed' | 'complete' | 'incomplete', number>
 }
+
+export interface RetentionItem { kind: 'EVIDENCE' | 'IMPORT'; ref: string; content_hash: string; size_bytes: number; run_id: string | null }
+export interface RetentionPlan {
+  as_of: string
+  plan_hash: string
+  items: RetentionItem[]
+  blobs: number
+  bytes: number
+  kept_shared: string[]
+  held_runs: string[]
+  mode: string
+  schedule: { auto_execute: boolean; confirm_hours: number; import_retention_days: number }
+}
+export interface RetentionCheck {
+  checked_at: string
+  plan_hash: string
+  items: number
+  blobs: number
+  bytes: number
+  held_runs: number
+  outcome: 'NOTHING_DUE' | 'DUE' | 'AWAITING_CONFIRMATION' | 'EXECUTED' | 'PLAN_CHANGED'
+  auto_execute: boolean
+}
+export interface RetentionHold { run_id: string; reason: string; placed_by: string; placed_at: string; run_state: string; project_name: string }
+export interface RetentionAction {
+  kind: string
+  ref: string
+  content_hash: string
+  size_bytes: number
+  quarantined: boolean
+  executed_by: string
+  executed_at: string
+  reason: string
+  plan_hash: string
+}

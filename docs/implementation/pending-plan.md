@@ -68,7 +68,7 @@ Done on 2026-10-16:
 | Live validation (M9) | `example.com` passive smoke, one bounded Nmap on `scanme.nmap.org` (re-check terms), ZAP against your own Juice Shop. Each needs your explicit authorisation and an approved manifest |
 | Imports | ~~Upload/import-parameter UI; task dependency ordering~~ (done: review-step file pickers; inventory tasks run first, migration 0019); real tool-version compatibility of the importers |
 | Analysis | Real reachability for exposure scoring (most host findings score exposure 0); graph/attack-path reasoning (ADR-010); ~~separation of duties for recommendation decisions~~ (done: the run requester may only defer; migration 0018 enforces it) |
-| Retention | UI and scheduler; quarantine deletion is manual |
+| Retention | ~~UI and scheduler~~ (done: Evidence Retention page; daily dry-run check with opt-in, two-sighting auto soft purge, migration 0020); quarantine deletion is manual. **Pending:** sign-off on enabling auto-execute (owner: retention owner; next step: approve `AISW_RETENTION_AUTO_EXECUTE=true` and the confirmation window per tenant) |
 | Evidence | Object-lock/WORM storage; externally witnessed audit-chain anchor |
 | Events | ~~Silent-stall detection for an open but dead SSE stream (ADR-015)~~ (done: a client watchdog reopens the stream from the cursor after 30 s of silence) |
 | Authorisation | Per-project roles (roles are tenant-wide today) |

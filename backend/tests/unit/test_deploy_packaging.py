@@ -114,7 +114,13 @@ def test_compose_secret_names_match_settings_fields() -> None:
 
 @pytest.mark.parametrize(
     "unit",
-    ["aisw-api.service", "aisw-worker.service", "aisw-bootstrap.service", "aisw-opa.service"],
+    [
+        "aisw-api.service",
+        "aisw-worker.service",
+        "aisw-bootstrap.service",
+        "aisw-opa.service",
+        "aisw-retention.service",
+    ],  # fmt: skip
 )
 def test_systemd_units_are_sandboxed(unit: str) -> None:
     cp = configparser.ConfigParser(strict=False, interpolation=None)
@@ -167,3 +173,11 @@ def test_heartbeat_freshness(tmp_path: Path) -> None:
     beat.touch()
     assert heartbeat_fresh(beat)
     assert not heartbeat_fresh(beat, now=beat.stat().st_mtime + 31)
+
+
+def test_retention_timer_starts_the_check_daily_and_catches_up() -> None:
+    cp = configparser.ConfigParser(strict=False, interpolation=None)
+    cp.optionxform = str  # type: ignore[assignment,method-assign]
+    cp.read_string((DEPLOY / "systemd" / "aisw-retention.timer").read_text())
+    assert cp["Timer"]["OnCalendar"].startswith("*-*-*") and cp["Timer"]["Persistent"] == "true"
+    assert cp["Install"]["WantedBy"] == "timers.target"

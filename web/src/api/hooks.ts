@@ -4,7 +4,8 @@ import type {
   AgentsResponse, AiValidations, AssetDetail, AssetList, AssuranceOverview, AuditItem, Disagreement, ModelCallLedger, TriggerPolicyView, Recommendation, Scenario, AuthMode, ControlMatrix, ControlRow, ExceptionList, CoverageResponse, Connector, FindingDetail, FindingRow,
   InventoryEntry, ManifestSummary, Me, Overview, Page, PolicyPackInfo, Project, ReportBody,
   ReportList, Roadmap, RunListItem, RunStatus, TaskView, ItsmTarget, OutboxRow, RenderedTicket,
-  AnswerKeyInfo, Scorecard, TrendRow, CoverageLedgerView, ImportFile,
+  AnswerKeyInfo, Scorecard, TrendRow, CoverageLedgerView, ImportFile, RetentionPlan, RetentionCheck, RetentionHold,
+  RetentionAction,
 } from './types'
 
 const qs = (o: Record<string, string | number | string[] | undefined | null>): string => {
@@ -99,3 +100,9 @@ export const useScorecard = (runId?: string) =>
   useQuery({ queryKey: ['evaluation', 'card', runId], queryFn: () => api<Scorecard>(`/evaluation/runs/${runId}/scorecard`), enabled: !!runId })
 export const useCoverageLedger = (incompleteOnly: boolean) =>
   useQuery({ queryKey: ['coverage-ledger', incompleteOnly], queryFn: () => api<CoverageLedgerView>(`/coverage${qs({ incomplete_only: incompleteOnly ? 'true' : undefined })}`) })
+export const useRetentionPlan = (enabled: boolean) =>
+  useQuery({ queryKey: ['retention', 'plan'], queryFn: () => api<RetentionPlan>('/retention/plan'), enabled })
+export const useRetentionChecks = () => useQuery({ queryKey: ['retention', 'checks'], queryFn: () => api<RetentionCheck[]>('/retention/checks') })
+export const useRetentionHolds = () => useQuery({ queryKey: ['retention', 'holds'], queryFn: () => api<RetentionHold[]>('/retention/holds') })
+export const useRetentionActions = (enabled: boolean) =>
+  useQuery({ queryKey: ['retention', 'actions'], queryFn: () => api<RetentionAction[]>('/retention/actions'), enabled })

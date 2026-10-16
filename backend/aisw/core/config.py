@@ -262,6 +262,13 @@ class Settings(BaseSettings):
     worker_enabled: bool = False
 
     evidence_retention_days: int = Field(default=365, ge=1)
+    # Scheduled retention checks (ADR-019). The scheduler always records a dry-run plan; it moves
+    # evidence to quarantine only when auto-execute is on and the same plan was seen confirm_hours ago.
+    retention_tenants: str | None = Field(
+        default=None, pattern=r"^[A-Za-z0-9_\-]+(,[A-Za-z0-9_\-]+)*$"
+    )
+    retention_auto_execute: bool = False
+    retention_confirm_hours: int = Field(default=24, ge=1, le=720)
     exception_max_days: int = Field(default=365, ge=1, le=1095)  # longest lifetime of an exception
     max_assessment_concurrency: int = Field(default=2, ge=1, le=32)
     enable_itsm_ticket_creation: bool = False

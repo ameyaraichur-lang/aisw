@@ -65,9 +65,13 @@ Only the web service is published, and only on `127.0.0.1:8080`. Terminate TLS i
 5. Copy `deploy/systemd/aisw.env.example` to `/etc/aisw/aisw.env` and put the secret files in `/etc/aisw/secrets/` (root:root 0600). systemd hands them to the service as credentials.
 6. Create `/var/lib/aisw/evidence`, owned by `aisw` with mode 0700.
 7. For the OPA engine, install the pinned binary and check its checksum: `curl -fsSLO https://github.com/open-policy-agent/opa/releases/download/v1.21.2/opa_linux_amd64_static`, then `echo "830ab11f61ffec760b5e19db0d7ad02bf037e13f5ef4d665faeaf17632177527  opa_linux_amd64_static" | sha256sum -c`. Install it as `/usr/local/bin/opa` (0755) and enable `aisw-opa`. The API and worker refuse to start if OPA serves different policy from the build.
-8. `systemctl enable --now aisw-bootstrap aisw-opa aisw-api aisw-worker`.
+8. `systemctl enable --now aisw-bootstrap aisw-opa aisw-api aisw-worker aisw-retention.timer`.
 
 Each long-running unit runs the doctor in `ExecStartPre`, so a misconfigured host refuses to start and the reason is in `journalctl -u aisw-api`. The units are sandboxed: `ProtectSystem=strict`, no capabilities, `@system-service` syscalls, and evidence is the only writable path.
+
+## Retention checks
+
+`aisw-retention.timer` runs `python -m aisw.evidence.retention_schedule` daily for each tenant in `AISW_RETENTION_TENANTS`. Every check records the dry-run plan (`retention_checks`, shown on the Retention page) and an audit entry. Evidence moves to quarantine only when `AISW_RETENTION_AUTO_EXECUTE=true` **and** an earlier check saw the identical plan hash at least `AISW_RETENTION_CONFIRM_HOURS` before; any change (a new hold, a new run, a release) starts a new window. Leave auto-execute off until the retention owner has approved it; a retention manager can always execute a reviewed plan from the Retention page. With Compose, run it from the host's scheduler: `docker compose run --rm api aisw.evidence.retention_schedule`. Final deletion from quarantine stays manual.
 
 ## Health
 

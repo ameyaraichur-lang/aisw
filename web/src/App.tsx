@@ -14,6 +14,7 @@ import { Exceptions } from './pages/Exceptions'
 import { Login } from './pages/Login'
 import { Architecture } from './pages/Architecture'
 import { AuditPage, NotImplemented, ReportsPage } from './pages/Misc'
+import { RetentionPage } from './pages/Retention'
 import { Projects } from './pages/Projects'
 import { Roadmap } from './pages/Roadmap'
 import { RunPage } from './pages/RunDetail'
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="reports" element={<RequirePermission need={['report:read']} title="Reports & Evidence"><ReportsPage /></RequirePermission>} />
         <Route path="assurance" element={<RequirePermission need={['finding:read']} title="Assurance Console"><AssuranceConsole /></RequirePermission>} />
         <Route path="audit/model-calls" element={<RequirePermission need={['audit:read']} title="Model-call ledger"><ModelCallsPage /></RequirePermission>} />
+        <Route path="retention" element={<RequirePermission need={['retention:manage', 'audit:read']} title="Evidence Retention"><RetentionPage /></RequirePermission>} />
         <Route path="audit" element={<RequirePermission need={['audit:read']} title="Policy, Users & Audit"><AuditPage /></RequirePermission>} />
         <Route path="assets" element={<Assets />} />
         <Route path="assets/:projectId/:assetId" element={<AssetDetailPage />} />

@@ -16,6 +16,7 @@ import sys
 import tempfile
 import threading
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -124,7 +125,7 @@ def main() -> None:
     )  # fmt: skip
     worker = container.make_worker(worker_engine, worker_id="e2e-worker")
 
-    state: dict[str, Any] = {"paused": False, "step_delay": 0.15, "stalls": 0}
+    state: dict[str, Any] = {"paused": False, "step_delay": 0.15, "stalls": 0, "retention_days": 0}
     stop = threading.Event()
 
     def loop() -> None:
@@ -219,6 +220,33 @@ def main() -> None:
         """The next ``n`` live-stream connections send headers and then nothing at all."""
         state["stalls"] = max(0, min(n, 5))
         return {"stalls": state["stalls"]}
+
+    from aisw.evidence import retention, retention_schedule  # noqa: PLC0415
+
+    real_plan = retention.build_plan
+
+    def shifted_plan(engine: Any, tenant_id: str, now: datetime, **kw: Any) -> Any:
+        return real_plan(engine, tenant_id, now + timedelta(days=state["retention_days"]), **kw)
+
+    setattr(retention, "build_plan", shifted_plan)  # noqa: B010
+
+    @api.post("/__e2e/retention-offset/{days}")
+    def retention_offset(days: int) -> dict[str, int]:
+        """Retention planning (only) sees the clock this many days ahead; 0 restores it."""
+        state["retention_days"] = max(0, min(days, 400))
+        return {"retention_days": state["retention_days"]}
+
+    @api.post("/__e2e/retention-check")
+    def retention_check() -> dict[str, Any]:
+        store = container.evidence
+        if store is None:
+            raise RuntimeError("evidence storage is not configured")
+        r = retention_schedule.run_check(
+            app_engine, store, "tenant-a", container.clock(),
+            import_retention_days=settings.evidence_retention_days, auto_execute=False,
+            confirm_hours=settings.retention_confirm_hours,
+        )  # fmt: skip
+        return {"outcome": r.outcome, "items": r.items}
 
     @api.post("/__e2e/delay/{ms}")
     def delay(ms: int) -> dict[str, float]:

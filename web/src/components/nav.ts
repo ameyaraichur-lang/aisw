@@ -1,4 +1,4 @@
-export interface Item { to: string; label: string; need?: string; planned?: string }
+export interface Item { to: string; label: string; need?: string | string[]; planned?: string }
 export const NAV: Item[] = [
   { to: '/', label: 'Command Center' },
   { to: '/projects', label: 'Projects & Environments' },
@@ -16,6 +16,7 @@ export const NAV: Item[] = [
   { to: '/reports', label: 'Reports & Evidence', need: 'report:read' },
   { to: '/audit', label: 'Policy, Users & Audit', need: 'audit:read' },
   { to: '/audit/model-calls', label: 'Model-call ledger', need: 'audit:read' },
+  { to: '/retention', label: 'Evidence Retention', need: ['retention:manage', 'audit:read'] },
   { to: '/evaluation', label: 'Evaluation Lab', need: 'finding:read' },
 ]
 

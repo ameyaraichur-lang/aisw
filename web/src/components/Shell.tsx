@@ -27,7 +27,7 @@ export function Shell() {
       </header>
       <nav className="sidenav" aria-label="Main">
         <ul>
-          {NAV.filter((i) => !i.need || can(i.need)).map((i) => (
+          {NAV.filter((i) => !i.need || (Array.isArray(i.need) ? i.need : [i.need]).some((p) => can(p))).map((i) => (
             <li key={i.to}>
               <NavLink to={i.to} end={i.to === '/' || NAV.some((o) => o.to.startsWith(`${i.to}/`))} className={({ isActive }) => (isActive ? 'active' : '')}>
                 {i.label}{i.planned ? <span className="muted"> ({i.planned})</span> : null}

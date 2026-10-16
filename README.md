@@ -156,7 +156,7 @@ flowchart LR
 | AI validation pass over Agents 1–7 ([ADR-021](docs/adr/ADR-021-agent-validation-pass.md)) | 🟡 | One-way: a dissent holds an item for review, nothing else. Tested with a scripted model and run live on Astra (synthetic, including the prompt-injection fixture). Quality on real estates not measured |
 | Operator console (all main screens), SSE with cursor replay, accessibility | ✅ | Axe WCAG 2.2 AA automated on every main screen; no manual screen-reader test |
 | Report export controls (audited, watermark, drafts restricted) | ✅ | |
-| Evidence retention (dry-run, hash-pinned execute, holds, **soft purge**) | 🟡 | API only; no scheduler or UI; final deletion is a manual act |
+| Evidence retention (dry-run, hash-pinned execute, holds, **soft purge**) | 🟡 | Evidence Retention page and a daily scheduled check; automatic soft purge is opt-in and off; final deletion is a manual act |
 | SBOM (CycloneDX) and licence gate | 🟡 | Lockfile-based, **not Syft/ScanCode** |
 | Threat model, 7 runbooks, generated scorecard, mutation log | ✅ | Runbook steps not exercised on a deployed system |
 | Generic OIDC sign-in through the BFF ([ADR-026](docs/adr/ADR-026-oidc-sign-in-through-the-bff.md)) | 🟡 | PKCE, nonce, signed session cookies, CSRF, revocation; tested against a **local mock IdP only**, no real tenant registered |
@@ -174,7 +174,7 @@ flowchart LR
 | CI proof ([ADR-030](docs/adr/ADR-030-ci-on-github-actions.md)) | ❓ | GitHub Actions workflow (SHA-pinned, read-only) lints clean with actionlint and zizmor, but has **never run on a runner** |
 | Asset/relationship explorer UI, graph reasoning, attack paths | ⛔ | Reconciliation runs in the backend; no explorer UI |
 | Import upload UI; task dependency ordering between imports | ✅ | Inventory imports run first in the same run (migration 0019) |
-| Retention UI/scheduler | ⛔ | |
+| Retention UI/scheduler | ✅ | Daily timer; auto soft purge needs the identical plan twice, a day apart |
 | Real customer environment (CMDB, cloud account, on-prem zones) | ⛔ | Everything is fixtures; customer integration is a separate authorised phase |
 | Object-lock evidence storage, multi-node soak testing | ⛔ | |
 | Legal review of licences (LGPL `psycopg`) | ⛔ | Recorded PENDING in the [sign-off register](docs/implementation/signoffs.md) with owner and next step |
@@ -297,7 +297,7 @@ Configuration is fail-closed (`backend/aisw/core/config.py`): read-only mode, sc
 
 1. **M9 live validation**, only with your explicit authorisation per target: (a) passive smoke of `example.com`, (b) one bounded Nmap run on `scanme.nmap.org` after re-checking its terms, (c) ZAP baseline then active against your own Juice Shop. Each step needs an approved manifest and produces an evidence package.
 2. **Before any real use:** register a real IdP client, provision a real KMS key and run the drill, load the egress rules on the hosts, a first install from `deploy/README.md`, a real CI run, approval of the risk rubric and architecture catalog by the policy owner, legal review of licences.
-3. **Optional:** Astra token budget, routing and replay (pending plan §4); retention UI. The full list of pending work is in [`docs/implementation/pending-plan.md`](docs/implementation/pending-plan.md).
+3. **Optional:** Astra token budget, routing and replay (pending plan §4). The full list of pending work is in [`docs/implementation/pending-plan.md`](docs/implementation/pending-plan.md).
 
 ---
 *AISW produces assessment reports from recorded evidence. A report is not a certification and does not prove an estate is secure.*
