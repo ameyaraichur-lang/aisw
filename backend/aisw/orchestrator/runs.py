@@ -27,6 +27,7 @@ def create_run(
     adapter_params: dict[str, dict[str, Any]],
     registry: AdapterRegistry,
     now: datetime,
+    ai_mode: str = "disabled",
 ) -> list[str]:
     """Insert run + tasks + first events atomically. Returns the queued task ids."""
     body = manifest.body
@@ -34,13 +35,13 @@ def create_run(
         text(
             "INSERT INTO assessment_runs (run_id, tenant_id, project_id, manifest_id, "
             "manifest_hash, permit_id, state, last_phase, requested_by, assessment_profile, "
-            "policy_version, created_at, updated_at) VALUES (:r, :t, :p, :m, :h, :permit, "
-            "'AUTHORIZED', 'AUTHORIZED', :by, :prof, :pv, :n, :n)"
+            "policy_version, created_at, updated_at, ai_mode) VALUES (:r, :t, :p, :m, :h, :permit, "
+            "'AUTHORIZED', 'AUTHORIZED', :by, :prof, :pv, :n, :n, :ai)"
         ),
         {
             "r": run_id, "t": body.tenant_id, "p": body.project_id, "m": manifest.manifest_id,
             "h": manifest.canonical_hash, "permit": permit.permit_id, "by": requested_by,
-            "prof": assessment_profile, "pv": body.policy_version, "n": now,
+            "prof": assessment_profile, "pv": body.policy_version, "n": now, "ai": ai_mode,
         },
     )  # fmt: skip
     tenant = body.tenant_id

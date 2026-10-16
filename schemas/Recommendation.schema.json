@@ -70,6 +70,14 @@
       "title": "Action",
       "type": "string"
     },
+    "affected_assets": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+        "type": "string"
+      },
+      "title": "Affected Assets",
+      "type": "array"
+    },
     "alternatives": {
       "items": {
         "maxLength": 2048,
@@ -87,6 +95,34 @@
       },
       "title": "Assumptions",
       "type": "array"
+    },
+    "catalog_ref": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Catalog Ref"
+    },
+    "current_state": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Current State"
     },
     "dependencies": {
       "items": {
@@ -122,6 +158,18 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
       "title": "Recommendation Id",
       "type": "string"
+    },
+    "risk_tier": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Risk Tier"
     },
     "rollback": {
       "anyOf": [
@@ -159,6 +207,29 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
       "title": "Tenant Id",
       "type": "string"
+    },
+    "title": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Title"
+    },
+    "validation_steps": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Validation Steps",
+      "type": "array"
     }
   },
   "required": [

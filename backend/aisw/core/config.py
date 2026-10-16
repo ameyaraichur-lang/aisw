@@ -10,6 +10,7 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -41,6 +42,12 @@ class Settings(BaseSettings):
     # AI is disabled until an approved open-source model is recorded (ADR-009).
     ai_enabled: bool = False
     model_id: str | None = None
+    model_license: str | None = (
+        None  # SPDX id of the reviewed WEIGHTS licence (runtime licence is separate)
+    )
+    model_endpoint: str = "http://127.0.0.1:11434"  # local runtime only (Ollama default)
+    ai_narrative_enabled: bool = True  # feature flags, effective only when ai_enabled
+    ai_architecture_enabled: bool = True
     model_timeout_seconds: int = Field(default=60, ge=1, le=600)
 
     # Reference to the database DSN supplied by the secret provider; never logged or committed.
@@ -69,8 +76,16 @@ class Settings(BaseSettings):
             raise ValueError("log_redaction_enabled must be true")
         if self.dev_auth_stub and self.env is Environment.PROD:
             raise ValueError("dev_auth_stub is forbidden when env=prod")
-        if self.ai_enabled and not self.model_id:
-            raise ValueError("ai_enabled requires an approved model_id")
+        if self.ai_enabled and not (self.model_id and self.model_license):
+            raise ValueError("ai_enabled requires an approved model_id AND its reviewed licence")
+        if urlparse(self.model_endpoint).hostname not in {
+            "127.0.0.1",
+            "localhost",
+            "::1",
+        } or urlparse(self.model_endpoint).scheme not in {"http", "https"}:
+            raise ValueError(
+                "model_endpoint must be a loopback http(s) URL (use a local tunnel or proxy)"
+            )
         return self
 
 

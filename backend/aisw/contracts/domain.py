@@ -177,6 +177,13 @@ class Recommendation(StrictModel):
     acceptance_test: NonEmpty | None = None
     assumptions: list[NonEmpty] = Field(default_factory=list)
     status: RecommendationStatus = RecommendationStatus.DRAFT
+    # Traceability and reviewer context (all derived deterministically from validated findings)
+    title: NonEmpty | None = None
+    catalog_ref: NonEmpty | None = None  # the approved target-pattern entry this was built from
+    current_state: NonEmpty | None = None
+    affected_assets: list[Slug] = Field(default_factory=list)
+    risk_tier: str | None = None  # None until the rubric had complete inputs
+    validation_steps: list[NonEmpty] = Field(default_factory=list)
 
 
 class Validation(StrictModel):

@@ -350,7 +350,9 @@ def test_tampered_evidence_rejects_findings_and_keeps_them_out_of_the_report(sl:
     assert rep["assurance"]["rejected"] == 2
     assert any("failed independent assurance" in x for x in rep["limitations"])
     verdicts = sl.sql(
-        "SELECT verdict, defect_codes::text FROM assurance_results WHERE run_id=:r", r=run_id
+        "SELECT verdict, defect_codes::text FROM assurance_results WHERE run_id=:r "
+        "AND item_ref LIKE 'finding:%'",
+        r=run_id,
     )
     assert {v[0] for v in verdicts} == {"REJECT"} and all(
         "EVIDENCE_HASH_MISMATCH" in v[1] for v in verdicts
@@ -375,9 +377,11 @@ def test_missing_evidence_file_is_rejected(sl: Slice) -> None:
     f.unlink()
     sl.drain()
     assert sl.report(run_id)["findings"] == []
-    assert sl.sql("SELECT DISTINCT verdict FROM assurance_results WHERE run_id=:r", r=run_id) == [
-        ("REJECT",)
-    ]
+    assert sl.sql(
+        "SELECT DISTINCT verdict FROM assurance_results WHERE run_id=:r "
+        "AND item_ref LIKE 'finding:%'",
+        r=run_id,
+    ) == [("REJECT",)]
 
 
 def test_stale_evidence_needs_review_and_is_disclosed_not_dropped(sl: Slice) -> None:
@@ -405,9 +409,11 @@ def test_evidence_store_outage_means_review_not_approval(sl: Slice) -> None:
     sl.worker.evidence.verify = down  # type: ignore[method-assign,assignment]
     sl.drain()
     assert sl.report(run_id)["findings"] == []
-    assert sl.sql("SELECT DISTINCT verdict FROM assurance_results WHERE run_id=:r", r=run_id) == [
-        ("NEEDS_REVIEW",)
-    ]
+    assert sl.sql(
+        "SELECT DISTINCT verdict FROM assurance_results WHERE run_id=:r "
+        "AND item_ref LIKE 'finding:%'",
+        r=run_id,
+    ) == [("NEEDS_REVIEW",)]
 
 
 def test_only_accepted_findings_reach_the_report_dataset(sl: Slice) -> None:
@@ -417,7 +423,9 @@ def test_only_accepted_findings_reach_the_report_dataset(sl: Slice) -> None:
     assert {r[0] for r in rows} == {"ACCEPT"}
     assert (
         sl.sql(
-            "SELECT count(*) FROM assurance_results WHERE run_id=:r AND verdict='ACCEPT'", r=run_id
+            "SELECT count(*) FROM assurance_results WHERE run_id=:r AND verdict='ACCEPT' "
+            "AND item_ref LIKE 'finding:%'",
+            r=run_id,
         )[0][0]
         == 2
     )

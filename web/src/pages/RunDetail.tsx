@@ -2,9 +2,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link, NavLink, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { api, ApiError, apiText } from '../api/client'
-import { useControls, useCoverage, useReportBody, useReports, useRunFindings, useRunStatus, useTasks } from '../api/hooks'
+import { useControls, useCoverage, useReportBody, useReports, useRunFindings, useRunRecommendations, useRunScenarios, useRunStatus, useTasks } from '../api/hooks'
 import type { ControlRow, TaskView } from '../api/types'
 import { useSession } from '../auth/useSession'
+import { RecommendationBody, RecommendationHeader, ScenarioCard } from '../components/analysis'
 import { Badge, Banner, ConfirmDialog, CopyButton, DataState, PageHeader, Pagination, ShortHash } from '../components/ui'
 import { fmtTime } from '../lib/format'
 import { deriveStages, describeEvent, tasksFinished } from '../lib/events'
@@ -64,7 +65,7 @@ function RunDetail({ runId }: { runId: string }) {
         )}
       </DataState>
       <ul className="tabs" aria-label="Assessment sections">
-        {['timeline', 'coverage', 'findings', 'controls', 'report'].map((t) => (
+        {['timeline', 'coverage', 'findings', 'analysis', 'controls', 'report'].map((t) => (
           <li key={t}><NavLink to={`/assessments/${runId}/${t}`} className={({ isActive }) => (isActive ? 'active' : '')}>{t[0].toUpperCase() + t.slice(1)}</NavLink></li>
         ))}
       </ul>
@@ -73,6 +74,7 @@ function RunDetail({ runId }: { runId: string }) {
         <Route path="timeline" element={<Timeline runId={runId} stream={stream} />} />
         <Route path="coverage" element={<Coverage runId={runId} />} />
         <Route path="findings" element={<RunFindings runId={runId} />} />
+        <Route path="analysis" element={<Analysis runId={runId} />} />
         <Route path="controls" element={<ControlsTable runId={runId} />} />
         <Route path="report" element={<ReportTab runId={runId} />} />
       </Routes>
@@ -238,6 +240,40 @@ function RunFindings({ runId }: { runId: string }) {
           </>
         )}
       </DataState>
+    </>
+  )
+}
+
+function Analysis({ runId }: { runId: string }) {
+  const sc = useRunScenarios(runId)
+  const rc = useRunRecommendations(runId)
+  return (
+    <>
+      <section aria-labelledby="sc-h">
+        <h2 id="sc-h">Correlated scenarios</h2>
+        <DataState q={sc} label="scenarios" isEmpty={(d) => d.length === 0} empty={<p className="muted">No scenario was built: it takes two or more recorded weaknesses on the same asset. Nothing is inferred beyond what was observed.</p>}>
+          {(d) => <>{d.map((x) => <ScenarioCard key={x.scenario_id} s={x} />)}</>}
+        </DataState>
+      </section>
+      <section aria-labelledby="rc-h">
+        <h2 id="rc-h">Draft recommendations</h2>
+        <p className="hint">For planning only. Decisions are recorded in <Link to={`/architecture?run=${runId}`}>Architecture &amp; Modernization</Link>; nothing is executed.</p>
+        <DataState q={rc} label="recommendations" isEmpty={(d) => d.length === 0} empty={<p className="muted">No recommendation matched an approved target pattern for this run.</p>}>
+          {(d) => (
+            <ul className="list-plain">
+              {d.map((r) => (
+                <li key={r.recommendation_id}>
+                  <section className="panel" aria-labelledby={`r-${r.recommendation_id}`}>
+                    <h3 id={`r-${r.recommendation_id}`}>{r.title}</h3>
+                    <RecommendationHeader r={r} />
+                    <details><summary>Details, validation and rollback</summary><RecommendationBody r={r} /></details>
+                  </section>
+                </li>
+              ))}
+            </ul>
+          )}
+        </DataState>
+      </section>
     </>
   )
 }

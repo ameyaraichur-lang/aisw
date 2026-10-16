@@ -6,7 +6,7 @@ export const NAV: Item[] = [
   { to: '/assessments', label: 'Assessments' },
   { to: '/assets', label: 'Asset Explorer', planned: 'M6' },
   { to: '/findings', label: 'Findings & Exposure', need: 'finding:read' },
-  { to: '/architecture', label: 'Architecture & Modernization', planned: 'M7' },
+  { to: '/architecture', label: 'Architecture & Modernization', need: 'finding:read' },
   { to: '/controls', label: 'Control Coverage' },
   { to: '/reports', label: 'Reports & Evidence', need: 'report:read' },
   { to: '/audit', label: 'Policy, Users & Audit', need: 'audit:read' },

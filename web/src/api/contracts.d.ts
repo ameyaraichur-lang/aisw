@@ -153,6 +153,53 @@ export interface ControlAssessment {
   version: Version;
 }
 
+export type Assumptions = string[];
+
+export type Basis = "COMPLETE" | "NEEDS_POLICY_REVIEW";
+
+export type Chain = [ChainLink, ChainLink, ...ChainLink[]];
+
+export type EdgeBasis = "OBSERVED" | "CONFIGURED" | "INFERRED";
+
+export type EvidenceRef = string;
+
+export type FindingId = string;
+
+export type Note = string | null;
+
+export type FindingIds = [string, string, ...string[]];
+
+export type MissingEvidence = string[];
+
+export type ScenarioId = string;
+
+export type Tier = ("P0" | "P1" | "P2" | "P3") | null;
+
+export type Title = string;
+
+export type ValidationSteps = [string, ...string[]];
+
+export interface CorrelationScenario {
+  asset_id: AssetId;
+  assumptions?: Assumptions;
+  basis: Basis;
+  chain: Chain;
+  confidence: Confidence;
+  finding_ids: FindingIds;
+  missing_evidence?: MissingEvidence;
+  scenario_id: ScenarioId;
+  tier: Tier;
+  title: Title;
+  validation_steps: ValidationSteps;
+}
+
+export interface ChainLink {
+  basis: EdgeBasis;
+  evidence_ref: EvidenceRef;
+  finding_id: FindingId;
+  note?: Note;
+}
+
 export type DiscoveredCount = number;
 
 export type ExcludedCount = number;
@@ -196,8 +243,6 @@ export interface AssessedByOutcome {
 export type CollectedAt = string;
 
 export type ContentHash = string;
-
-export type EvidenceRef = string;
 
 export type MediaType = string;
 
@@ -245,8 +290,6 @@ export interface ExecutionPermit {
 
 export type AffectedAssets = [string, ...string[]];
 
-export type Assumptions = string[];
-
 export type BusinessRisk = string | null;
 
 export type Category = string;
@@ -254,8 +297,6 @@ export type Category = string;
 export type MappingStatus = string;
 
 export type ControlMappings = ControlMapping[];
-
-export type FindingId = string;
 
 export type FirstObserved = string;
 
@@ -277,8 +318,6 @@ export type Severity = "INFO" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type SeveritySource = string;
 
 export type StableDedupeKey = string;
-
-export type Title = string;
 
 export interface Finding {
   affected_assets: AffectedAssets;
@@ -308,6 +347,50 @@ export interface ControlMapping {
   framework: Framework;
   mapping_status?: MappingStatus;
   version: Version;
+}
+
+export type Claims =
+  | [Claim]
+  | [Claim, Claim]
+  | [Claim, Claim, Claim]
+  | [Claim, Claim, Claim, Claim]
+  | [Claim, Claim, Claim, Claim, Claim]
+  | [Claim, Claim, Claim, Claim, Claim, Claim]
+  | [Claim, Claim, Claim, Claim, Claim, Claim, Claim]
+  | [Claim, Claim, Claim, Claim, Claim, Claim, Claim, Claim];
+
+export type AssetIds =
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string];
+
+export type Text = string;
+
+export type OpenQuestions =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string];
+
+export type Summary = string;
+
+export interface NarrativeOutput {
+  claims: Claims;
+  open_questions?: OpenQuestions;
+  summary: Summary;
+}
+
+export interface Claim {
+  asset_ids: AssetIds;
+  finding_ids: FindingIds;
+  text: Text;
 }
 
 export type ObservationId = string;
@@ -342,9 +425,11 @@ export type AcceptanceTest = string | null;
 
 export type Alternatives = string[];
 
-export type Dependencies = string[];
+export type CatalogRef = string | null;
 
-export type Basis = string | null;
+export type CurrentState = string | null;
+
+export type Dependencies = string[];
 
 export type IsEstimate = boolean;
 
@@ -356,6 +441,8 @@ export type OwnerQuestions = string[];
 
 export type RecommendationId = string;
 
+export type RiskTier = string | null;
+
 export type Rollback = string | null;
 
 export type RecommendationStatus =
@@ -366,17 +453,23 @@ export type TargetPattern = string | null;
 export interface Recommendation {
   acceptance_test?: AcceptanceTest;
   action: Action;
+  affected_assets?: AffectedAssets;
   alternatives?: Alternatives;
   assumptions?: Assumptions;
+  catalog_ref?: CatalogRef;
+  current_state?: CurrentState;
   dependencies?: Dependencies;
   effort?: EffortEstimate;
   finding_refs: FindingRefs;
   owner_questions?: OwnerQuestions;
   recommendation_id: RecommendationId;
+  risk_tier?: RiskTier;
   rollback?: Rollback;
   status?: RecommendationStatus;
   target_pattern?: TargetPattern;
   tenant_id: TenantId;
+  title?: Title;
+  validation_steps?: ValidationSteps;
 }
 
 export interface EffortEstimate {
@@ -385,8 +478,6 @@ export interface EffortEstimate {
   value?: Value;
 }
 
-export type EdgeBasis = "OBSERVED" | "CONFIGURED" | "INFERRED";
-
 export type RelationshipId = string;
 
 export type RelationshipType = string;
@@ -394,8 +485,6 @@ export type RelationshipType = string;
 export type SourceAssetId = string;
 
 export type TargetAssetId = string;
-
-export type ValidationSteps = string[];
 
 export interface Relationship {
   basis: EdgeBasis;
@@ -454,6 +543,37 @@ export interface FindingCounts {
   [k: string]: number | undefined;
 }
 
+export type CorroboratingSources = number;
+
+export type EvidenceFresh = boolean;
+
+export type Exposure = "VERIFIED" | "CONFIGURED" | "UNKNOWN";
+
+export type ProvisionalTier = "P0" | "P1" | "P2" | "P3";
+
+export type Rationale = string;
+
+export type RubricVersion = string;
+
+export interface RiskAssessment {
+  basis: Basis;
+  factors: RiskFactors;
+  finding_id: FindingId;
+  missing_evidence?: MissingEvidence;
+  provisional_tier: ProvisionalTier;
+  rationale: Rationale;
+  rubric_version: RubricVersion;
+  tier: Tier;
+}
+
+export interface RiskFactors {
+  corroborating_sources: CorroboratingSources;
+  criticality: Criticality;
+  evidence_fresh: EvidenceFresh;
+  exposure: Exposure;
+  severity: Severity;
+}
+
 export type ApprovedAt = string;
 
 export type Approver = string;
@@ -463,8 +583,6 @@ export type CompensatingControls = string[];
 export type ExceptionId = string;
 
 export type FindingRef = string;
-
-export type Rationale = string;
 
 export interface RiskException {
   approved_at: ApprovedAt;

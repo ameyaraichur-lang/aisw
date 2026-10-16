@@ -37,6 +37,7 @@ from aisw.evidence.store import EvidenceStore
 from aisw.gateway.gateway import ToolGateway
 from aisw.gateway.registry import AdapterRegistry
 from aisw.gateway.stores import AuditSink, DbAuditSink, DbAuthorizationStore
+from aisw.llm.factory import build_model_client
 from aisw.orchestrator.worker import Worker
 from aisw.policy.engine import PackRegistry, PolicyEvaluator, PythonRuleEvaluator
 
@@ -80,6 +81,12 @@ class Container:
     def make_worker(self, worker_engine: Engine | None = None, **kw: Any) -> Worker:
         if self.gateway is None or self.evidence is None:
             raise RuntimeError("signing and evidence storage must be configured")
+        kw.setdefault(
+            "model", build_model_client(self.settings)
+        )  # Disabled unless fully configured
+        kw.setdefault("ai_scenario_narratives", self.settings.ai_narrative_enabled)
+        kw.setdefault("ai_recommendation_narratives", self.settings.ai_architecture_enabled)
+        kw.setdefault("model_timeout", float(self.settings.model_timeout_seconds))
         return Worker(
             engine=worker_engine or self.engine, gateway=self.gateway, registry=self.registry,
             packs=self.packs, evaluator=self.evaluator, evidence=self.evidence,

@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "description": "Transparent additive rubric. Dimensions stay separate: technical severity, owner-supplied criticality, exposure state. A business-risk tier is produced ONLY when criticality is known; otherwise the result is NEEDS_POLICY_REVIEW. Thresholds are customer policy and must be calibrated on a reviewed sample before the tiers are treated as meaningful.",
+  "severity": {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1, "INFO": 0},
+  "criticality": {"critical": 3, "high": 2, "medium": 1, "low": 0},
+  "exposure": {"VERIFIED": 2, "CONFIGURED": 1, "UNKNOWN": 0},
+  "thresholds": {"P0": 8, "P1": 6, "P2": 4},
+  "provisional_by_severity": {"CRITICAL": "P1", "HIGH": "P2", "MEDIUM": "P3", "LOW": "P3", "INFO": "P3"},
+  "exposure_by_category": {
+    "network_exposure": "VERIFIED", "web_security": "VERIFIED", "transport_security": "VERIFIED",
+    "http_headers": "VERIFIED", "http_behaviour": "VERIFIED", "availability": "VERIFIED",
+    "cloud_posture": "CONFIGURED"
+  }
+}

@@ -276,6 +276,33 @@ def finding_detail(
             ),
             {"r": run_id, "i": f"finding:{finding_id}"},
         ).first()
+        risk_row = conn.execute(
+            text(
+                "SELECT r.rubric_version, r.tier, r.provisional_tier, r.basis, r.factors, "
+                "r.missing_evidence, r.rationale, a.verdict FROM risk_assessments r "
+                "LEFT JOIN assurance_results a ON a.run_id=r.run_id AND a.item_ref='risk:' || r.finding_id "
+                "WHERE r.run_id=:r AND r.finding_id=:f"
+            ),
+            {"r": run_id, "f": finding_id},
+        ).first()
+        scenarios = [
+            {"scenario_id": sid, "title": b["title"], "tier": b["tier"], "basis": b["basis"]}
+            for sid, b, v in conn.execute(
+                text(
+                    "SELECT scenario_id, body, assurance_verdict FROM correlation_scenarios WHERE run_id=:r"
+                ),
+                {"r": run_id},
+            )
+            if finding_id in b["finding_ids"] and v == "ACCEPT"
+        ]
+    risk = (
+        {"rubric_version": risk_row[0], "tier": risk_row[1], "provisional_tier": risk_row[2],
+         "basis": risk_row[3], "factors": risk_row[4], "missing_evidence": risk_row[5],
+         "rationale": risk_row[6], "assurance_verdict": risk_row[7]}
+        if risk_row else None
+    )  # fmt: skip
+    # a tier is shown as business risk only when it is complete AND independently reproduced
+    business_risk = risk["tier"] if risk and risk["assurance_verdict"] == "ACCEPT" else None
     pack = c.packs.get(run["policy_version"])
     matched = None
     if pack is not None:
@@ -303,9 +330,10 @@ def finding_detail(
         "risk_explanation": {
             "deterministic": {"severity": body["severity"], "severity_source": body["severity_source"],
                               "confidence": body["confidence"], "policy_version": body["policy_version"]},
-            "business_risk": body["business_risk"],  # None until an approved rubric exists
+            "business_risk": business_risk,  # None unless the rubric inputs were complete
+            "risk": risk, "scenarios": scenarios,
             "inferred_links": [], "assumptions": body["assumptions"],
-            "ai_narrative": None,  # AI is disabled; nothing is generated or implied
+            "ai_narrative": None,  # model text is attached to scenarios/recommendations, never here
         },
     }  # fmt: skip
 

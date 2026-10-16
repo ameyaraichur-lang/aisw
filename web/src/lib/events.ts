@@ -73,6 +73,8 @@ const STAGES = [
   ['collection', 'Collection (adapters)'],
   ['normalization', 'Evidence normalization'],
   ['policy', 'Policy evaluation'],
+  ['correlation', 'Risk and correlation'],
+  ['architecture', 'Architecture analysis'],
   ['assurance', 'Assurance'],
   ['report', 'Report review'],
 ] as const
@@ -137,19 +139,36 @@ export function deriveStages(events: RunEvent[]): Stage[] {
   }
 
   const toPolicy = phase('POLICY_EVALUATION')
+  const toCorrelation = phase('CORRELATION')
+  const toArchitecture = phase('ARCHITECTURE_ANALYSIS')
   const toAssurance = phase('ASSURANCE')
   if (toPolicy) {
-    st.policy.status = toAssurance ? 'succeeded' : 'running'
+    // runs recorded before M7 go straight from policy to assurance
+    const next = toCorrelation ?? toAssurance
+    st.policy.status = next ? 'succeeded' : 'running'
     st.policy.startedAt = toPolicy.occurred_at
-    st.policy.endedAt = toAssurance?.occurred_at ?? null
-    st.policy.detail = toAssurance ? 'Controls, findings and coverage computed' : 'Evaluating pinned policy pack'
+    st.policy.endedAt = next?.occurred_at ?? null
+    st.policy.detail = next ? 'Controls, findings and coverage computed' : 'Evaluating pinned policy pack'
+  }
+  if (toCorrelation) {
+    const next = toArchitecture ?? toAssurance
+    st.correlation.status = next ? 'succeeded' : 'running'
+    st.correlation.startedAt = toCorrelation.occurred_at
+    st.correlation.endedAt = next?.occurred_at ?? null
+    st.correlation.detail = next ? 'Risk rubric applied; scenarios built from recorded evidence' : 'Scoring findings with the versioned rubric'
+  }
+  if (toArchitecture) {
+    st.architecture.status = toAssurance ? 'succeeded' : 'running'
+    st.architecture.startedAt = toArchitecture.occurred_at
+    st.architecture.endedAt = toAssurance?.occurred_at ?? null
+    st.architecture.detail = toAssurance ? 'Draft recommendations prepared; nothing was changed' : 'Mapping findings to approved target patterns'
   }
   const report = [...at('report.ready'), ...at('report.partial')][0]
   if (toAssurance) {
     st.assurance.status = report ? 'succeeded' : 'running'
     st.assurance.startedAt = toAssurance.occurred_at
     st.assurance.endedAt = report?.occurred_at ?? null
-    st.assurance.detail = report ? 'Independent evidence checks complete' : 'Verifying evidence for each finding'
+    st.assurance.detail = report ? 'Independent checks complete' : 'Verifying findings, risks, scenarios and recommendations'
   }
   if (report) {
     st.report.status = report.type === 'report.partial' ? 'partial' : 'succeeded'

@@ -1,0 +1,267 @@
+{
+  "version": "1.0.0",
+  "status": "SAMPLE_NEEDS_OWNER_REVIEW",
+  "description": "Sample target patterns used to prove the pipeline. They are NOT the customer's approved architecture; replace with the customer's reference patterns before relying on any recommendation.",
+  "entries": {
+    "host_configuration": {
+      "catalog_id": "AC-HOST-1",
+      "title": "Harden host configuration to the approved baseline",
+      "target_pattern": "Hosts conform to the approved hardening baseline with drift detection",
+      "action": "Bring the affected hosts' configuration in line with the approved baseline, starting with the settings named in the findings",
+      "alternatives": [
+        "Compensating control: restrict administrative access paths until the baseline can be applied",
+        "Rebuild from a hardened image instead of in-place change"
+      ],
+      "prerequisites": [
+        "Approved baseline version for this OS",
+        "Configuration management tooling in place"
+      ],
+      "owner_questions": [
+        "Which team owns the baseline for this platform?"
+      ],
+      "validation_steps": [
+        "Re-run the same assessment after the change and compare the observation",
+        "Confirm the setting through the platform's own configuration view"
+      ],
+      "rollback": "Restore the previous configuration from the recorded backup or configuration management history",
+      "acceptance_test": "The previously failing check reports the expected value in a fresh assessment",
+      "assumptions": [
+        "Compatibility with dependent services has not been verified",
+        "Change windows and ownership must be confirmed by the asset owner"
+      ]
+    },
+    "identity_configuration": {
+      "catalog_id": "AC-IDENT-1",
+      "title": "Enforce the identity and credential policy",
+      "target_pattern": "Credential and authentication settings follow the approved identity policy",
+      "action": "Align the affected systems' credential settings with the approved identity policy",
+      "alternatives": [
+        "Delegate authentication to the central identity provider",
+        "Apply the policy through group policy or equivalent central control"
+      ],
+      "prerequisites": [
+        "Identity policy approved by the policy owner"
+      ],
+      "owner_questions": [
+        "Is a central identity provider available for these systems?"
+      ],
+      "validation_steps": [
+        "Re-run the assessment after the change",
+        "Verify with the identity team that the policy is applied centrally"
+      ],
+      "rollback": "Revert the setting to its previous value through the same configuration channel",
+      "acceptance_test": "The credential setting meets the policy value in a fresh assessment",
+      "assumptions": [
+        "Compatibility with dependent services has not been verified",
+        "Change windows and ownership must be confirmed by the asset owner"
+      ]
+    },
+    "logging": {
+      "catalog_id": "AC-LOG-1",
+      "title": "Enable the required audit logging",
+      "target_pattern": "Security-relevant events are logged and forwarded to central monitoring",
+      "action": "Enable audit logging on the affected hosts and confirm events reach the central log store",
+      "alternatives": [
+        "Forward existing local logs while full logging is planned"
+      ],
+      "prerequisites": [
+        "Central log store capacity and retention agreed"
+      ],
+      "owner_questions": [
+        "Who monitors the central log store?"
+      ],
+      "validation_steps": [
+        "Confirm test events appear in the central store",
+        "Re-run the assessment"
+      ],
+      "rollback": "Disable the added logging categories if they impact performance, keeping the minimum required set",
+      "acceptance_test": "Audit logging reports enabled in a fresh assessment and events are visible centrally",
+      "assumptions": [
+        "Compatibility with dependent services has not been verified",
+        "Change windows and ownership must be confirmed by the asset owner"
+      ]
+    },
+    "vulnerability": {
+      "catalog_id": "AC-VULN-1",
+      "title": "Remediate reported vulnerabilities in priority order",
+      "target_pattern": "Known vulnerabilities are remediated within the approved timeframes",
+      "action": "Plan remediation of the reported critical and high vulnerabilities on the affected assets, starting with the highest-risk asset",
+      "alternatives": [
+        "Virtual patching or access restriction while the fix is scheduled",
+        "Replace the affected component if no fix exists"
+      ],
+      "prerequisites": [
+        "Vendor fix or workaround available",
+        "Maintenance window agreed with the service owner"
+      ],
+      "owner_questions": [
+        "Is the vendor fix compatible with the installed application stack?",
+        "What is the support status of the affected software? (not assumed here)"
+      ],
+      "validation_steps": [
+        "Re-scan the same scope with the same feed after the change",
+        "Confirm the fixed version through the package inventory"
+      ],
+      "rollback": "Roll back to the previous package or snapshot per the change procedure",
+      "acceptance_test": "The vulnerability no longer appears in a fresh scan of the same scope",
+      "assumptions": [
+        "Compatibility with dependent services has not been verified",
+        "Change windows and ownership must be confirmed by the asset owner"
+      ]
+    },
+    "network_exposure": {
+      "catalog_id": "AC-NET-1",
+      "title": "Reduce exposure of legacy remote-access services",
+      "target_pattern": "Remote-access services are restricted to approved management networks and use encrypted protocols",
+      "action": "Restrict or retire the exposed legacy remote-access services identified in the findings",
+      "alternatives": [
+        "Place the service behind a bastion or VPN",
+        "Replace the service with an encrypted equivalent"
+      ],
+      "prerequisites": [
+        "Inventory of who still uses the service"
+      ],
+      "owner_questions": [
+        "Is the service still required, and by whom?"
+      ],
+      "validation_steps": [
+        "Re-run the bounded port assessment and compare open ports",
+        "Confirm with the network team that the rule change is in effect"
+      ],
+      "rollback": "Re-enable the previous access rule through the firewall change process",
+      "acceptance_test": "The legacy ports are no longer open in a fresh assessment from the same vantage point",
+      "assumptions": [
+        "Compatibility with dependent services has not been verified",
+        "Change windows and ownership must be confirmed by the asset owner"
+      ]
+    },
+    "cloud_posture": {
+      "catalog_id": "AC-CLOUD-1",
+      "title": "Correct cloud resource configuration",
+      "target_pattern": "Cloud resources follow the approved secure configuration baseline",
+      "action": "Correct the cloud resource settings named in the findings, starting with publicly exposed storage",
+      "alternatives": [
+        "Add a preventive guardrail so the setting cannot regress",
+        "Restrict access with a resource policy while the full fix is planned"
+      ],
+      "prerequisites": [
+        "Least-privilege role to make the change",
+        "Owner of the cloud account"
+      ],
+      "owner_questions": [
+        "Does any workload depend on the current access setting?"
+      ],
+      "validation_steps": [
+        "Re-run the cloud posture assessment for the same account and region",
+        "Review the change in the cloud audit trail"
+      ],
+      "rollback": "Restore the prior resource policy from version history or infrastructure-as-code",
+      "acceptance_test": "The check passes in a fresh assessment of the same account and region",
+      "assumptions": [
+        "Compatibility with dependent services has not been verified",
+        "Change windows and ownership must be confirmed by the asset owner"
+      ]
+    },
+    "web_security": {
+      "catalog_id": "AC-WEB-1",
+      "title": "Address reported web application weaknesses",
+      "target_pattern": "Web applications set the approved security headers and controls",
+      "action": "Review the reported web alerts with the application owner and schedule the fixes by risk",
+      "alternatives": [
+        "Add the missing controls at the reverse proxy or gateway",
+        "Accept and document risk where a fix is not feasible"
+      ],
+      "prerequisites": [
+        "Application owner and release process"
+      ],
+      "owner_questions": [
+        "Which team can change the application or its gateway?"
+      ],
+      "validation_steps": [
+        "Re-run the passive baseline against the same site",
+        "Verify the response headers directly"
+      ],
+      "rollback": "Revert the gateway or application configuration to the previous release",
+      "acceptance_test": "The alerts no longer appear in a fresh baseline of the same site",
+      "assumptions": [
+        "Compatibility with dependent services has not been verified",
+        "Change windows and ownership must be confirmed by the asset owner"
+      ]
+    },
+    "transport_security": {
+      "catalog_id": "AC-TLS-1",
+      "title": "Correct transport security configuration",
+      "target_pattern": "Public endpoints use currently supported TLS with valid, verifiable certificates",
+      "action": "Fix the certificate or protocol issues reported for the endpoint",
+      "alternatives": [
+        "Terminate TLS at a managed load balancer",
+        "Automate certificate renewal"
+      ],
+      "prerequisites": [
+        "Certificate authority and renewal process"
+      ],
+      "owner_questions": [
+        "Who owns the certificate lifecycle for this endpoint?"
+      ],
+      "validation_steps": [
+        "Re-run the passive URL smoke test",
+        "Check the chain with an independent TLS client"
+      ],
+      "rollback": "Reinstall the previous certificate and configuration",
+      "acceptance_test": "TLS verification succeeds with an acceptable remaining validity in a fresh smoke test",
+      "assumptions": [
+        "Compatibility with dependent services has not been verified",
+        "Change windows and ownership must be confirmed by the asset owner"
+      ]
+    },
+    "http_headers": {
+      "catalog_id": "AC-HDR-1",
+      "title": "Set the approved HTTP security headers",
+      "target_pattern": "Responses carry the approved security headers",
+      "action": "Add the missing security headers at the application or gateway",
+      "alternatives": [
+        "Set headers centrally at the reverse proxy"
+      ],
+      "prerequisites": [
+        "Application or gateway owner"
+      ],
+      "owner_questions": [
+        "Where are response headers managed for this service?"
+      ],
+      "validation_steps": [
+        "Re-run the passive URL smoke test",
+        "Inspect the response headers"
+      ],
+      "rollback": "Remove the added header if it breaks a client",
+      "acceptance_test": "The headers are present in a fresh smoke test",
+      "assumptions": [
+        "Compatibility with dependent services has not been verified",
+        "Change windows and ownership must be confirmed by the asset owner"
+      ]
+    },
+    "asset_governance": {
+      "catalog_id": "AC-GOV-1",
+      "title": "Complete asset ownership and criticality records",
+      "target_pattern": "Every asset has a named owner, a criticality and a recent inventory record",
+      "action": "Have the inventory owner supply owner, criticality and a fresh record for the listed assets",
+      "alternatives": [
+        "Run a discovery reconciliation against the cloud and endpoint inventories"
+      ],
+      "prerequisites": [
+        "Authoritative inventory and its owner"
+      ],
+      "owner_questions": [
+        "Who is accountable for the inventory source?"
+      ],
+      "validation_steps": [
+        "Re-import the inventory and compare",
+        "Confirm owners acknowledge their assets"
+      ],
+      "rollback": "Not applicable: records can be corrected again at any time",
+      "acceptance_test": "The listed assets show owner, criticality and a recent record after a fresh import",
+      "assumptions": [
+        "Ownership and criticality must come from the owner, never inferred"
+      ]
+    }
+  }
+}

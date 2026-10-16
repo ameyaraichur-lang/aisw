@@ -38,7 +38,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Evidence ingest: validate, redact, canonicalise, hash, write-once content-addressed store | Implemented (M3) | `tests/unit/test_evidence.py`; secret never reaches disk/DB/report |
 | Deterministic policy evaluation (JSON packs, pinned + hashed) | Implemented (M3) interim | Python evaluator behind `PolicyEvaluator`; OPA not installed (ADR-003) |
 | Findings, controls, coverage ledger (per segment) | Implemented (M3) | partial/zero/unreachable/unsupported/absent/unexpected all visible |
-| Minimal independent assurance (hash, freshness, scope, control IDs) | Implemented (M3 subset) | tamper/missing/stale/outage tests; full Agent 7 Planned (M7) |
+| Independent assurance of findings (hash, freshness, scope, control IDs) | Implemented (M3) | tamper/missing/stale/outage tests; extended to risks, scenarios, recommendations and narratives in M7 |
 | Report JSON + escaped HTML, partial banner, approval bound to report hash, SoD | Implemented (M3) | counts reconcile to DB in tests |
 | API: scope manifests, inventory, assessments, events, cancel, coverage, findings, reports | Implemented (M3) | `tests/integration/test_vertical_slice.py` |
 | Fixture adapter (synthetic scanner replay; non-prod only) | Implemented (M3), **Mocked data** | proves the pipeline, not any real tool |
@@ -53,7 +53,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Live run timeline (events-derived stages, task panel, event log), reconnect/stale/polling fallback, cancel | Implemented (M4) | `e2e/reconnect.spec.ts`, `src/lib/events.test.ts` |
 | Coverage, findings, evidence explorer, controls, report preview/download/approve | Implemented (M4) | partial/failed/denied/empty states covered |
 | Accessibility: axe WCAG 2.2 AA on 24 screens (0 violations), keyboard, reduced motion, non-colour status | Implemented (M4) | automated checks only; no manual screen-reader pass |
-| Review actions on findings, exceptions, asset graph, recommendations UI | Planned (M6/M7) | shown as planned, nothing simulated |
+| Review actions on findings, exceptions, asset graph | Planned | shown as planned, nothing simulated |
 | Production sign-in (OIDC via BFF cookie) | Planned | dev stub only |
 | Silent-stall detection for an open-but-dead stream | Planned | documented limitation (ADR-015) |
 | CI job for e2e | Unverified | written, never run on a runner |
@@ -73,7 +73,18 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Upload / import-parameter UI | Planned | API only; wizard cannot supply import ids |
 | Retention/purge of raw uploads | Planned (M8) | raw uploads keep the original (secret-redacted) file |
 | Live Nmap / Greenbone / ZAP / Wazuh / Prowler execution | Not planned for MVP imports; live Nmap only in M9 with authorisation | |
-| Agents 2–8, assurance, LLM gateway | Planned (M7) | |
+| Migration 0005: risk assessments, scenarios, recommendations, narratives, append-only `llm_calls`, ticket outbox (forced RLS, least-privilege grants, CHECKs against fabricated tiers/unreviewed acceptance) | Implemented (M7) | `tests/security/test_analysis_security.py` (17), `test_migrations.py` (reversible) |
+| Versioned risk rubric `risk-rubric-1.0.0`; tier never fabricated (unknown criticality -> no tier, labelled severity-only indication) | Implemented (M7), **sample weights need policy-owner approval** | `tests/unit/test_rubric.py` (25) |
+| Agent 5: evidence-backed same-asset scenarios, OBSERVED links only | Implemented (M7) | `tests/unit/test_correlation.py`; no attack-path/graph reasoning |
+| Agent 6: draft recommendations from a **sample** pattern catalog (traceable, effort unknown, owner questions, rollback, acceptance test, no commands/compliance/EOL claims) | Implemented (M7), **sample catalog** | `tests/unit/test_architecture.py` (18) |
+| Agent 7: full deterministic assurance (risk recomputation, scenario/recommendation/narrative checks, constituent rule, only ACCEPT reaches the report) | Implemented (M7) | `tests/unit/test_assurance_m7.py` (11), pipeline and API tests |
+| Agents 2-4 registry mapping (`GET /api/v1/agents`: agent -> adapters, AI state) | Implemented (M7) | every registered adapter must map to one agent (tested) |
+| LLM gateway: disabled by default, loopback-only client, no tools, no redirects, strict output schema, one retry, provenance | Implemented (M7), **stub model and local fake runtime only; no weights downloaded** | `tests/evaluation/` (40: groundedness, hallucinated CVE/control/IP/URL/port/tier/asset, prompt injection, tool-call attempts, malformed/timeout/outage, secrets never reach the model) |
+| AI on/off equivalence: outage or rejection leaves deterministic report identical; model never called under the run lock | Implemented (M7) | `tests/integration/test_analysis_pipeline.py` (13) |
+| Recommendation decisions (ACCEPT/DEFER/REJECT with reason, approver only, never executes) and ticket **drafts** (off by default, outbox DRAFT only) | Implemented (M7) | `tests/integration/test_analysis_api.py` (12) |
+| UI: Architecture & Modernization workbench, run Analysis tab, finding risk panel, analysis timeline stages, AI labelling | Implemented (M7) | `e2e/analysis.spec.ts` (3), axe on new screens |
+| Real model behaviour, quality and latency; model licence review | Unverified / Planned | needs an approved open-source model and your go-ahead to run one locally |
+| Approved architecture catalog and rubric weights (policy owner) | Planned | the shipped ones are samples |
 | SBOM / licence gate, runbooks, scorecard | Planned (M8) | |
 | Live external tests (example.com, scanme.nmap.org, Juice Shop) | Not started (M9; needs explicit authorisation) | |
 | Docker/compose, OPA, Postgres | Not available locally | see reconnaissance.md |

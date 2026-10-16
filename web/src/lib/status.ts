@@ -41,6 +41,8 @@ export const RUN_STATE_DISPLAY: Record<string, Display> = {
   ASSESSMENT_DISPATCH: { icon: '▶', label: 'Collecting', tone: 'info' },
   NORMALIZATION: { icon: '▶', label: 'Normalizing', tone: 'info' },
   POLICY_EVALUATION: { icon: '▶', label: 'Evaluating policy', tone: 'info' },
+  CORRELATION: { icon: '▶', label: 'Risk and correlation', tone: 'info' },
+  ARCHITECTURE_ANALYSIS: { icon: '▶', label: 'Architecture analysis', tone: 'info' },
   ASSURANCE: { icon: '▶', label: 'Assurance', tone: 'info' },
   REPORT_READY: { icon: '✓', label: 'Report ready', tone: 'ok' },
   PARTIAL: { icon: '◑', label: 'Partial', tone: 'warn' },
@@ -67,6 +69,14 @@ export const VERDICT_DISPLAY: Record<string, Display> = {
   ACCEPT: { icon: '✓', label: 'Authoritative (assurance accepted)', tone: 'ok' },
   NEEDS_REVIEW: { icon: '?', label: 'Pending review (not authoritative)', tone: 'warn' },
   REJECT: { icon: '✕', label: 'Rejected by assurance', tone: 'bad' },
+}
+
+export const RECOMMENDATION_STATUS_DISPLAY: Record<string, Display> = {
+  DRAFT: { icon: '…', label: 'Draft: awaiting a human decision', tone: 'neutral' },
+  NEEDS_REVIEW: { icon: '?', label: 'Deferred: needs owner input', tone: 'warn' },
+  APPROVED_FOR_PLANNING: { icon: '✓', label: 'Accepted for planning (nothing was changed)', tone: 'ok' },
+  REJECTED: { icon: '✕', label: 'Rejected', tone: 'bad' },
+  IMPLEMENTED_PENDING_VALIDATION: { icon: '◐', label: 'Implemented, pending validation', tone: 'info' },
 }
 
 export const TERMINAL_RUN_STATES = new Set(['CLOSED', 'FAILED', 'CANCELLED', 'EXPIRED', 'PARTIAL', 'REPORT_READY'])

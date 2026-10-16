@@ -73,6 +73,14 @@ class Slice:
 
         self.fixture.execute = counting  # type: ignore[union-attr,method-assign]
 
+    def enable_ai(self, model: Any) -> None:
+        """Turn AI on for this harness with a scripted stub: no weights, no network."""
+        self.container.settings = Settings(
+            env="test", dev_auth_stub=True, ai_enabled=True, model_id="stub-model-0",
+            model_license="Apache-2.0",
+        )  # fmt: skip
+        self.worker.model = model
+
     # ---- API helpers -----------------------------------------------------------------------
     def call(self, method: str, url: str, user: str, **kw: Any) -> Any:
         headers = {**auth(user), **kw.pop("headers", {})}

@@ -63,8 +63,8 @@ describe('deriveStages', () => {
     expect(s.authorization.status).toBe('succeeded')
     expect(s.collection.status).toBe('running')
     expect(s.collection.detail).toBe('0 of 1 task(s) finished')
-    expect(['normalization', 'policy', 'assurance', 'report'].map((k) => s[k].status)).toEqual([
-      'pending', 'pending', 'pending', 'pending',
+    expect(['normalization', 'policy', 'correlation', 'architecture', 'assurance', 'report'].map((k) => s[k].status)).toEqual([
+      'pending', 'pending', 'pending', 'pending', 'pending', 'pending',
     ])
   })
   it('full successful run', () => {
@@ -74,13 +74,25 @@ describe('deriveStages', () => {
       ev(5, 'evidence.batch.stored', { asset_count: 3, observation_count: 8 }),
       ev(6, 'task.completed', { task_id: 't1', status: 'SUCCEEDED', warning_codes: [], error_codes: [] }),
       ev(7, 'phase.changed', { from: 'ASSESSMENT_DISPATCH', to: 'POLICY_EVALUATION' }),
-      ev(8, 'phase.changed', { from: 'POLICY_EVALUATION', to: 'ASSURANCE' }),
-      ev(9, 'report.ready', { report_id: 'r' }),
+      ev(8, 'phase.changed', { from: 'POLICY_EVALUATION', to: 'CORRELATION' }),
+      ev(9, 'phase.changed', { from: 'CORRELATION', to: 'ARCHITECTURE_ANALYSIS' }),
+      ev(10, 'phase.changed', { from: 'ARCHITECTURE_ANALYSIS', to: 'ASSURANCE' }),
+      ev(11, 'report.ready', { report_id: 'r' }),
     ])
-    expect(Object.values(s).map((x) => x.status)).toEqual([
-      'succeeded', 'succeeded', 'succeeded', 'succeeded', 'succeeded', 'succeeded',
-    ])
+    expect(Object.values(s).map((x) => x.status)).toEqual(Array(8).fill('succeeded'))
     expect(s.normalization.detail).toContain('3 asset(s), 8 observation(s)')
+    expect(s.architecture.detail).toContain('nothing was changed')
+  })
+  it('shows the analysis stages as running while they run', () => {
+    const upto = [...base, ev(4, 'task.completed', { task_id: 't1', status: 'SUCCEEDED' }), ev(5, 'phase.changed', { to: 'POLICY_EVALUATION' }), ev(6, 'phase.changed', { to: 'CORRELATION' })]
+    expect(by(upto).policy.status).toBe('succeeded')
+    expect(by(upto).correlation.status).toBe('running')
+    expect(by(upto).architecture.status).toBe('pending')
+    expect(by([...upto, ev(7, 'phase.changed', { to: 'ARCHITECTURE_ANALYSIS' })]).architecture.status).toBe('running')
+  })
+  it('runs recorded before the analysis phases still read correctly', () => {
+    const s = by([...base, ev(4, 'task.completed', { task_id: 't1', status: 'SUCCEEDED' }), ev(5, 'phase.changed', { to: 'POLICY_EVALUATION' }), ev(6, 'phase.changed', { to: 'ASSURANCE' }), ev(7, 'report.ready', {})])
+    expect([s.policy.status, s.correlation.status, s.architecture.status, s.assurance.status]).toEqual(['succeeded', 'pending', 'pending', 'succeeded'])
   })
   it('partial task and partial report stay partial, never green', () => {
     const s = by([

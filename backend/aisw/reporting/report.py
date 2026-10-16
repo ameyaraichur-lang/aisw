@@ -8,7 +8,7 @@ can see what the authoritative dataset excludes. A partial run carries a promine
 from __future__ import annotations
 
 import html
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
@@ -42,6 +42,13 @@ class ReportInputs:
     run_partial: bool
     generated_at: datetime
     notice: str | None = None
+    # M7 analysis layer. Everything here is already assurance-ACCEPTed (or counted, never listed).
+    risks: dict[str, dict[str, Any]] = field(default_factory=dict)  # finding_id -> risk assessment
+    scenarios: list[dict[str, Any]] = field(default_factory=list)
+    recommendations: list[dict[str, Any]] = field(default_factory=list)
+    analysis_excluded: dict[str, int] = field(default_factory=dict)  # e.g. scenarios_rejected: 2
+    ai: dict[str, Any] = field(default_factory=lambda: {"mode": "disabled"})
+    model_versions: list[str] = field(default_factory=list)
 
 
 def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
@@ -66,6 +73,19 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
         limitations.append(
             f"{len(inp.needs_review)} candidate finding(s) await review and are not authoritative."
         )
+    phrases = {
+        "failed": "failed independent assurance and are excluded",
+        "needs_review": "await review and are not authoritative",
+    }
+    for key, n in sorted(inp.analysis_excluded.items()):
+        kind, _, status = key.partition("_")
+        if n and status in phrases:
+            limitations.append(f"{n} candidate {kind}(s) {phrases[status]}.")
+    if inp.ai.get("mode") == "enabled" and inp.ai.get("not_shown"):
+        limitations.append(
+            f"AI-written summaries were unavailable or not accepted for {inp.ai['not_shown']} item(s); "
+            "the deterministic description is shown instead."
+        )
     if not inp.ledgers:
         limitations.append("No coverage information was produced.")
 
@@ -88,12 +108,17 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
         "run_id": inp.run_id, "project_id": inp.project_id,
         "scope_manifest_hash": inp.manifest_hash, "scope_manifest_version": inp.manifest_version,
         "policy_versions": [inp.policy_version], "policy_pack_hash": inp.pack_hash,
-        "tool_versions": tools, "model_versions": [],
+        "tool_versions": tools, "model_versions": inp.model_versions,
         "generated_at": inp.generated_at.isoformat(),
         "banner": banner, "notice": inp.notice, "disclaimer": DISCLAIMER, "limitations": limitations,
         "coverage_complete": coverage_complete,
         "coverage": [L.model_dump(mode="json") for L in inp.ledgers],
-        "controls": inp.controls, "findings": inp.accepted,
+        "controls": inp.controls,
+        "findings": [
+            {**f, "risk": inp.risks[f["finding_id"]]} if f["finding_id"] in inp.risks else f
+            for f in inp.accepted
+        ],
+        "scenarios": inp.scenarios, "recommendations": inp.recommendations, "ai": inp.ai,
         "finding_counts": counts,
         "assurance": {
             "accepted": len(inp.accepted), "needs_review": len(inp.needs_review),
@@ -104,7 +129,7 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
     bundle = ReportBundle(
         report_id=f"rep-{inp.run_id}", tenant_id=inp.tenant_id, project_id=inp.project_id,
         run_id=inp.run_id, scope_manifest_hash=inp.manifest_hash,
-        policy_versions=[inp.policy_version], tool_versions=tools, model_versions=[],
+        policy_versions=[inp.policy_version], tool_versions=tools, model_versions=inp.model_versions,
         coverage_complete=coverage_complete, limitations=limitations, finding_counts=counts,
         evidence_manifest_hash=canonical_hash(manifest), report_hash=canonical_hash(body),
         generated_at=inp.generated_at,
@@ -116,10 +141,59 @@ def _e(value: Any) -> str:
     return html.escape(str(value), quote=True)
 
 
+def _risk_cell(risk: dict[str, Any] | None) -> str:
+    if not risk:
+        return "-"
+    if risk.get("tier"):
+        return _e(f"{risk['tier']} (rubric {risk['rubric_version']})")
+    return _e(
+        f"Not rated: criticality unknown (severity-only indication {risk['provisional_tier']})"
+    )
+
+
+def _narrative_html(n: dict[str, Any] | None) -> str:
+    if not n:
+        return ""
+    claims = "".join(f"<li>{_e(c['text'])}</li>" for c in n["claims"])
+    return (
+        f"<p><em>AI-written summary, checked against recorded evidence (model {_e(n['model_id'])}, "
+        f"prompt {_e(n['prompt_version'])}).</em> {_e(n['summary'])}</p><ul>{claims}</ul>"
+    )
+
+
+def _analysis_html(body: dict[str, Any]) -> str:
+    out = ""
+    if body.get("scenarios"):
+        out += "<h2>Correlated scenarios</h2>"
+        for s in body["scenarios"]:
+            tier = _e(s["tier"]) if s.get("tier") else "not rated (inputs incomplete)"
+            out += (
+                f"<h3>{_e(s['title'])}</h3><p>Asset {_e(s['asset_id'])} | risk tier {tier} | "
+                f"findings {_e(', '.join(s['finding_ids']))}</p>"
+                f"<p>Assumptions: {_e('; '.join(s['assumptions']) or 'none')}</p>"
+                f"<p>Validation steps: {_e('; '.join(s['validation_steps']))}</p>"
+                f"{_narrative_html(s.get('narrative'))}"
+            )
+    if body.get("recommendations"):
+        out += "<h2>Recommendations (draft, for planning only)</h2>"
+        for r in body["recommendations"]:
+            tier = _e(r["risk_tier"]) if r.get("risk_tier") else "not rated"
+            questions = "".join(f"<li>{_e(q)}</li>" for q in r["owner_questions"])
+            out += (
+                f"<h3>{_e(r['title'])}</h3><p>Pattern {_e(r['catalog_ref'])} | risk tier {tier} | "
+                f"findings {_e(', '.join(r['finding_refs']))} | effort: unknown</p>"
+                f"<p>Target: {_e(r['target_pattern'])}</p><p>Action: {_e(r['action'])}</p>"
+                f"<p>Rollback: {_e(r['rollback'])}</p><p>Acceptance test: {_e(r['acceptance_test'])}</p>"
+                f"<p>Owner questions:</p><ul>{questions or '<li>None</li>'}</ul>"
+                f"{_narrative_html(r.get('narrative'))}"
+            )
+    return out
+
+
 def render_html(body: dict[str, Any]) -> str:
     """Static HTML; every value is escaped (evidence-derived strings are untrusted)."""
     rows = "".join(
-        f"<tr><td>{_e(f['severity'])}</td><td>{_e(f['title'])}</td>"
+        f"<tr><td>{_e(f['severity'])}</td><td>{_risk_cell(f.get('risk'))}</td><td>{_e(f['title'])}</td>"
         f"<td>{_e(', '.join(f['affected_assets']))}</td>"
         f"<td>{_e(', '.join(f['evidence_refs']))}</td></tr>"
         for f in body["findings"]
@@ -144,9 +218,10 @@ def render_html(body: dict[str, Any]) -> str:
         f"<p>Run {_e(body['run_id'])} | scope hash {_e(body['scope_manifest_hash'])} | "
         f"policy {_e(', '.join(body['policy_versions']))} | "
         f"report generated {_e(body['generated_at'])}</p>"
-        f"<h2>Findings ({counts})</h2><table><thead><tr><th>Severity</th><th>Title</th>"
+        f"<h2>Findings ({counts})</h2><table><thead><tr><th>Severity</th><th>Risk tier</th><th>Title</th>"
         f"<th>Assets</th><th>Evidence</th></tr></thead><tbody>{rows}</tbody></table>"
         "<h2>Coverage</h2><table><thead><tr><th>Segment</th><th>Expected</th><th>Reconciled</th>"
         f"<th>Unknown</th><th>Unsupported</th><th>Reasons</th></tr></thead><tbody>{cov}</tbody></table>"
+        f"{_analysis_html(body)}"
         f"<h2>Limitations</h2><ul>{limits}</ul></main></body></html>"
     )

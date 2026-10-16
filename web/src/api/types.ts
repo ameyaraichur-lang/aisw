@@ -186,10 +186,98 @@ export interface FindingDetail {
   risk_explanation: {
     deterministic: { severity: string; severity_source: string; confidence: string; policy_version: string }
     business_risk: string | null
+    risk: RiskInfo | null
+    scenarios: { scenario_id: string; title: string; tier: string | null; basis: string }[]
     inferred_links: string[]
     assumptions: string[]
     ai_narrative: string | null
   }
+}
+export interface RiskInfo {
+  rubric_version: string
+  tier: string | null
+  provisional_tier: string
+  basis: 'COMPLETE' | 'NEEDS_POLICY_REVIEW'
+  factors: { severity: string; criticality: string | null; exposure: string; evidence_fresh: boolean; corroborating_sources: number }
+  missing_evidence: string[]
+  rationale: string
+  assurance_verdict: string | null
+}
+export interface Narrative {
+  summary: string
+  claims: { text: string; finding_ids: string[]; asset_ids: string[] }[]
+  open_questions: string[]
+  model_id: string | null
+  prompt_version: string | null
+  ai_generated?: boolean
+}
+export interface Scenario {
+  scenario_id: string
+  asset_id: string
+  title: string
+  finding_ids: string[]
+  chain: { finding_id: string; evidence_ref: string; basis: string; note: string | null }[]
+  tier: string | null
+  basis: 'COMPLETE' | 'NEEDS_POLICY_REVIEW'
+  confidence: string
+  assumptions: string[]
+  missing_evidence: string[]
+  validation_steps: string[]
+  assurance_verdict: string | null
+  authoritative: boolean
+  narrative: Narrative | null
+}
+export interface Recommendation {
+  recommendation_id: string
+  run_id?: string
+  project_name?: string
+  title: string | null
+  catalog_ref: string | null
+  target_pattern: string | null
+  current_state: string | null
+  action: string
+  alternatives: string[]
+  dependencies: string[]
+  effort: { value: string | null; basis: string | null; is_estimate: boolean }
+  owner_questions: string[]
+  rollback: string | null
+  acceptance_test: string | null
+  assumptions: string[]
+  validation_steps: string[]
+  finding_refs: string[]
+  affected_assets: string[]
+  risk_tier: string | null
+  status: 'DRAFT' | 'NEEDS_REVIEW' | 'APPROVED_FOR_PLANNING' | 'REJECTED' | 'IMPLEMENTED_PENDING_VALIDATION'
+  assurance_verdict: string | null
+  authoritative: boolean
+  decided_by: string | null
+  decided_at: string | null
+  decision_reason: string | null
+  narrative: Narrative | null
+  executable: false
+}
+export interface AgentInfo {
+  agent_id: number
+  name: string
+  purpose: string
+  kind: string
+  adapters: string[]
+  outputs: string[]
+  read_only: boolean
+  ai_capable: boolean
+  ai_active: boolean
+}
+export interface AgentsResponse {
+  agents: AgentInfo[]
+  ai: { enabled: boolean; model_id: string | null; model_license: string | null; endpoint_local_only: boolean; tools_available_to_model: boolean; may_decide: boolean }
+  ticket_drafts_enabled: boolean
+  rubric_version: string
+}
+export interface TicketDraft {
+  outbox_id: string
+  status: 'DRAFT'
+  delivered: false
+  payload: { summary: string; description: string; labels: string[]; delivery: string }
 }
 export interface ReportList {
   report_id: string
@@ -211,7 +299,11 @@ export interface ReportBody {
   policy_versions: string[]
   scope_manifest_hash: string
   generated_at: string
-  findings: Finding[]
+  findings: (Finding & { risk?: RiskInfo })[]
+  scenarios?: Scenario[]
+  recommendations?: Recommendation[]
+  ai?: { mode: string; narratives_total?: number; narratives_accepted?: number; not_shown?: number }
+  model_versions?: string[]
 }
 export interface Overview {
   as_of: string

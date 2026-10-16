@@ -71,7 +71,7 @@ test('operator drafts, approver approves, operator launches, reviewer closes: fu
   await expect(page.locator('dl').filter({ hasText: 'Observed' }).getByText('"yes"')).toBeVisible()
   await expect(page.locator('dl').filter({ hasText: 'Expected' }).getByText('"no"')).toBeVisible()
   await expect(page.getByText('Needs policy-owner review')).toBeVisible() // external mapping is not trusted
-  await expect(page.getByText(/AI features are disabled/)).toBeVisible()
+  await expect(page.getByText(/with AI disabled none exists/)).toBeVisible()
   await page.goBack()
 
   // 7) the operator role cannot read reports (server-enforced); the reviewer can and approves

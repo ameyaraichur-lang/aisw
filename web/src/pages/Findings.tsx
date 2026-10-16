@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useAllFindings, useFinding, useRuns } from '../api/hooks'
 import { Badge, Banner, CopyButton, DataState, PageHeader, Pagination, ShortHash } from '../components/ui'
+import { RiskPanel } from '../components/analysis'
 import { fmtTime } from '../lib/format'
 import { OUTCOME_DISPLAY, SEVERITY_DISPLAY, VERDICT_DISPLAY, display } from '../lib/status'
 import { ControlsTable } from './RunDetail'
@@ -73,7 +74,7 @@ export function FindingDetail() {
               <Badge d={display(VERDICT_DISPLAY, d.assurance_verdict)} />
               <span className="chip">lifecycle {f.lifecycle}</span>
               <span className="chip">confidence {f.confidence}</span>
-              <span className="chip">business risk: {f.business_risk ?? 'not assessed'}</span>
+              <span className="chip">business risk: {d.risk_explanation.business_risk ?? 'not rated'}</span>
             </p>
             {!d.authoritative ? <Banner tone="warn" role="alert" title="Not authoritative">Independent assurance has not accepted this finding, so it is excluded from the report dataset.</Banner> : null}
             <div className="split split--2">
@@ -108,14 +109,17 @@ export function FindingDetail() {
                   <dl className="kv">
                     <dt>Severity</dt><dd>{d.risk_explanation.deterministic.severity} from <code>{d.risk_explanation.deterministic.severity_source}</code></dd>
                     <dt>Confidence</dt><dd>{d.risk_explanation.deterministic.confidence}</dd>
-                    <dt>Business risk</dt><dd>{d.risk_explanation.business_risk ?? 'Not assessed: no approved risk rubric or owner-supplied criticality exists.'}</dd>
                   </dl>
+                  <h3>Risk rubric</h3>
+                  <RiskPanel risk={d.risk_explanation.risk} />
+                  <h3>Scenarios that include this finding</h3>
+                  {d.risk_explanation.scenarios.length ? <ul>{d.risk_explanation.scenarios.map((s) => <li key={s.scenario_id}>{s.title} ({s.tier ?? 'not rated'}); see <Link to={`/assessments/${runId}/analysis`}>the run's analysis</Link></li>)}</ul> : <p className="muted">None.</p>}
                   <h3>Inferred links</h3>
                   <p>{d.risk_explanation.inferred_links.length ? d.risk_explanation.inferred_links.join(', ') : 'None. Nothing here is inferred.'}</p>
                   <h3>Assumptions</h3>
                   <ul>{d.risk_explanation.assumptions.map((a) => <li key={a}>{a}</li>)}</ul>
                   <h3>AI narrative</h3>
-                  <p className="muted">{d.risk_explanation.ai_narrative ?? 'Not available: AI features are disabled, so no narrative is generated or implied.'}</p>
+                  <p className="muted">{d.risk_explanation.ai_narrative ?? 'Not shown here. Any AI-written summary is attached to a scenario or recommendation, labelled, and only after validation; with AI disabled none exists.'}</p>
                 </section>
               </div>
               <div>

@@ -1,0 +1,131 @@
+{
+  "$defs": {
+    "RiskFactors": {
+      "additionalProperties": false,
+      "properties": {
+        "corroborating_sources": {
+          "minimum": 1,
+          "title": "Corroborating Sources",
+          "type": "integer"
+        },
+        "criticality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Criticality"
+        },
+        "evidence_fresh": {
+          "title": "Evidence Fresh",
+          "type": "boolean"
+        },
+        "exposure": {
+          "enum": [
+            "VERIFIED",
+            "CONFIGURED",
+            "UNKNOWN"
+          ],
+          "title": "Exposure",
+          "type": "string"
+        },
+        "severity": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "severity",
+        "criticality",
+        "exposure",
+        "evidence_fresh",
+        "corroborating_sources"
+      ],
+      "title": "RiskFactors",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "basis": {
+      "enum": [
+        "COMPLETE",
+        "NEEDS_POLICY_REVIEW"
+      ],
+      "title": "Basis",
+      "type": "string"
+    },
+    "factors": {
+      "$ref": "#/$defs/RiskFactors"
+    },
+    "finding_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Finding Id",
+      "type": "string"
+    },
+    "missing_evidence": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Missing Evidence",
+      "type": "array"
+    },
+    "provisional_tier": {
+      "enum": [
+        "P0",
+        "P1",
+        "P2",
+        "P3"
+      ],
+      "title": "Provisional Tier",
+      "type": "string"
+    },
+    "rationale": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Rationale",
+      "type": "string"
+    },
+    "rubric_version": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Rubric Version",
+      "type": "string"
+    },
+    "tier": {
+      "anyOf": [
+        {
+          "enum": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Tier"
+    }
+  },
+  "required": [
+    "finding_id",
+    "rubric_version",
+    "tier",
+    "provisional_tier",
+    "basis",
+    "factors",
+    "rationale"
+  ],
+  "title": "RiskAssessment",
+  "type": "object"
+}

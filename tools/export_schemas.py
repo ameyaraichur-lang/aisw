@@ -11,8 +11,9 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from aisw.contracts import assurance, domain, envelope, manifest
+from aisw.contracts import analysis, assurance, domain, envelope, manifest
 from aisw.contracts.audit import AuditEventRecord
+from aisw.llm.schema import NarrativeOutput
 
 MODELS: list[type[BaseModel]] = [
     envelope.TaskEnvelope,
@@ -31,8 +32,11 @@ MODELS: list[type[BaseModel]] = [
     domain.Validation,
     domain.RiskException,
     domain.CoverageLedger,
+    analysis.RiskAssessment,
+    analysis.CorrelationScenario,
     assurance.AssuranceResult,
     assurance.ReportBundle,
+    NarrativeOutput,
 ]
 OUT = Path(__file__).resolve().parents[1] / "schemas"
 

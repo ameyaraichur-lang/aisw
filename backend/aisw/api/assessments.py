@@ -33,6 +33,7 @@ class LaunchRequest(StrictModel):
     report_profile: NonEmpty | None = None
     adapter_params: dict[Slug, dict[str, Any]] = Field(default_factory=dict)
     client_context: dict[str, str] = Field(default_factory=dict)
+    ai_assist: bool = False  # opt-in per run; honoured only when AI is enabled in settings
 
 
 class ReportApprove(StrictModel):
@@ -84,10 +85,13 @@ def launch(
             raise ScopeDenied(["DOMAIN_NOT_IN_MANIFEST"])
         if not set(body.adapter_params) <= set(manifest.body.allowed_adapters):
             raise ScopeDenied(["ADAPTER_PARAMS_FOR_UNLISTED_ADAPTER"])
+        if body.ai_assist and not c.settings.ai_enabled:
+            raise ScopeDenied(["AI_NOT_ENABLED"])
         create_run(
             conn, run_id=run_id, manifest=manifest, permit=permit, requested_by=actor.actor_id,
             assessment_profile=body.assessment_profile, adapter_params=body.adapter_params,
             registry=c.registry, now=c.clock(),
+            ai_mode="enabled" if body.ai_assist else "disabled",
         )  # fmt: skip
 
     auth = svc.authorize_launch(
@@ -95,7 +99,8 @@ def launch(
         manifest_hash=body.scope_manifest_hash, task_types=None, idempotency_key=idempotency_key,
         cid=cid, on_authorized=hook,
         request_extra={"profile": body.assessment_profile, "domains": sorted(body.requested_domains),
-                       "params": body.adapter_params, "report": body.report_profile},
+                       "params": body.adapter_params, "report": body.report_profile,
+                       "ai": body.ai_assist},
     )  # fmt: skip
     if auth.replayed:
         response.headers["Idempotent-Replay"] = "true"

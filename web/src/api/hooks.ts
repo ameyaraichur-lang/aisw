@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { api } from './client'
 import type {
-  AuditItem, AuthMode, ControlRow, CoverageResponse, Connector, FindingDetail, FindingRow,
+  AgentsResponse, AuditItem, Recommendation, Scenario, AuthMode, ControlRow, CoverageResponse, Connector, FindingDetail, FindingRow,
   InventoryEntry, ManifestSummary, Me, Overview, Page, PolicyPackInfo, Project, ReportBody,
   ReportList, RunListItem, RunStatus, TaskView,
 } from './types'
@@ -53,3 +53,15 @@ export const useReportBody = (reportId: string | undefined) =>
   useQuery({ queryKey: ['report', reportId], queryFn: () => api<ReportBody>(`/reports/${reportId}`), enabled: !!reportId })
 export const useAudit = (p: { limit: number; offset: number; result?: string }) =>
   useQuery({ queryKey: ['audit', p], queryFn: () => api<Page<AuditItem>>(`/audit/events${qs(p)}`), placeholderData: keepPreviousData, retry: false })
+
+export const useAgents = () => useQuery({ queryKey: ['agents'], queryFn: () => api<AgentsResponse>('/agents'), staleTime: 60_000 })
+export const useRunScenarios = (runId: string) =>
+  useQuery({ queryKey: ['run', runId, 'scenarios'], queryFn: () => api<Scenario[]>(`/assessments/${runId}/scenarios`) })
+export const useRunRecommendations = (runId: string) =>
+  useQuery({ queryKey: ['run', runId, 'recommendations'], queryFn: () => api<Recommendation[]>(`/assessments/${runId}/recommendations`) })
+export const useAllRecommendations = (p: { status?: string; run_id?: string; limit: number; offset: number }) =>
+  useQuery({
+    queryKey: ['recommendations', p],
+    queryFn: () => api<Page<Recommendation & { run_id: string; project_name: string }>>(`/recommendations${qs(p)}`),
+    placeholderData: keepPreviousData,
+  })

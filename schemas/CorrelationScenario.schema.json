@@ -1,0 +1,167 @@
+{
+  "$defs": {
+    "ChainLink": {
+      "additionalProperties": false,
+      "properties": {
+        "basis": {
+          "$ref": "#/$defs/EdgeBasis"
+        },
+        "evidence_ref": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Evidence Ref",
+          "type": "string"
+        },
+        "finding_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "finding_id",
+        "evidence_ref",
+        "basis"
+      ],
+      "title": "ChainLink",
+      "type": "object"
+    },
+    "Confidence": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "title": "Confidence",
+      "type": "string"
+    },
+    "EdgeBasis": {
+      "enum": [
+        "OBSERVED",
+        "CONFIGURED",
+        "INFERRED"
+      ],
+      "title": "EdgeBasis",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "asset_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Asset Id",
+      "type": "string"
+    },
+    "assumptions": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Assumptions",
+      "type": "array"
+    },
+    "basis": {
+      "enum": [
+        "COMPLETE",
+        "NEEDS_POLICY_REVIEW"
+      ],
+      "title": "Basis",
+      "type": "string"
+    },
+    "chain": {
+      "items": {
+        "$ref": "#/$defs/ChainLink"
+      },
+      "minItems": 2,
+      "title": "Chain",
+      "type": "array"
+    },
+    "confidence": {
+      "$ref": "#/$defs/Confidence"
+    },
+    "finding_ids": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+        "type": "string"
+      },
+      "minItems": 2,
+      "title": "Finding Ids",
+      "type": "array"
+    },
+    "missing_evidence": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Missing Evidence",
+      "type": "array"
+    },
+    "scenario_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "title": "Scenario Id",
+      "type": "string"
+    },
+    "tier": {
+      "anyOf": [
+        {
+          "enum": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Tier"
+    },
+    "title": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "validation_steps": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Validation Steps",
+      "type": "array"
+    }
+  },
+  "required": [
+    "scenario_id",
+    "asset_id",
+    "title",
+    "finding_ids",
+    "chain",
+    "tier",
+    "basis",
+    "confidence",
+    "validation_steps"
+  ],
+  "title": "CorrelationScenario",
+  "type": "object"
+}

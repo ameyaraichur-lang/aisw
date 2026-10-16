@@ -15,12 +15,13 @@ from __future__ import annotations
 import json
 import random
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import Connection, Engine, text
 
+from aisw.agents.architecture import builtin_catalog
 from aisw.agents.assurance import ArtifactMeta, AssuranceContext, assess_finding
 from aisw.agents.discovery import KnownAsset, resolve_identity
 from aisw.contracts.base import canonical_hash
@@ -33,9 +34,14 @@ from aisw.evidence.ingest import IngestRejected, evidence_ref, prepare, store_ev
 from aisw.evidence.store import EvidenceStore
 from aisw.gateway.gateway import GatewayDenied, ToolGateway, ToolRequest
 from aisw.gateway.registry import AdapterOutput, AdapterRegistry
+from aisw.llm.client import DisabledModelClient, ModelClient
+from aisw.llm.gateway import LlmGateway, NarrativeResult
+from aisw.llm.schema import NarrativeSubject
+from aisw.orchestrator import analysis
 from aisw.orchestrator.events import append_event
 from aisw.policy.engine import PackRegistry, PolicyEvaluator, PolicyPack
 from aisw.policy.results import RuleResult, dedupe_key, finding_id, rollup
+from aisw.policy.rubric import builtin as builtin_rubric
 from aisw.reporting.coverage import build_ledger
 from aisw.reporting.report import ReportInputs, build_report
 
@@ -53,6 +59,8 @@ ADVANCEABLE = (
     "ASSESSMENT_DISPATCH",
     "NORMALIZATION",
     "POLICY_EVALUATION",
+    "CORRELATION",
+    "ARCHITECTURE_ANALYSIS",
     "ASSURANCE",
 )
 
@@ -70,6 +78,13 @@ class Worker:
     lease: timedelta = timedelta(minutes=5)
     freshness: timedelta = timedelta(hours=24)
     backoff_base_seconds: float = 2.0
+    # AI is optional: the default client refuses every call, so deterministic results stand alone.
+    model: ModelClient = field(default_factory=DisabledModelClient)
+    ai_scenario_narratives: bool = True
+    ai_recommendation_narratives: bool = True
+    model_timeout: float = 60.0
+    rubric_version: str = "1.0.0"
+    catalog_version: str = "1.0.0"
 
     # ------------------------------------------------------------------ main loop
     def step(self) -> bool:
@@ -462,13 +477,43 @@ class Worker:
                 return self._after_dispatch(conn, run)
             if state == "POLICY_EVALUATION":
                 self._policy_phase(conn, run)
-                self._set_state(conn, run, "ASSURANCE")
+                self._set_state(conn, run, "CORRELATION")
                 return True
-            if state == "ASSURANCE":
+            if state == "CORRELATION":
+                analysis.correlation_phase(
+                    conn, run, rubric=builtin_rubric(self.rubric_version), now=self.clock(),
+                    freshness=self.freshness,
+                )  # fmt: skip
+                self._set_state(conn, run, "ARCHITECTURE_ANALYSIS")
+                return True
+            if state == "ARCHITECTURE_ANALYSIS":
+                pending = analysis.architecture_phase(
+                    conn, run, catalog=builtin_catalog(self.catalog_version),
+                    scenario_ai=self.ai_scenario_narratives,
+                    recommendation_ai=self.ai_recommendation_narratives,
+                )  # fmt: skip
+                if not pending:
+                    self._set_state(conn, run, "ASSURANCE")
+                    return True
+            elif state == "ASSURANCE":
                 self._assurance_phase(conn, run)
                 self._report_phase(conn, run)
                 return True
-        return False
+            else:
+                return False
+        # Model calls happen OUTSIDE the run-row lock and any transaction: a slow or dead model can
+        # never hold the run hostage, and a crash here simply repeats this idempotent step.
+        gateway = LlmGateway(self.model, timeout=self.model_timeout)
+        results: list[tuple[NarrativeSubject, NarrativeResult]] = [
+            (s, gateway.narrate(s)) for s in pending
+        ]
+        with tenant_connection(self.engine, tenant) as conn:
+            run = self._run(conn, run_id, lock=True)
+            if run["state"] != "ARCHITECTURE_ANALYSIS":
+                return False  # another worker finished this step first
+            analysis.store_narratives(conn, run, results, self.clock())
+            self._set_state(conn, run, "ASSURANCE")
+        return True
 
     def _after_dispatch(self, conn: Connection, run: dict[str, Any]) -> bool:
         tasks = conn.execute(
@@ -687,6 +732,10 @@ class Worker:
                 text("UPDATE findings SET assurance_verdict=:v WHERE run_id=:r AND finding_id=:f"),
                 {"v": res.verdict.value, "r": run_id, "f": fid},
             )
+        analysis.assurance_analysis(
+            conn, run, ctx, rubric=builtin_rubric(self.rubric_version),
+            catalog=builtin_catalog(self.catalog_version),
+        )  # fmt: skip
 
     # ---- report ---------------------------------------------------------------------------
     def _report_phase(self, conn: Connection, run: dict[str, Any]) -> None:
@@ -762,6 +811,7 @@ class Worker:
                 controls=controls, accepted=accepted, needs_review=needs_review,
                 rejected_count=rejected, evidence=evidence, run_partial=run["partial"],
                 generated_at=now, notice=pack.report_notice,
+                **analysis.report_extras(conn, run),
             )
         )  # fmt: skip
         conn.execute(
