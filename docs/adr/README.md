@@ -30,5 +30,6 @@
 - [ADR-028: Egress allow-list: app-level scan zones plus generated host-firewall rules](ADR-028-egress-allow-list.md)
 - [ADR-029: Deployment packaging: four processes, secret files, a doctor, and no root](ADR-029-deployment-packaging.md)
 - [ADR-030: GitHub Actions as the CI system of record](ADR-030-ci-on-github-actions.md)
+- [ADR-031: OPA policy engine with packaged Rego, held equivalent to the Python evaluator](ADR-031-opa-policy-engine.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

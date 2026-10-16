@@ -84,6 +84,12 @@ def destinations(settings: Settings) -> list[Destination]:
     for h in settings.egress_extra_hosts:
         host, _, port = h.rpartition(":") if h.count(":") == 1 else (h, "", "")
         add("idp-extra", host, [int(port) if port else 443], ("api",))
+    if (
+        settings.policy_engine == "opa"
+        and settings.opa_url
+        and (o := _origin(settings.opa_url, 80))
+    ):
+        add("policy-engine", o[0], [o[1]], ROLES)
     kms = _origin(settings.kms_addr, 80) if settings.kms_addr else None
     if settings.signing_backend == "transit" and kms:
         add("kms", kms[0], [kms[1]], ROLES)  # api signs, both verify

@@ -2,9 +2,10 @@
 [Unit]
 Description=AISW assessment worker
 Documentation=file:///opt/aisw/deploy/README.md
-After=network-online.target postgresql.service aisw-bootstrap.service
+After=network-online.target postgresql.service aisw-bootstrap.service aisw-opa.service
 Wants=network-online.target
 Requires=aisw-bootstrap.service
+Wants=aisw-opa.service
 
 [Service]
 Type=exec

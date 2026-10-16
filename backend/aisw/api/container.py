@@ -41,6 +41,7 @@ from aisw.gateway.stores import AuditSink, DbAuditSink, DbAuthorizationStore
 from aisw.llm.factory import build_model_client, build_validation_client
 from aisw.orchestrator.worker import Worker
 from aisw.policy.engine import PackRegistry, PolicyEvaluator, PythonRuleEvaluator
+from aisw.policy.opa import OpaClient, OpaEvaluator
 
 
 @dataclass
@@ -142,8 +143,11 @@ def build_container(
         signer, keyring = local, KeyRing.from_signer(local)
     if evidence is None and settings.evidence_dir is not None:
         evidence = EvidenceStore(settings.evidence_dir)
+    evaluator: PolicyEvaluator = PythonRuleEvaluator()
+    if settings.policy_engine == "opa" and settings.opa_url:
+        evaluator = OpaEvaluator(OpaClient(settings.opa_url))
     return Container(
         settings=settings, engine=engine, registry=registry, packs=PackRegistry.builtin(),
-        evaluator=PythonRuleEvaluator(), clock=clock, resolver=resolver, signer=signer,
+        evaluator=evaluator, clock=clock, resolver=resolver, signer=signer,
         keyring=keyring, evidence=evidence, audit_sink=audit_sink,
     )  # fmt: skip

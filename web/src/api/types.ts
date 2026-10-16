@@ -43,6 +43,8 @@ export interface PolicyPackInfo {
   description: string
   rules: number
   framework: { name: string; version: string }
+  needs_opa: boolean
+  runnable: boolean
 }
 export interface ManifestSummary {
   manifest_id: string

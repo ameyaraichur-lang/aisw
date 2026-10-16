@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, ApiError, newIdempotencyKey } from '../api/client'
 import { useConnectors, useInventory, useManifests, usePolicyPacks, useProjects } from '../api/hooks'
-import type { Connector, GateResult, InventoryEntry, ManifestSummary } from '../api/types'
+import type { Connector, GateResult, InventoryEntry, ManifestSummary, PolicyPackInfo } from '../api/types'
 import { useSession } from '../auth/useSession'
 import { Badge, Banner, ConfirmDialog, DataState, ErrorView, PageHeader, ShortHash } from '../components/ui'
 import { fmtTime } from '../lib/format'
@@ -46,7 +46,7 @@ export function Wizard() {
   const packs = usePolicyPacks()
   const inv = useInventory(form.projectId || undefined)
 
-  const policy = form.policy || packs.data?.[0]?.key || ''
+  const policy = form.policy || packs.data?.find((p) => p.runnable)?.key || ''
 
   const targets = useMemo(() => form.targets.map((t) => { const [kind, ...r] = t.split('|'); return { kind, selector: r.join('|') } }), [form.targets])
   const usable = useMemo(
@@ -141,7 +141,7 @@ function ScopeStep({ form, set, inv }: { form: Form; set: SetFn; inv: ReturnType
   )
 }
 
-function AdapterStep({ form, set, usable, loading, packs }: { form: Form; set: SetFn; usable: Connector[]; loading: boolean; packs: { key: string; description: string }[] }) {
+function AdapterStep({ form, set, usable, loading, packs }: { form: Form; set: SetFn; usable: Connector[]; loading: boolean; packs: PolicyPackInfo[] }) {
   if (loading) return <p role="status" className="muted">Loading adapters…</p>
   return (
     <>
@@ -170,7 +170,7 @@ function AdapterStep({ form, set, usable, loading, packs }: { form: Form; set: S
       <div>
         <label htmlFor="pack">Policy pack (pinned and hashed for this run)</label>
         <select id="pack" value={form.policy} onChange={(e) => set('policy', e.target.value)}>
-          {packs.map((p) => <option key={p.key} value={p.key}>{p.key}</option>)}
+          {packs.map((p) => <option key={p.key} value={p.key} disabled={!p.runnable}>{p.key}{p.runnable ? '' : ' (needs the OPA policy engine)'}</option>)}
         </select>
         <p className="hint">{packs.find((p) => p.key === form.policy)?.description}</p>
       </div>

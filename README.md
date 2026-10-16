@@ -137,7 +137,7 @@ flowchart LR
 | Tool gateway, `net_guard` (SSRF/rebinding/redirects) | ✅ | Zero-dispatch asserted for every rejected case |
 | Durable worker (leases, fencing, bounded retries, backoff) | ✅ | Crash, repeated crash, late worker, retry storm tests |
 | Evidence ingest (redact, hash, write-once) | ✅ | Secrets never reach disk, DB or report |
-| Policy evaluation (JSON packs, pinned and hashed) | 🟡 | Python evaluator behind an interface; OPA not installed |
+| Policy evaluation (JSON packs, pinned and hashed; OPA/Rego, [ADR-031](docs/adr/ADR-031-opa-policy-engine.md)) | 🟡 | Python and OPA engines held equivalent by tests; Rego domain rules and framework mappings are proposals awaiting review |
 | Passive URL smoke adapter | 🟡 | Proven against a **local server only** |
 | Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; real tool versions unverified. API upload only (no UI) |
 | Risk rubric, scenarios, recommendations, Agent 7 | 🟡 | Rubric weights and the architecture catalog are **samples** awaiting policy-owner approval, labelled in reports and the console; see the [sign-off register](docs/implementation/signoffs.md) |
@@ -166,7 +166,7 @@ flowchart LR
 | Import upload UI; task dependency ordering between imports | ⛔ | Import the CMDB first through the API |
 | Retention UI/scheduler; ticket delivery (drafts only, by design) | ⛔ | |
 | Real customer environment (CMDB, cloud account, on-prem zones) | ⛔ | Everything is fixtures; customer integration is a separate authorised phase |
-| OPA, object-lock evidence storage, multi-node soak testing | ⛔ | |
+| Object-lock evidence storage, multi-node soak testing | ⛔ | |
 | Legal review of licences (LGPL `psycopg`) | ⛔ | Recorded PENDING in the [sign-off register](docs/implementation/signoffs.md) with owner and next step |
 
 ## Milestones

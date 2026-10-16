@@ -13,6 +13,7 @@ Either way, there are four processes:
 | API | `python -m aisw.api` | `aisw_app` | database, IdP, KMS; behind the web proxy |
 | worker | `python -m aisw.orchestrator` | `aisw_worker` | database, KMS, model endpoint, scan zones |
 | web | nginx serving `web/dist`, proxying `/api/` | none | API only |
+| opa (optional) | `opa run --server` on the packaged Rego (ADR-031) | none | none; reached by API and worker |
 
 `python -m aisw.doctor --role api|worker` checks a host before start-up. It exits 1 if any check FAILs.
 
@@ -63,7 +64,8 @@ Only the web service is published, and only on `127.0.0.1:8080`. Terminate TLS i
 4. Postgres 16: create the `aisw` database and a schema-owner role. Migration 0001 creates `aisw_app` and `aisw_worker`; bootstrap enables their login.
 5. Copy `deploy/systemd/aisw.env.example` to `/etc/aisw/aisw.env` and put the secret files in `/etc/aisw/secrets/` (root:root 0600). systemd hands them to the service as credentials.
 6. Create `/var/lib/aisw/evidence`, owned by `aisw` with mode 0700.
-7. `systemctl enable --now aisw-bootstrap aisw-api aisw-worker`.
+7. For the OPA engine, install the pinned binary and check its checksum: `curl -fsSLO https://github.com/open-policy-agent/opa/releases/download/v1.21.2/opa_linux_amd64_static`, then `echo "830ab11f61ffec760b5e19db0d7ad02bf037e13f5ef4d665faeaf17632177527  opa_linux_amd64_static" | sha256sum -c`. Install it as `/usr/local/bin/opa` (0755) and enable `aisw-opa`. The API and worker refuse to start if OPA serves different policy from the build.
+8. `systemctl enable --now aisw-bootstrap aisw-opa aisw-api aisw-worker`.
 
 Each long-running unit runs the doctor in `ExecStartPre`, so a misconfigured host refuses to start and the reason is in `journalctl -u aisw-api`. The units are sandboxed: `ProtectSystem=strict`, no capabilities, `@system-service` syscalls, and evidence is the only writable path.
 

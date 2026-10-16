@@ -26,6 +26,7 @@ from aisw.authz.signing import SigningError
 from aisw.core.config import Environment, ModelProvider, Settings, load_settings
 from aisw.core.db import make_engine
 from aisw.policy import signoffs
+from aisw.policy.opa import OpaClient, OpaError, OpaEvaluator, bundle_hash
 
 Status = Literal["PASS", "WARN", "FAIL"]
 MIGRATIONS = Path(__file__).resolve().parents[1] / "migrations"
@@ -147,6 +148,17 @@ def _egress(s: Settings, role: str) -> Check:
     return Check("egress_scan_zones", "PASS", ", ".join(s.egress_zones) or "not used by the API")
 
 
+def _policy_engine(s: Settings) -> Check:
+    if s.policy_engine == "opa" and s.opa_url:
+        try:
+            OpaEvaluator(OpaClient(s.opa_url))
+        except OpaError as exc:
+            return Check("policy_engine", "FAIL", str(exc))
+        return Check("policy_engine", "PASS", f"OPA at {s.opa_url} serves {bundle_hash()[:19]}")
+    return Check("policy_engine", "WARN" if s.env is Environment.PROD else "PASS",
+                 "interim Python evaluator; packs with Rego rules cannot run")  # fmt: skip
+
+
 def _signoffs() -> Check:
     pending = [x.id for x in signoffs.builtin().signoffs if x.status != "APPROVED"]
     if not pending:
@@ -169,7 +181,7 @@ def run_checks(s: Settings, role: Literal["api", "worker"], *,
             out += _database(engine, role)
         finally:
             engine.dispose()
-    out += [_signing(s), _evidence(s), _ai(s), _egress(s, role), _signoffs()]
+    out += [_signing(s), _evidence(s), _ai(s), _egress(s, role), _policy_engine(s), _signoffs()]
     if role == "api":
         out.append(_sign_in(s))
     return out

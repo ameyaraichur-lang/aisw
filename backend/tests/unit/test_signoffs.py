@@ -26,6 +26,7 @@ REPO = Path(__file__).resolve().parents[3]
 RUBRIC = "backend/aisw/policy/rubrics/risk-rubric-1.0.0.json"
 EXPECTED = {
     "risk-rubric-1.0.0": "P0-6", "architecture-catalog-1.0.0": "P0-6", "ai-evaluation-bar": "P0-6",
+    "config-baseline-1.0.0": "P0-6",
     "licence-review": "P0-7", "astra-data-approval": "A-1",
 }  # fmt: skip
 
@@ -128,6 +129,8 @@ def test_report_carries_the_pending_label_of_what_it_relies_on(
         and "(risk-rubric-1.0.0: PENDING)" in text
     )
     assert "sample catalog" in text and "(architecture-catalog-1.0.0: PENDING)" in text
+    _, body, _ = build_report(inputs(policy_version="config-baseline:1.0.0"))
+    assert any("(config-baseline-1.0.0: PENDING)" in x for x in body["limitations"])
     _, body, _ = build_report(inputs(risks={"f-1": risk("9.9.9")}))
     assert any("risk-rubric-9.9.9 has no sign-off record" in x for x in body["limitations"])
     approved = Register.model_validate(

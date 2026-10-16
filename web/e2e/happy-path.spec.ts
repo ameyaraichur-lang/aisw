@@ -17,6 +17,10 @@ test('operator drafts, approver approves, operator launches, reviewer closes: fu
   await expect(page.getByText(/resolves to/)).toContainText('3 expected asset(s)')
   await page.getByRole('button', { name: 'Next' }).click()
   await useAdapter(page, 'fixture', 'FIXTURE_BASELINE')
+  // the e2e backend runs the Python engine, so Rego packs are offered but cannot be chosen
+  await expect(page.locator('#pack option[value="config-baseline:1.0.0"]')).toBeDisabled()
+  await expect(page.locator('#pack option[value="config-baseline:1.0.0"]')).toContainText('needs the OPA policy engine')
+  await expect(page.getByLabel(/Policy pack/)).toHaveValue('fixture-baseline:1.0.0')
   await page.getByRole('button', { name: 'Next' }).click()
   await expect(page.getByLabel('Maximum concurrency')).toBeVisible()
   await page.getByRole('button', { name: 'Next' }).click()

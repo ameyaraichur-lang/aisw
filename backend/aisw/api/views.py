@@ -89,7 +89,8 @@ def policy_packs(
     authorize(actor, Permission.PROJECT_READ)
     return [
         {"key": k, "pack_hash": p.pack_hash, "description": p.description,
-         "rules": len(p.rules), "framework": p.framework.model_dump()}
+         "rules": len(p.rules), "framework": p.framework.model_dump(),
+         "needs_opa": p.needs_opa, "runnable": c.evaluator.runs_rego or not p.needs_opa}
         for k in c.packs.keys()  # noqa: SIM118 - PackRegistry.keys() is not a dict
         if (p := c.packs.get(k)) is not None
     ]  # fmt: skip

@@ -38,7 +38,8 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Durable PostgreSQL worker (lease, bounded attempts, backoff+jitter, fencing, crash resume) | Implemented (M3) | `tests/security/test_pipeline_security.py` (crash, repeated crash, late worker, retries) |
 | Run state machine + persisted replayable events (cursor) | Implemented (M3) | polling API only; SSE Planned (M4) |
 | Evidence ingest: validate, redact, canonicalise, hash, write-once content-addressed store | Implemented (M3) | `tests/unit/test_evidence.py`; secret never reaches disk/DB/report |
-| Deterministic policy evaluation (JSON packs, pinned + hashed) | Implemented (M3) interim | Python evaluator behind `PolicyEvaluator`; OPA not installed (ADR-003) |
+| Deterministic policy evaluation (JSON packs, pinned + hashed) | Implemented: Python (default) and OPA (ADR-031) | Both engines pass the same suite and a 400-case differential test; OPA verified against a real 1.21.2 server on loopback |
+| Rego domain rules (network, storage, logging/encryption, IAM, lifecycle, hardening, K8s RBAC) and `config-baseline:1.0.0` with NIST 800-53 / ISO 27001 / CIS v8 mappings | Implemented; mappings NEEDS_REVIEW | `opa test` (99.7% coverage), `tests/unit/test_opa.py`; no adapter feeds these facts yet (w2) |
 | Findings, controls, coverage ledger (per segment) | Implemented (M3) | partial/zero/unreachable/unsupported/absent/unexpected all visible |
 | Independent assurance of findings (hash, freshness, scope, control IDs) | Implemented (M3) | tamper/missing/stale/outage tests; extended to risks, scenarios, recommendations and narratives in M7 |
 | Report JSON + escaped HTML, partial banner, approval bound to report hash, SoD | Implemented (M3) | counts reconcile to DB in tests |

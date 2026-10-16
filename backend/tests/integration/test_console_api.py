@@ -63,11 +63,19 @@ def test_connectors_and_policy_packs(sl: Slice) -> None:
         "fixture-baseline:1.0.0",
         "url-smoke-baseline:1.0.0",
         "import-baseline:1.0.0",
+        "config-baseline:1.0.0",
     }
     assert (
         packs["fixture-baseline:1.0.0"]["rules"] == 3
         and packs["url-smoke-baseline:1.0.0"]["rules"] == 7
+        and packs["config-baseline:1.0.0"]["rules"] == 20
     )
+    # the slice runs the Python engine, which cannot run Rego rules
+    assert (
+        packs["config-baseline:1.0.0"]["needs_opa"]
+        and not packs["config-baseline:1.0.0"]["runnable"]
+    )
+    assert packs["fixture-baseline:1.0.0"]["runnable"]
 
 
 def test_lists_tasks_controls_and_overview_follow_the_run(sl: Slice) -> None:

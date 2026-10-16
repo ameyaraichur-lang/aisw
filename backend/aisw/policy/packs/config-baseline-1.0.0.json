@@ -1,0 +1,837 @@
+{
+  "pack_id": "config-baseline",
+  "version": "1.0.0",
+  "description": "Configuration baseline evaluated in Rego (ADR-031) over normalised facts from configuration, identity and cluster imports. Thresholds and framework mappings are engineering proposals that need policy-owner review.",
+  "report_notice": "Framework mappings in this pack are proposals awaiting policy-owner review; a mapping is not a certification of compliance.",
+  "framework": {
+    "name": "AISW-CONFIG-BASELINE",
+    "version": "1.0.0"
+  },
+  "rules": [
+    {
+      "rule_id": "network.no_admin_ports_from_internet",
+      "control_id": "CB-NET-1",
+      "title": "Administrative ports are not reachable from any source",
+      "category": "network_exposure",
+      "severity": "HIGH",
+      "applies_to": {
+        "resource_type": [
+          "firewall_rule",
+          "security_group_rule"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "network.no_admin_ports_from_internet"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "SC-7",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "AC-17",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.20",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "4.4",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "network.no_any_any_allow",
+      "control_id": "CB-NET-2",
+      "title": "No rule allows all ports from any source",
+      "category": "network_exposure",
+      "severity": "CRITICAL",
+      "applies_to": {
+        "resource_type": [
+          "firewall_rule",
+          "security_group_rule"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "network.no_any_any_allow"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "SC-7",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.20",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "4.4",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "network.default_deny",
+      "control_id": "CB-NET-3",
+      "title": "Firewall policy denies by default",
+      "category": "network_exposure",
+      "severity": "HIGH",
+      "applies_to": {
+        "resource_type": [
+          "firewall_policy"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "network.default_deny"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "SC-7(5)",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.20",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "4.4",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "storage.not_public",
+      "control_id": "CB-STO-1",
+      "title": "Storage is not publicly accessible",
+      "category": "data_protection",
+      "severity": "CRITICAL",
+      "applies_to": {
+        "resource_type": [
+          "storage_bucket"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "storage.not_public"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "AC-3",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "SC-7",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.3",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "3.3",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "storage.encrypted_at_rest",
+      "control_id": "CB-STO-2",
+      "title": "Storage is encrypted at rest",
+      "category": "data_protection",
+      "severity": "HIGH",
+      "applies_to": {
+        "resource_type": [
+          "storage_bucket",
+          "database",
+          "disk"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "storage.encrypted_at_rest"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "SC-28",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.24",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "3.11",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "storage.versioning_enabled",
+      "control_id": "CB-STO-3",
+      "title": "Storage keeps object versions",
+      "category": "data_protection",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "resource_type": [
+          "storage_bucket"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "storage.versioning_enabled"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "CP-9",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.13",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "11.2",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "storage.access_logging_enabled",
+      "control_id": "CB-STO-4",
+      "title": "Storage access is logged",
+      "category": "logging",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "resource_type": [
+          "storage_bucket"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "storage.access_logging_enabled"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "AU-2",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.15",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "8.2",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "logging.audit_enabled",
+      "control_id": "CB-LOG-1",
+      "title": "Audit logging is enabled",
+      "category": "logging",
+      "severity": "HIGH",
+      "applies_to": {
+        "resource_type": [
+          "log_config",
+          "cloud_account",
+          "cluster"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "logging.audit_enabled"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "AU-2",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "AU-12",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.15",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "8.2",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "logging.retention_sufficient",
+      "control_id": "CB-LOG-2",
+      "title": "Audit logs are retained for the required period",
+      "category": "logging",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "resource_type": [
+          "log_config",
+          "cloud_account",
+          "cluster"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "logging.retention_sufficient",
+          "params": {
+            "min_days": 365
+          }
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "AU-11",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.15",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "8.10",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "logging.tls_minimum",
+      "control_id": "CB-ENC-1",
+      "title": "Endpoints accept only TLS 1.2 or later",
+      "category": "encryption",
+      "severity": "HIGH",
+      "applies_to": {
+        "resource_type": [
+          "endpoint",
+          "load_balancer"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "logging.tls_minimum",
+          "params": {
+            "min_version": "1.2"
+          }
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "SC-8",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "SC-13",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.24",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "3.10",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "iam.admin_requires_mfa",
+      "control_id": "CB-IAM-1",
+      "title": "Administrative identities use multi-factor authentication",
+      "category": "identity",
+      "severity": "CRITICAL",
+      "applies_to": {
+        "resource_type": [
+          "identity"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "iam.admin_requires_mfa"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "IA-2(1)",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.5",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "6.5",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "iam.access_keys_rotated",
+      "control_id": "CB-IAM-2",
+      "title": "Active access keys are rotated",
+      "category": "identity",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "resource_type": [
+          "identity"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "iam.access_keys_rotated",
+          "params": {
+            "max_age_days": 90
+          }
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "IA-5(1)",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.5.17",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "5.2",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "iam.no_stale_accounts",
+      "control_id": "CB-IAM-3",
+      "title": "Enabled accounts are in use",
+      "category": "identity",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "resource_type": [
+          "identity"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "iam.no_stale_accounts",
+          "params": {
+            "max_idle_days": 90
+          }
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "AC-2(3)",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.5.18",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "5.3",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "lifecycle.supported",
+      "control_id": "CB-LIF-1",
+      "title": "Software is within its vendor support period",
+      "category": "lifecycle",
+      "severity": "HIGH",
+      "applies_to": {
+        "resource_type": [
+          "host",
+          "container_image",
+          "software"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "lifecycle.supported"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "SA-22",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.8",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "2.2",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "hardening.ssh_root_login_disabled",
+      "control_id": "CB-HRD-1",
+      "title": "SSH root login is disabled",
+      "category": "host_configuration",
+      "severity": "HIGH",
+      "applies_to": {
+        "resource_type": [
+          "host"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "hardening.ssh_root_login_disabled"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "AC-6(2)",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "CM-6",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.2",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "5.4",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "hardening.ssh_password_auth_disabled",
+      "control_id": "CB-HRD-2",
+      "title": "SSH password authentication is disabled",
+      "category": "host_configuration",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "resource_type": [
+          "host"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "hardening.ssh_password_auth_disabled"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "IA-2",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "CM-6",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.5",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "4.1",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "hardening.host_firewall_enabled",
+      "control_id": "CB-HRD-3",
+      "title": "Host firewall is enabled",
+      "category": "host_configuration",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "resource_type": [
+          "host"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "hardening.host_firewall_enabled"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "SC-7(12)",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.20",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "4.5",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "k8s_rbac.no_cluster_admin_for_service_accounts",
+      "control_id": "CB-K8S-1",
+      "title": "No service account holds cluster-admin",
+      "category": "kubernetes_rbac",
+      "severity": "HIGH",
+      "applies_to": {
+        "resource_type": [
+          "k8s_binding"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "k8s_rbac.no_cluster_admin_for_service_accounts"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "AC-6",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.2",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "6.8",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "k8s_rbac.no_anonymous_bindings",
+      "control_id": "CB-K8S-2",
+      "title": "No binding grants rights to anonymous or unauthenticated users",
+      "category": "kubernetes_rbac",
+      "severity": "CRITICAL",
+      "applies_to": {
+        "resource_type": [
+          "k8s_binding"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "k8s_rbac.no_anonymous_bindings"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "AC-14",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "AC-6",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.3",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "6.8",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    },
+    {
+      "rule_id": "k8s_rbac.no_wildcard_roles",
+      "control_id": "CB-K8S-3",
+      "title": "No role grants every verb on every resource",
+      "category": "kubernetes_rbac",
+      "severity": "HIGH",
+      "applies_to": {
+        "resource_type": [
+          "k8s_role"
+        ]
+      },
+      "check": {
+        "op": "rego",
+        "value": {
+          "rule": "k8s_rbac.no_wildcard_roles"
+        }
+      },
+      "mappings": [
+        {
+          "framework": "NIST-SP-800-53",
+          "version": "Rev.5",
+          "control_id": "AC-6(1)",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "ISO-IEC-27001",
+          "version": "2022",
+          "control_id": "A.8.2",
+          "mapping_status": "NEEDS_REVIEW"
+        },
+        {
+          "framework": "CIS-Controls",
+          "version": "8.1",
+          "control_id": "6.8",
+          "mapping_status": "NEEDS_REVIEW"
+        }
+      ]
+    }
+  ]
+}

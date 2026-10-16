@@ -25,6 +25,17 @@
       "decision": null
     },
     {
+      "id": "config-baseline-1.0.0",
+      "subject": "Config baseline 1.0.0: Rego domain rules, thresholds and their NIST SP 800-53 / ISO 27001 / CIS v8 mappings",
+      "plan_ref": "P0-6",
+      "artefact": "backend/aisw/policy/packs/config-baseline-1.0.0.json",
+      "owner": "Policy owner with the compliance lead",
+      "status": "PENDING",
+      "label_while_pending": "Framework mappings are proposals awaiting review; a mapping is not a statement of compliance.",
+      "next_step": "Compliance lead confirms or corrects each mapping and threshold; approved mappings are marked APPROVED in a new pack version.",
+      "decision": null
+    },
+    {
       "id": "ai-evaluation-bar",
       "subject": "Acceptance bar for the AI reviewer and narrator (recall, false-dissent rate, narrative acceptance)",
       "plan_ref": "P0-6",

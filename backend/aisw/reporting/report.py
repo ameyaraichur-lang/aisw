@@ -64,6 +64,9 @@ def _pending_signoffs(inp: ReportInputs) -> list[str]:
         f"architecture-catalog-{r['catalog_ref'].rpartition('@')[2]}" for r in inp.recommendations
     }
     register = signoffs.builtin()
+    pack_signoff = inp.policy_version.replace(":", "-")
+    if register.get(pack_signoff) is not None:
+        used.add(pack_signoff)  # packs without a sign-off record carry their own report notice
     out = []
     for signoff_id in sorted(used):
         entry = register.get(signoff_id)

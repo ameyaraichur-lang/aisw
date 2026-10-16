@@ -137,6 +137,21 @@ def kms_url_problem(url: str, env: Environment) -> str | None:
     return "kms_addr must use https (http is allowed only on loopback outside prod)"
 
 
+def opa_url_problem(url: str) -> str | None:
+    """OPA runs beside the service: loopback or a single-label service name on an internal
+    network may use http; anything else must be https."""
+    u = urlparse(url)
+    if u.username is not None or u.password is not None:
+        return "opa_url must not carry credentials"
+    if not u.hostname or u.path not in ("", "/") or u.query or u.fragment:
+        return "opa_url must be an origin (scheme://host:port)"
+    if u.scheme == "https":
+        return None
+    if u.scheme == "http" and (_loopback_http(url) or "." not in u.hostname):
+        return None
+    return "opa_url must use https unless it is loopback or an internal service name"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AISW_", extra="forbid", frozen=True)
 
@@ -224,6 +239,9 @@ class Settings(BaseSettings):
     signing_key_path: Path | None = None
     # Manifest signing custody (ADR-027). local_file: dev/test only. transit: a Transit-compatible
     # KMS (OpenBao/Vault); the token is read from a 0600 file written by the secret provider.
+    # Policy engine (ADR-003, ADR-031): the Python evaluator, or OPA running the packaged Rego.
+    policy_engine: Literal["python", "opa"] = "python"
+    opa_url: str | None = None
     signing_backend: Literal["local_file", "transit"] = "local_file"
     kms_addr: str | None = None
     kms_mount: str = Field(default="transit", pattern=r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$")
@@ -337,6 +355,11 @@ class Settings(BaseSettings):
         if self.oidc_issuer is not None:
             self._check_oidc()
         self._check_egress()
+        if self.policy_engine == "opa":
+            if not self.opa_url:
+                raise ValueError("policy_engine=opa requires opa_url")
+            if problem := opa_url_problem(self.opa_url):
+                raise ValueError(problem)
         if self.signing_backend == "transit":
             if not (self.kms_addr and self.kms_key and self.kms_token_file):
                 raise ValueError(

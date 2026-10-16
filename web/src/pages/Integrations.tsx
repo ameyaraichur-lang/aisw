@@ -38,8 +38,9 @@ export function Integrations() {
       <DataState q={p} label="policy packs" isEmpty={(d) => d.length === 0}>
         {(d) => (
           <table><caption>Policy packs that a manifest may pin</caption>
-            <thead><tr><th scope="col">Pack</th><th scope="col">Framework</th><th scope="col">Rules</th><th scope="col">Content hash</th></tr></thead>
-            <tbody>{d.map((x) => <tr key={x.key}><td><code>{x.key}</code><div className="muted">{x.description}</div></td><td>{x.framework.name} {x.framework.version}</td><td>{x.rules}</td><td><ShortHash value={x.pack_hash} /></td></tr>)}</tbody>
+            <thead><tr><th scope="col">Pack</th><th scope="col">Framework</th><th scope="col">Rules</th><th scope="col">Engine</th><th scope="col">Content hash</th></tr></thead>
+            <tbody>{d.map((x) => <tr key={x.key}><td><code>{x.key}</code><div className="muted">{x.description}</div></td><td>{x.framework.name} {x.framework.version}</td><td>{x.rules}</td>
+              <td>{x.runnable ? <Badge d={{ icon: '✓', label: x.needs_opa ? 'OPA (Rego)' : 'Any engine', tone: 'ok' }} /> : <Badge d={{ icon: '✕', label: 'Needs the OPA policy engine', tone: 'warn' }} />}</td><td><ShortHash value={x.pack_hash} /></td></tr>)}</tbody>
           </table>
         )}
       </DataState>

@@ -81,8 +81,11 @@ def launch(
         raise HTTPException(status_code=400, detail="Idempotency-Key header is required")
 
     def hook(conn: Any, run_id: str, permit: Any, manifest: Any) -> None:
-        if c.packs.get(manifest.body.policy_version) is None:
+        pack = c.packs.get(manifest.body.policy_version)
+        if pack is None:
             raise ScopeDenied(["POLICY_PACK_UNKNOWN"])
+        if pack.needs_opa and not c.evaluator.runs_rego:
+            raise ScopeDenied(["POLICY_ENGINE_OPA_REQUIRED"])
         if body.requested_domains and not set(body.requested_domains) <= set(manifest.body.domains):
             raise ScopeDenied(["DOMAIN_NOT_IN_MANIFEST"])
         if not set(body.adapter_params) <= set(manifest.body.allowed_adapters):

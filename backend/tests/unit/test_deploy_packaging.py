@@ -69,7 +69,7 @@ def test_backend_image_keeps_migrations_beside_the_package() -> None:
 def test_compose_services_are_hardened_and_secret_free() -> None:
     doc = compose()
     services = doc["services"]
-    assert set(services) == {"postgres", "bootstrap", "api", "worker", "web"}
+    assert set(services) == {"postgres", "bootstrap", "api", "worker", "web", "opa"}
     for name, svc in services.items():
         assert svc.get("read_only") is True, name
         assert svc.get("cap_drop") == ["ALL"], name
@@ -85,9 +85,12 @@ def test_compose_services_are_hardened_and_secret_free() -> None:
             assert str(svc.get("user", "")).split(":")[0] not in {"", "0", "root"}, name
     assert "ports" not in services["postgres"] and "ports" not in services["api"]
     assert services["web"]["ports"] == ["127.0.0.1:8080:8080"]
-    assert (
-        doc["networks"]["data"]["internal"] is True and doc["networks"]["app"]["internal"] is True
-    )
+    for net in ("data", "app", "policy"):
+        assert doc["networks"][net]["internal"] is True, net
+    opa = services["opa"]
+    assert opa["networks"] == ["policy"] and "ports" not in opa
+    assert all(v.endswith(":ro") for v in opa["volumes"])
+    assert opa["image"].startswith("openpolicyagent/opa:") and "latest" not in opa["image"]
     assert (
         "egress" not in services["postgres"]["networks"]
         and "egress" not in services["web"]["networks"]
@@ -110,7 +113,8 @@ def test_compose_secret_names_match_settings_fields() -> None:
 
 
 @pytest.mark.parametrize(
-    "unit", ["aisw-api.service", "aisw-worker.service", "aisw-bootstrap.service"]
+    "unit",
+    ["aisw-api.service", "aisw-worker.service", "aisw-bootstrap.service", "aisw-opa.service"],
 )
 def test_systemd_units_are_sandboxed(unit: str) -> None:
     cp = configparser.ConfigParser(strict=False, interpolation=None)
@@ -120,8 +124,12 @@ def test_systemd_units_are_sandboxed(unit: str) -> None:
     assert svc["User"] == "aisw" and svc["NoNewPrivileges"] == "yes"
     assert svc["ProtectSystem"] == "strict" and svc["CapabilityBoundingSet"] == ""
     assert svc["UMask"] == "0077" and "PrivateTmp" in svc
-    module = re.search(r"python -m (\S+)", svc["ExecStart"])
-    assert module and importlib.util.find_spec(module.group(1)) is not None
+    if unit == "aisw-opa.service":
+        assert "--addr 127.0.0.1:" in svc["ExecStart"] and "*_test.rego" in svc["ExecStart"]
+        assert svc["IPAddressDeny"] == "any"
+    else:
+        module = re.search(r"python -m (\S+)", svc["ExecStart"])
+        assert module and importlib.util.find_spec(module.group(1)) is not None
     text = (DEPLOY / "systemd" / unit).read_text()
     assert not re.search(r"Environment=AISW_\w*(PASSWORD|SECRET|DATABASE_URL)=", text)
 
