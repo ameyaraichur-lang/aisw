@@ -36,6 +36,15 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     eng = make_db(pg_server, f"mig_{uuid.uuid4().hex[:8]}")
     migrate(eng, "head")
     assert _tables(eng) == TABLES
+    migrate(eng, "0002", down=True)  # 0003 (asset attrs) is independently reversible
+    with eng.connect() as c:
+        cols = {
+            r[0]
+            for r in c.execute(
+                text("SELECT column_name FROM information_schema.columns WHERE table_name='assets'")
+            )
+        }
+    assert "attrs" not in cols and _tables(eng) == TABLES
     migrate(eng, "0001", down=True)
     assert _tables(eng) == FOUNDATION  # pipeline migration is independently reversible
     migrate(eng, "base", down=True)

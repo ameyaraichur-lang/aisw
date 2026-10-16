@@ -38,11 +38,21 @@ def test_identity_and_auth_mode(sl: Slice) -> None:
 
 
 def test_connectors_and_policy_packs(sl: Slice) -> None:
-    c = sl.call("GET", "/api/v1/connectors", "carol").json()
-    assert [x["adapter_id"] for x in c] == ["fixture"] and c[0]["read_only"] is True
-    assert c[0]["profiles"] == [{"profile_id": "FIXTURE_BASELINE", "profile_class": "READ_ONLY"}]
-    packs = sl.call("GET", "/api/v1/policy-packs", "carol").json()
-    assert packs[0]["key"] == "fixture-baseline:1.0.0" and packs[0]["rules"] == 3
+    c = {x["adapter_id"]: x for x in sl.call("GET", "/api/v1/connectors", "carol").json()}
+    assert set(c) == {"fixture", "url_smoke"} and all(x["read_only"] for x in c.values())
+    assert c["fixture"]["profiles"] == [
+        {"profile_id": "FIXTURE_BASELINE", "profile_class": "READ_ONLY"}
+    ]
+    assert c["url_smoke"]["profiles"] == [
+        {"profile_id": "PASSIVE_HTTP_SMOKE", "profile_class": "READ_ONLY"}
+    ]
+    assert c["url_smoke"]["target_kinds"] == ["url"]  # it can only ever be pointed at a URL
+    packs = {p["key"]: p for p in sl.call("GET", "/api/v1/policy-packs", "carol").json()}
+    assert set(packs) == {"fixture-baseline:1.0.0", "url-smoke-baseline:1.0.0"}
+    assert (
+        packs["fixture-baseline:1.0.0"]["rules"] == 3
+        and packs["url-smoke-baseline:1.0.0"]["rules"] == 7
+    )
 
 
 def test_lists_tasks_controls_and_overview_follow_the_run(sl: Slice) -> None:

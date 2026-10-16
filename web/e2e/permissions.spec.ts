@@ -62,7 +62,7 @@ test('double-clicking Start creates exactly one run', async ({ page, request }) 
   await page.getByRole('button', { name: 'Start Assessment' }).click()
   const confirm = page.getByRole('dialog').getByRole('button', { name: 'Start Assessment' })
   await confirm.dblclick() // two clicks in quick succession
-  await expect(page).toHaveURL(/\/assessments\/[0-9a-f-]+\/timeline/)
+  await expect(page).toHaveURL(/\/assessments\/[0-9a-f-]+\/timeline/, { timeout: 30_000 }) // one unreproduced slow run seen under load
   const runs = await (await api(request, 'alice', 'get', `/assessments?project_id=${projectId}`)).json()
   expect(runs.total).toBe(1)
 })

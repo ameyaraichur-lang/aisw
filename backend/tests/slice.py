@@ -36,9 +36,16 @@ class Clock:
 
 
 class Slice:
-    def __init__(self, app_engine: Engine, worker_engine: Engine, evidence_dir: Path) -> None:
+    def __init__(
+        self,
+        app_engine: Engine,
+        worker_engine: Engine,
+        evidence_dir: Path,
+        ca_file: Path | None = None,
+    ) -> None:
         self.clock = Clock()
         self.uid = uuid.uuid4().hex[:10]
+        self.dns: dict[str, list[str]] = {}  # mock DNS; unknown names fall back to a public literal
         self.app_engine, self.worker_engine = app_engine, worker_engine
         self.evidence_dir = evidence_dir
         signer = LocalKeySigner.generate("slice-key")
@@ -47,7 +54,7 @@ class Slice:
             Settings(env="test", dev_auth_stub=True),
             app_engine, signer=signer, keyring=KeyRing.from_signer(signer),
             evidence=EvidenceStore(evidence_dir), clock=self.clock, audit_sink=self.audit,
-            resolver=lambda h, p: ["93.184.216.34"],
+            resolver=lambda h, p: self.dns.get(h, ["93.184.216.34"]), ca_file=ca_file,
         )  # fmt: skip
         self.client = TestClient(create_app(self.container.settings, app_engine, self.container))
         self.worker: Worker = self.container.make_worker(worker_engine, worker_id="w-1")

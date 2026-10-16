@@ -12,9 +12,11 @@ from pydantic import Field
 from sqlalchemy import Engine, text
 from sqlalchemy.exc import IntegrityError
 
+from aisw.adapters.url_smoke import url_asset_id
 from aisw.api.container import Container
 from aisw.api.deps import correlation_id, get_actor, get_engine
 from aisw.authz.gate import GateOutcome
+from aisw.authz.net_guard import NetGuardError, canonicalize_url
 from aisw.authz.service import ScopeService
 from aisw.contracts.base import NonEmpty, Slug, StrictModel
 from aisw.contracts.manifest import (
@@ -96,6 +98,12 @@ def create_inventory(
 ) -> dict[str, Any]:
     authorize(actor, Permission.INVENTORY_MANAGE)
     resolved = "inv-" + hashlib.sha256(f"{body.kind}|{body.selector}".encode()).hexdigest()[:12]
+    expected = body.expected_assets
+    if body.kind == "url" and not expected:  # a URL source expects exactly its own origin asset
+        try:
+            expected = [url_asset_id(canonicalize_url(body.selector))]
+        except NetGuardError as exc:
+            raise HTTPException(status_code=422, detail=f"invalid url: {exc.code}") from exc
     try:
         with tenant_connection(engine, actor.tenant_id) as conn:
             conn.execute(
@@ -105,7 +113,7 @@ def create_inventory(
                     "CAST(:e AS jsonb), :by)"
                 ),
                 {"t": actor.tenant_id, "p": body.project_id, "k": body.kind, "s": body.selector,
-                 "r": resolved, "e": json.dumps(body.expected_assets), "by": actor.actor_id},
+                 "r": resolved, "e": json.dumps(expected), "by": actor.actor_id},
             )  # fmt: skip
             append_audit(
                 conn, tenant_id=actor.tenant_id, actor=actor.actor_id, action="inventory.create",

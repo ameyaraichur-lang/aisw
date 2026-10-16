@@ -122,4 +122,7 @@ def test_pack_identity_hash_and_stable_ids() -> None:
 def test_registry_only_serves_registered_packs() -> None:
     reg = PackRegistry.builtin()
     assert reg.get("fixture-baseline:1.0.0") and reg.get("fixture-baseline:9.9.9") is None
-    assert reg.get("../../etc/passwd") is None and reg.keys() == ["fixture-baseline:1.0.0"]
+    assert reg.get("../../etc/passwd") is None and reg.keys() == [
+        "fixture-baseline:1.0.0",
+        "url-smoke-baseline:1.0.0",
+    ]

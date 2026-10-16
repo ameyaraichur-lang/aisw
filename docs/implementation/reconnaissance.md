@@ -54,3 +54,6 @@ Process findings worth remembering: (1) a mutation check showed a slow worker co
 
 ## M4 update
 Playwright runs on the system Google Chrome (`channel: chrome`), so no browser was downloaded. Lessons recorded: (1) React StrictMode runs effects twice on mount, so "skip the first run" focus logic must compare state (previous path) instead of a flag; (2) a disabled button makes Playwright wait until the test timeout, so never `.catch` a click; (3) axe cannot run inside a script-less sandboxed iframe, so such content is scanned as its own document; (4) the report HTML gained a `<main>` landmark because the accessibility scan exposed its absence; (5) an open fetch stream does not notice offline emulation, so the client listens for browser offline/online events.
+
+## M5 update
+Lessons: (1) test PKI certificates must have distinct subjects: two anchors with the same subject made OpenSSL report "self-signed" instead of "expired"; (2) a loopback-only socket guard (not just mocked DNS) is what makes "no public host contacted" a checked property; (3) a mutation that does not change behaviour proves nothing (one of mine was a no-op), so re-do it properly; (4) one unreproduced e2e timeout (double-click launch) appeared once under load and passed on 4 further runs; its wait was widened and the observation recorded here, cause not established.

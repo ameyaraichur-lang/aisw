@@ -41,6 +41,7 @@ class ReportInputs:
     evidence: list[dict[str, str]]  # [{ref, hash}]
     run_partial: bool
     generated_at: datetime
+    notice: str | None = None
 
 
 def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
@@ -89,7 +90,7 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
         "policy_versions": [inp.policy_version], "policy_pack_hash": inp.pack_hash,
         "tool_versions": tools, "model_versions": [],
         "generated_at": inp.generated_at.isoformat(),
-        "banner": banner, "disclaimer": DISCLAIMER, "limitations": limitations,
+        "banner": banner, "notice": inp.notice, "disclaimer": DISCLAIMER, "limitations": limitations,
         "coverage_complete": coverage_complete,
         "coverage": [L.model_dump(mode="json") for L in inp.ledgers],
         "controls": inp.controls, "findings": inp.accepted,
@@ -131,6 +132,8 @@ def render_html(body: dict[str, Any]) -> str:
     )
     limits = "".join(f"<li>{_e(x)}</li>" for x in body["limitations"]) or "<li>None recorded</li>"
     banner = f'<p role="alert"><strong>{_e(body["banner"])}</strong></p>' if body["banner"] else ""
+    if body.get("notice"):
+        banner = f'<p role="note"><strong>{_e(body["notice"])}</strong></p>' + banner
     counts = ", ".join(f"{_e(k)}: {v}" for k, v in body["finding_counts"].items())
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'

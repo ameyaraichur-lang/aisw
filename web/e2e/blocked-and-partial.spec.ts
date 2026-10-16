@@ -30,12 +30,12 @@ test('blocked preflight explains why, stores nothing and offers no way forward',
 
 test('a target no adapter can handle is surfaced instead of assumed', async ({ page, request }) => {
   const { projectId } = await seedProject(request)
-  await json(await api(request, 'alice', 'post', '/inventory', { project_id: projectId, kind: 'url', selector: 'https://example.org' }), 201)
+  await json(await api(request, 'alice', 'post', '/inventory', { project_id: projectId, kind: 'cidr', selector: '192.0.2.0/24' }), 201)
   await signIn(page, 'alice')
   await page.goto('/assessments/new')
   await page.getByLabel('Project and environment').selectOption(projectId)
   await page.getByRole('button', { name: 'Next' }).click()
-  await page.getByRole('checkbox', { name: /https:\/\/example\.org/ }).check()
+  await page.getByRole('checkbox', { name: /192\.0\.2\.0\/24/ }).check()
   await page.getByRole('button', { name: 'Next' }).click()
   await expect(page.getByText('No compatible adapter')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Next' })).toBeDisabled()

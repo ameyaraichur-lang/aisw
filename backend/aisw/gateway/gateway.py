@@ -24,6 +24,7 @@ from aisw.authz.net_guard import (
     canonicalize_url,
     resolve_and_vet,
     system_resolver,
+    vet_redirect,
 )
 from aisw.authz.signing import SignatureVerifier, signing_payload
 from aisw.contracts.base import NonEmpty, Sha256, Slug, StrictModel
@@ -233,11 +234,23 @@ class ToolGateway:
         params = self._validate_params(cap.param_model, req.params)
         cost = self._estimate(adapter, params)
 
+        redirect_hook = None
+        if req.target_kind == "url":
+            ports, internal, allowed = body.allowed_ports, body.internal_range_authorization, body
+
+            def redirect_hook(cur: Any, location: str, hop: int) -> VettedTarget:
+                return vet_redirect(
+                    cur, location, hop=hop,
+                    in_scope=lambda u: scope_rules.in_scope(allowed, "url", str(u)),
+                    allowed_ports=ports, internal_ranges=internal, resolver=self.resolver,
+                )  # fmt: skip
+
         job = AdapterJob(
             tenant_id=req.tenant_id, project_id=req.project_id, run_id=req.run_id,
             task_id=req.task_id, profile=req.profile, target_kind=req.target_kind,
             target_selector=req.target_selector, params=params,
             pinned_addresses=vetted.addresses if vetted else (), request_budget=cost,
+            vet_redirect=redirect_hook,
         )  # fmt: skip
         return job, vetted, warnings, (body.quotas.max_concurrency, body.quotas.max_requests, cost)
 

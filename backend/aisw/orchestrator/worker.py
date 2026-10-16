@@ -244,15 +244,17 @@ class Worker:
                 conn.execute(
                     text(
                         "INSERT INTO assets (tenant_id, project_id, asset_id, run_id, asset_type, "
-                        "native_ids, technology, first_seen, last_seen, match_confidence) VALUES "
-                        "(:t, :p, :a, :r, 'host', CAST(:n AS jsonb), :tech, :ts, :ts, :mc) "
+                        "native_ids, technology, attrs, first_seen, last_seen, match_confidence) VALUES "
+                        "(:t, :p, :a, :r, :atype, CAST(:n AS jsonb), :tech, CAST(:attrs AS jsonb), "
+                        ":ts, :ts, :mc) "
                         "ON CONFLICT (tenant_id, project_id, asset_id) DO UPDATE SET "
                         "last_seen=EXCLUDED.last_seen, run_id=EXCLUDED.run_id, "
-                        "technology=EXCLUDED.technology"
+                        "technology=EXCLUDED.technology, attrs=EXCLUDED.attrs"
                     ),
                     {
                         "t": tenant, "p": project, "a": a.asset_id, "r": run_id,
-                        "n": json.dumps({"fixture": a.asset_id, "hostname": a.hostname}),
+                        "n": json.dumps(a.native_ids or {"fixture": a.asset_id, "hostname": a.hostname}),
+                        "atype": a.asset_type, "attrs": json.dumps(a.attrs),
                         "tech": a.attrs.get("os_family"), "ts": output.collected_at,
                         "mc": "HIGH" if a.asset_id in expected else "LOW",
                     },
@@ -457,7 +459,7 @@ class Worker:
         )  # fmt: skip
         status_rows = conn.execute(
             text(
-                "SELECT s.task_id, s.asset_id, s.status, s.reason, a.technology "
+                "SELECT s.task_id, s.asset_id, s.status, s.reason, a.attrs "
                 "FROM run_asset_status s LEFT JOIN assets a ON a.asset_id = s.asset_id "
                 "AND a.project_id=:p WHERE s.run_id=:r"
             ),
@@ -476,11 +478,11 @@ class Worker:
         results: list[RuleResult] = []
         asset_results: dict[str, list[PolicyOutcome]] = {}
         seen_assets: set[str] = set()
-        for _task_id, asset_id, status, _reason, tech in status_rows:
+        for _task_id, asset_id, status, _reason, attrs in status_rows:
             if status != "SCANNED" or asset_id in seen_assets:
                 continue
             seen_assets.add(asset_id)
-            for rule in self.evaluator.applicable_rules(pack, {"os_family": tech}):
+            for rule in self.evaluator.applicable_rules(pack, attrs or {}):
                 o = obs.get((asset_id, rule.rule_id))
                 if o is None:
                     res = RuleResult(asset_id, rule, PolicyOutcome.NOT_ASSESSED, None, None)
@@ -701,7 +703,7 @@ class Worker:
                 policy_version=pack.key, pack_hash=pack.pack_hash, tasks=tasks, ledgers=ledgers,
                 controls=controls, accepted=accepted, needs_review=needs_review,
                 rejected_count=rejected, evidence=evidence, run_partial=run["partial"],
-                generated_at=now,
+                generated_at=now, notice=pack.report_notice,
             )
         )  # fmt: skip
         conn.execute(

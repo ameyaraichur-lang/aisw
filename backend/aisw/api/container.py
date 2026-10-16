@@ -9,11 +9,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import Engine
 
 from aisw.adapters.fixture import FixtureAdapter
+from aisw.adapters.url_smoke import UrlSmokeAdapter
 from aisw.authz.gate import ScopeGate
 from aisw.authz.inventory import DbInventory
 from aisw.authz.net_guard import Resolver, system_resolver
@@ -82,9 +84,11 @@ def build_container(
     resolver: Resolver = system_resolver,
     clock: Callable[[], datetime] | None = None,
     audit_sink: AuditSink | None = None,
+    ca_file: Path | None = None,
 ) -> Container:
     clock = clock or (lambda: datetime.now(UTC))
     registry = AdapterRegistry()
+    registry.register(UrlSmokeAdapter(ca_file=ca_file, clock=clock))  # read-only, scope-bound
     if settings.env is not Environment.PROD:
         registry.register(FixtureAdapter(clock=clock))
     if signer is None and settings.signing_key_path and settings.env is not Environment.PROD:

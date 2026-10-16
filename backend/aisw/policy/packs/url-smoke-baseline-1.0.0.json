@@ -1,0 +1,16 @@
+{
+  "pack_id": "url-smoke-baseline",
+  "version": "1.0.0",
+  "description": "Transport and response-header observations from ONE passive request path. Not a vulnerability assessment; external mappings need policy-owner review.",
+  "report_notice": "Public URL smoke test — not a security certification",
+  "framework": {"name": "AISW-URL-SMOKE", "version": "1.0.0"},
+  "rules": [
+    {"rule_id": "tls.verified", "control_id": "US-1", "title": "TLS certificate chain and hostname verify against the trust store", "category": "transport_security", "severity": "HIGH", "applies_to": {"scheme": ["https"]}, "check": {"op": "equals", "value": true}, "mappings": []},
+    {"rule_id": "tls.protocol", "control_id": "US-2", "title": "TLS 1.2 or newer is negotiated", "category": "transport_security", "severity": "MEDIUM", "applies_to": {"scheme": ["https"]}, "check": {"op": "in", "value": ["TLSv1.2", "TLSv1.3"]}, "mappings": []},
+    {"rule_id": "tls.cert_days_remaining", "control_id": "US-3", "title": "Server certificate is valid for at least 14 more days", "category": "transport_security", "severity": "MEDIUM", "applies_to": {"scheme": ["https"]}, "check": {"op": "gte", "value": 14}, "mappings": []},
+    {"rule_id": "http.response_received", "control_id": "US-4", "title": "The endpoint answered the request path", "category": "availability", "severity": "LOW", "applies_to": {}, "check": {"op": "equals", "value": true}, "mappings": []},
+    {"rule_id": "http.hsts_present", "control_id": "US-5", "title": "Strict-Transport-Security header is present", "category": "http_headers", "severity": "LOW", "applies_to": {"scheme": ["https"]}, "check": {"op": "equals", "value": true}, "mappings": []},
+    {"rule_id": "http.x_content_type_options", "control_id": "US-6", "title": "X-Content-Type-Options is nosniff", "category": "http_headers", "severity": "LOW", "applies_to": {}, "check": {"op": "equals", "value": "nosniff"}, "mappings": []},
+    {"rule_id": "http.redirects_within_scope", "control_id": "US-7", "title": "Redirects stay within the approved scope", "category": "http_behaviour", "severity": "LOW", "applies_to": {}, "check": {"op": "equals", "value": true}, "mappings": []}
+  ]
+}

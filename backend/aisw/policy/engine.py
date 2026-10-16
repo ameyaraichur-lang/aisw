@@ -64,6 +64,7 @@ class PolicyPack(StrictModel):
     pack_id: Slug
     version: NonEmpty
     description: str = ""
+    report_notice: str | None = None  # shown prominently on every report from this pack
     framework: Framework
     rules: list[PackRule] = Field(min_length=1)
 

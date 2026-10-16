@@ -10,11 +10,11 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from importlib import resources
 from typing import Any, Literal
 
+from aisw.adapters.normalized import NormalizedAsset, NormalizedBatch, NormalizedObservation
 from aisw.contracts.base import StrictModel
 from aisw.contracts.enums import ProfileClass
 from aisw.gateway.registry import AdapterCapability, AdapterJob, AdapterOutput
@@ -26,29 +26,6 @@ PROFILE_ID = "FIXTURE_BASELINE"
 
 class FixtureParams(StrictModel):
     fixture_set: FixtureSet = "baseline-ok"
-
-
-@dataclass(frozen=True)
-class NormalizedAsset:
-    asset_id: str
-    hostname: str
-    attrs: dict[str, str]
-    status: Literal["SCANNED", "UNREACHABLE", "UNSUPPORTED"]
-    reason: str | None
-
-
-@dataclass(frozen=True)
-class NormalizedObservation:
-    observation_id: str
-    asset_id: str
-    rule_id: str
-    value: Any
-
-
-@dataclass
-class NormalizedBatch:
-    assets: list[NormalizedAsset] = field(default_factory=list)
-    observations: list[NormalizedObservation] = field(default_factory=list)
 
 
 class FixtureAdapter:

@@ -7,13 +7,17 @@ declared profile classes are inconsistent with its read-only guarantees.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict
 
 from aisw.contracts.enums import ProfileClass
+
+if TYPE_CHECKING:
+    from aisw.authz.net_guard import CanonicalURL, VettedTarget
 
 
 class RegistryError(ValueError):
@@ -54,6 +58,9 @@ class AdapterJob:
     params: dict[str, Any]
     pinned_addresses: tuple[str, ...] = ()  # URL/host targets: connect ONLY to these
     request_budget: int = 0
+    # Built by the gateway from the SIGNED scope: re-validates a redirect target (scope, ports,
+    # egress policy, DNS) and returns the addresses to pin. Adapters must call it for every hop.
+    vet_redirect: Callable[[CanonicalURL, str, int], VettedTarget] | None = None
 
 
 class AdapterRegistry:

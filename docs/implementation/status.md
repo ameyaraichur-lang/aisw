@@ -57,7 +57,12 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Production sign-in (OIDC via BFF cookie) | Planned | dev stub only |
 | Silent-stall detection for an open-but-dead stream | Planned | documented limitation (ADR-015) |
 | CI job for e2e | Unverified | written, never run on a runner |
-| URL smoke adapter | Planned (M5) | |
+| PASSIVE_HTTP_SMOKE adapter: pinned-address connect, TLS verify-before-send + certificate metadata, one GET/HEAD per hop, per-hop redirect vetting, header allow-list, no body, evidence of DNS/TLS/HTTP/chain/tool version | Implemented (M5), **tested against a local server only** | `tests/security/test_url_smoke_adapter.py` (42), `test_url_smoke_pipeline.py` (47); no public host contacted |
+| URL smoke policy pack (7 controls) + report notice "not a security certification" | Implemented (M5) | |
+| Generic asset attributes (migration 0003) | Implemented (M5) | independently reversible |
+| URL negative suite: unapproved/unregistered URL, bad scheme/userinfo/ambiguous IP, unapproved port, loopback/private/metadata DNS, DNS rebinding after approval, expired manifest/permit, scope-hash mismatch, unapproved profile/adapter, hostile params, request budget, hostile redirects | Implemented (M5) | each asserts zero server requests and zero connection attempts |
+| Live validation against https://example.com | Not started | M9 only; needs your explicit authorisation |
+| Real-CA, IPv6-only, HTTP/2-only, proxy and unusual-server behaviour | Unverified | local self-signed test PKI only |
 | Scanner/CMDB import adapters | Planned (M6) | |
 | Agents 2–8, assurance, LLM gateway | Planned (M7) | |
 | SBOM / licence gate, runbooks, scorecard | Planned (M8) | |
