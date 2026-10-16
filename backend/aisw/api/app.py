@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import Engine
 
 from aisw import __version__
-from aisw.api import assessments, projects, scope
+from aisw.api import assessments, projects, scope, views
 from aisw.api.container import Container, build_container
 from aisw.authz.service import ScopeDenied
 from aisw.core.auth import AuthError
@@ -91,4 +91,5 @@ def create_app(
     app.include_router(projects.router)
     app.include_router(scope.router)
     app.include_router(assessments.router)
+    app.include_router(views.router)
     return app

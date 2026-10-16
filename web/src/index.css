@@ -1,34 +1,31 @@
-/* Design tokens (M0 seed). Navy/neutral, high contrast; extended in M4. */
+/* Design tokens: restrained navy/neutral, high contrast (all text pairs >= 4.5:1; most >= 7:1). */
 :root {
   --bg: #0b1426;
   --panel: #111d36;
+  --panel-2: #162645;
+  --border: #2c3d63;
   --text: #e8edf7;
-  --text-muted: #a9b5cc;
+  --text-muted: #aebbd3;
   --focus: #6cb6ff;
+  --accent: #8ec5ff;
+  --ok: #7ee2a8;
+  --bad: #ff9a9a;
+  --warn: #ffd479;
+  --info: #8ec5ff;
+  --neutral: #c8d1e3;
+  --radius: 8px;
   color-scheme: dark;
   font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
 }
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-}
-
-main {
-  max-width: 48rem;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-}
-
-:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation: none !important;
-    transition: none !important;
-  }
-}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+a { color: var(--accent); }
+h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.15rem; margin: 1.25rem 0 .5rem; }
+h3 { font-size: 1rem; margin: 1rem 0 .4rem; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+h1:focus { outline: none; }
+code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; }
+.muted { color: var(--text-muted); }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

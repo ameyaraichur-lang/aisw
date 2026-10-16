@@ -136,7 +136,7 @@ def render_html(body: dict[str, Any]) -> str:
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta http-equiv="Content-Security-Policy" '
         "content=\"default-src 'none'; style-src 'unsafe-inline'\">"
-        f"<title>{_e(body['title'])}</title></head><body>"
+        f"<title>{_e(body['title'])}</title></head><body><main>"
         f"<h1>{_e(body['title'])}</h1>{banner}<p>{_e(body['disclaimer'])}</p>"
         f"<p>Run {_e(body['run_id'])} | scope hash {_e(body['scope_manifest_hash'])} | "
         f"policy {_e(', '.join(body['policy_versions']))} | "
@@ -145,5 +145,5 @@ def render_html(body: dict[str, Any]) -> str:
         f"<th>Assets</th><th>Evidence</th></tr></thead><tbody>{rows}</tbody></table>"
         "<h2>Coverage</h2><table><thead><tr><th>Segment</th><th>Expected</th><th>Reconciled</th>"
         f"<th>Unknown</th><th>Unsupported</th><th>Reasons</th></tr></thead><tbody>{cov}</tbody></table>"
-        f"<h2>Limitations</h2><ul>{limits}</ul></body></html>"
+        f"<h2>Limitations</h2><ul>{limits}</ul></main></body></html>"
     )

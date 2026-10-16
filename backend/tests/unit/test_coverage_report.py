@@ -131,3 +131,9 @@ def test_html_escapes_every_untrusted_value() -> None:
     assert "<script>" not in html and "&lt;script&gt;" in html
     assert "default-src 'none'" in html  # report carries its own CSP too
     assert render_html(body) == html
+
+
+def test_html_has_landmark_language_and_table_headers() -> None:
+    _, _, html = build_report(inputs())
+    assert '<html lang="en">' in html and "<main>" in html and "</main>" in html
+    assert html.count("<th>") >= 8 and "<title>" in html and html.count("<h1>") == 1

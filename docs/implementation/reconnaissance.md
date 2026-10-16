@@ -51,3 +51,6 @@ Added `cryptography` (Ed25519). `pip-audit`: no known vulnerabilities (run local
 
 ## M3 update
 Process findings worth remembering: (1) a mutation check showed a slow worker could double-write after losing its lease, fixed by fencing (ADR-014); (2) a silent no-op string replacement during editing was caught only because a test asserted the behaviour, a reminder to keep behavioural tests for every control; (3) the shared task queue made tests order-dependent until each test started from a drained queue.
+
+## M4 update
+Playwright runs on the system Google Chrome (`channel: chrome`), so no browser was downloaded. Lessons recorded: (1) React StrictMode runs effects twice on mount, so "skip the first run" focus logic must compare state (previous path) instead of a flag; (2) a disabled button makes Playwright wait until the test timeout, so never `.catch` a click; (3) axe cannot run inside a script-less sandboxed iframe, so such content is scanned as its own document; (4) the report HTML gained a `<main>` landmark because the accessibility scan exposed its absence; (5) an open fetch stream does not notice offline emulation, so the client listens for browser offline/online events.

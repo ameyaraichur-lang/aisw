@@ -1,32 +1,13 @@
-# React + TypeScript + Vite
+# AISW web console
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + TypeScript + Vite. It talks only to the platform API (proxied at `/api`), never to scanners, the database or a model.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev          # AISW_API_URL=http://127.0.0.1:8000 by default
+npm run lint && npm run check:types && npm run typecheck && npm test && npm run build
+npm run e2e          # Playwright + axe; starts an embedded-Postgres test server and Vite; uses system Chrome
+npm run gen:types    # regenerate src/api/contracts.d.ts from ../schemas (CI fails on drift)
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Notes: `src/api/contracts.d.ts` is generated; the dev sign-in picker exists only when the server runs the dev identity stub (never in prod).

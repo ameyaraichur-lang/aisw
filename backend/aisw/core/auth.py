@@ -38,3 +38,11 @@ def resolve_actor(settings: Settings, authorization: str | None) -> ActorContext
     if actor is None:
         raise AuthError("unknown credential")
     return actor
+
+
+def list_dev_users() -> list[dict[str, object]]:
+    """Seeded identities for the dev login picker (names and roles only, never tokens)."""
+    return [
+        {"name": a.actor_id, "tenant_id": a.tenant_id, "roles": sorted(r.value for r in a.roles)}
+        for a in _SEEDED.values()
+    ]

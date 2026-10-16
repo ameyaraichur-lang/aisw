@@ -25,6 +25,7 @@ jobs:
         with: { node-version: 24 }
       - run: npm ci
       - run: npm run lint
+      - run: npm run check:types
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
@@ -34,3 +35,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 tools/secret_scan.py .
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: cd backend && uv sync
+      - run: cd web && npm ci
+      # Uses the runner's Google Chrome (channel: chrome); no browser download.
+      - run: cd web && npx playwright test

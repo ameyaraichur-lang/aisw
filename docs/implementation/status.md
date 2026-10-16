@@ -44,7 +44,19 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Fixture adapter (synthetic scanner replay; non-prod only) | Implemented (M3), **Mocked data** | proves the pipeline, not any real tool |
 | Worker process entry point (`python -m aisw.orchestrator`) | Unverified | written, not run live |
 | Permit renewal for runs longer than 15 min | Planned (M8) | permits are not renewed mid-run |
-| UI features, Playwright | Planned (M4) | |
+| Console API read models: me/auth-mode, connectors, policy packs, inventory/manifest/run lists, tasks, controls, finding detail (evidence + matched observation + assurance), tenant-wide findings, overview with denominators, audit events | Implemented (M4) | `tests/integration/test_console_api.py` |
+| SSE stream with cursor resume, heartbeat, rotation and clean end | Implemented (M4) | `tests/integration/test_console_api.py`; browser side in e2e |
+| Web shell: role-aware nav, skip link, landmarks, focus management, route guards | Implemented (M4) | `e2e/permissions.spec.ts`, `e2e/a11y.spec.ts` |
+| Command Center (coverage with denominator + as-of, authoritative critical/high, active/partial runs, connector health) | Implemented (M4) | exceptions card omitted (no exception feature yet) |
+| New Assessment wizard (6 steps, server preflight, explicit review, idempotent launch) | Implemented (M4) | `e2e/happy-path.spec.ts`, `e2e/blocked-and-partial.spec.ts`, double-click test |
+| Approvals inbox (signs exact hash; active-profile acknowledgement) | Implemented (M4) | |
+| Live run timeline (events-derived stages, task panel, event log), reconnect/stale/polling fallback, cancel | Implemented (M4) | `e2e/reconnect.spec.ts`, `src/lib/events.test.ts` |
+| Coverage, findings, evidence explorer, controls, report preview/download/approve | Implemented (M4) | partial/failed/denied/empty states covered |
+| Accessibility: axe WCAG 2.2 AA on 24 screens (0 violations), keyboard, reduced motion, non-colour status | Implemented (M4) | automated checks only; no manual screen-reader pass |
+| Review actions on findings, exceptions, asset graph, recommendations UI | Planned (M6/M7) | shown as planned, nothing simulated |
+| Production sign-in (OIDC via BFF cookie) | Planned | dev stub only |
+| Silent-stall detection for an open-but-dead stream | Planned | documented limitation (ADR-015) |
+| CI job for e2e | Unverified | written, never run on a runner |
 | URL smoke adapter | Planned (M5) | |
 | Scanner/CMDB import adapters | Planned (M6) | |
 | Agents 2–8, assurance, LLM gateway | Planned (M7) | |
