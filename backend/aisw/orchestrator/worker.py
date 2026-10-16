@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import random
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -38,6 +39,12 @@ from aisw.gateway.registry import AdapterOutput, AdapterRegistry
 from aisw.llm.client import DisabledModelClient, ModelClient
 from aisw.llm.gateway import LlmGateway, NarrativeResult
 from aisw.llm.schema import NarrativeSubject
+from aisw.llm.validation import (
+    ValidationGateway,
+    ValidationPacket,
+    ValidationResult,
+    apply_dissent,
+)
 from aisw.orchestrator import analysis
 from aisw.orchestrator.events import append_event
 from aisw.policy.engine import PackRegistry, PolicyEvaluator, PolicyPack
@@ -85,6 +92,12 @@ class Worker:
     ai_scenario_narratives: bool = True
     ai_recommendation_narratives: bool = True
     model_timeout: float = 60.0
+    # Agent validation pass (ADR-021): off unless the container turns it on from settings.
+    ai_validation: bool = False
+    validation_model: ModelClient | None = None  # defaults to ``model``
+    validation_batch: int = 12
+    validation_max_items: int = 60
+    validation_concurrency: int = 4
     rubric_version: str = "1.0.0"
     catalog_version: str = "1.0.0"
     # Agent 0 hook: extends a still-valid permit shortly before it expires (None = never renew).
@@ -539,7 +552,14 @@ class Worker:
                     scenario_ai=self.ai_scenario_narratives,
                     recommendation_ai=self.ai_recommendation_narratives,
                 )  # fmt: skip
-                if not pending:
+                packets = (
+                    analysis.validation_packets(
+                        conn, run, batch=self.validation_batch, max_items=self.validation_max_items
+                    )
+                    if self.ai_validation
+                    else []
+                )
+                if not pending and not packets:
                     self._set_state(conn, run, "ASSURANCE")
                     return True
             elif state == "ASSURANCE":
@@ -554,11 +574,23 @@ class Worker:
         results: list[tuple[NarrativeSubject, NarrativeResult]] = [
             (s, gateway.narrate(s)) for s in pending
         ]
+        validations: list[tuple[ValidationPacket, ValidationResult]] = []
+        if packets:
+            packets += analysis.narrative_packets(
+                results, batch=self.validation_batch, max_items=self.validation_max_items
+            )
+            reviewer = ValidationGateway(
+                self.validation_model or self.model, timeout=self.model_timeout
+            )
+            with ThreadPoolExecutor(max_workers=self.validation_concurrency) as pool:
+                validations = list(zip(packets, pool.map(reviewer.validate, packets), strict=True))
         with tenant_connection(self.engine, tenant) as conn:
             run = self._run(conn, run_id, lock=True)
             if run["state"] != "ARCHITECTURE_ANALYSIS":
                 return False  # another worker finished this step first
-            analysis.store_narratives(conn, run, results, self.clock())
+            now = self.clock()
+            analysis.store_narratives(conn, run, results, now)
+            analysis.store_validations(conn, run, validations, now)
             self._set_state(conn, run, "ASSURANCE")
         return True
 
@@ -759,8 +791,11 @@ class Worker:
             text("SELECT finding_id, body FROM findings WHERE run_id=:r ORDER BY finding_id"),
             {"r": run_id},
         ).all()
+        ai_verdicts = analysis.load_ai_verdicts(conn, run_id)
         for fid, body in rows:
-            res = assess_finding(Finding.model_validate(body), ctx)
+            res = apply_dissent(
+                assess_finding(Finding.model_validate(body), ctx), ai_verdicts.get(f"finding:{fid}")
+            )
             conn.execute(
                 text(
                     "INSERT INTO assurance_results (tenant_id, run_id, item_ref, verdict, "
@@ -781,7 +816,7 @@ class Worker:
             )
         analysis.assurance_analysis(
             conn, run, ctx, rubric=builtin_rubric(self.rubric_version),
-            catalog=builtin_catalog(self.catalog_version),
+            catalog=builtin_catalog(self.catalog_version), ai_verdicts=ai_verdicts,
         )  # fmt: skip
 
     # ---- report ---------------------------------------------------------------------------

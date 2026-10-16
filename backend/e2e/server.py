@@ -7,6 +7,7 @@ Usage: uv run python e2e/server.py  (listens on 127.0.0.1:8099)
 
 from __future__ import annotations
 
+import os
 import secrets
 import signal
 import tempfile
@@ -30,7 +31,7 @@ from aisw.core.config import Settings
 from aisw.evidence.store import EvidenceStore
 
 BACKEND = Path(__file__).resolve().parents[1]
-PORT = 8099
+PORT = int(os.environ.get("AISW_E2E_PORT", "8099"))
 
 
 def main() -> None:
@@ -60,7 +61,9 @@ def main() -> None:
     worker_engine = create_engine(url("aisw_worker", worker_pw, "aisw_e2e"), future=True)
 
     signer = LocalKeySigner.generate("e2e-key")
-    settings = Settings(env="dev", dev_auth_stub=True)
+    # AISW_E2E_ENV_FILE (e.g. ../.env.astra) runs this server against a live model, by hand only.
+    env_file = os.environ.get("AISW_E2E_ENV_FILE")
+    settings = Settings(_env_file=env_file, env="dev", dev_auth_stub=True)  # type: ignore[call-arg]
     container = build_container(
         settings, app_engine, signer=signer, keyring=KeyRing.from_signer(signer),
         evidence=EvidenceStore(work / "evidence"), resolver=lambda h, p: ["93.184.216.34"],

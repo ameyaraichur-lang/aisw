@@ -37,7 +37,7 @@ from aisw.evidence.store import EvidenceStore
 from aisw.gateway.gateway import ToolGateway
 from aisw.gateway.registry import AdapterRegistry
 from aisw.gateway.stores import AuditSink, DbAuditSink, DbAuthorizationStore
-from aisw.llm.factory import build_model_client
+from aisw.llm.factory import build_model_client, build_validation_client
 from aisw.orchestrator.worker import Worker
 from aisw.policy.engine import PackRegistry, PolicyEvaluator, PythonRuleEvaluator
 
@@ -87,6 +87,13 @@ class Container:
         kw.setdefault("ai_scenario_narratives", self.settings.ai_narrative_enabled)
         kw.setdefault("ai_recommendation_narratives", self.settings.ai_architecture_enabled)
         kw.setdefault("model_timeout", float(self.settings.model_timeout_seconds))
+        s = self.settings
+        kw.setdefault("ai_validation", s.ai_enabled and s.ai_validation_enabled)
+        if s.astra_validation_deployment:
+            kw.setdefault("validation_model", build_validation_client(s))
+        kw.setdefault("validation_batch", s.ai_validation_batch_size)
+        kw.setdefault("validation_max_items", s.ai_validation_max_items_per_agent)
+        kw.setdefault("validation_concurrency", s.ai_validation_concurrency)
         if self.service is not None:
             kw.setdefault("renew_permit", self.service.renew_permit)
         return Worker(

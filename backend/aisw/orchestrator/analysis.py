@@ -23,13 +23,23 @@ from aisw.agents.assurance import (
     assess_scenarios,
 )
 from aisw.agents.correlation import build_scenarios
+from aisw.agents.registry import agent_for_adapter
 from aisw.contracts.analysis import CorrelationScenario, RiskAssessment, RiskFactors
 from aisw.contracts.assurance import AssuranceResult
-from aisw.contracts.domain import Finding, Recommendation
+from aisw.contracts.domain import CoverageLedger, Finding, Recommendation
 from aisw.contracts.enums import AssuranceVerdict
+from aisw.llm import packets as pk
 from aisw.llm.gateway import NarrativeResult
 from aisw.llm.schema import NarrativeOutput, NarrativeSubject
 from aisw.llm.subject import recommendation_subject, scenario_subject
+from aisw.llm.validation import (
+    EFFECT,
+    ValidationPacket,
+    ValidationResult,
+    ValidationTarget,
+    apply_dissent,
+)
+from aisw.policy.results import finding_id_for
 from aisw.policy.rubric import Rubric, assess, exposure_for, normalize_criticality
 
 
@@ -265,6 +275,162 @@ def _narrative_result(row: Mapping[str, Any]) -> NarrativeResult:
     )  # fmt: skip
 
 
+# ------------------------------------------------------------------ agent validation pass (ADR-021)
+def validation_packets(
+    conn: Connection, run: dict[str, Any], *, batch: int, max_items: int
+) -> list[ValidationPacket]:
+    """Packets for Agents 1-6. Empty unless the run uses AI and has not been validated yet."""
+    run_id = run["run_id"]
+    if run["ai_mode"] != "enabled":
+        return []
+    if conn.execute(
+        text("SELECT 1 FROM ai_validations WHERE run_id=:r LIMIT 1"), {"r": run_id}
+    ).first():
+        return []
+    ledgers = [
+        CoverageLedger.model_validate(b)
+        for (b,) in conn.execute(
+            text("SELECT body FROM coverage_ledger WHERE run_id=:r ORDER BY segment"),
+            {"r": run_id},
+        )
+    ]
+    findings = load_findings(conn, run_id)
+    agent_of_ref: dict[str, int] = {}
+    for ref, adapter in conn.execute(
+        text(
+            "SELECT e.evidence_ref, t.adapter_id FROM evidence_artifacts e "
+            "JOIN run_tasks t ON t.task_id = e.task_id WHERE e.run_id=:r"
+        ),
+        {"r": run_id},
+    ):
+        if (agent := agent_for_adapter(adapter)) is not None:
+            agent_of_ref[ref] = agent
+    # One evidence blob backs many checks, so link each finding to ITS observation via the
+    # deterministic finding id (pack, rule, asset), never via the evidence ref alone.
+    pack_ids = {f.policy_version.rsplit(":", 1)[0] for f in findings.values()}
+    observations = {
+        finding_id_for(p, rule, a): (obs, exp)
+        for a, rule, obs, exp in conn.execute(
+            text(
+                "SELECT asset_id, rule_id, observed_value, expected_value FROM observations "
+                "WHERE run_id=:r AND outcome='FAIL'"
+            ),
+            {"r": run_id},
+        )
+        for p in pack_ids
+    }
+    by_agent: dict[int, list[Finding]] = {}
+    for f in findings.values():
+        agent = next((agent_of_ref[r] for r in f.evidence_refs if r in agent_of_ref), None)
+        if agent in {2, 3, 4}:
+            by_agent.setdefault(agent, []).append(f)
+    out: list[ValidationPacket] = []
+
+    def add(agent_id: int, targets: list[ValidationTarget]) -> None:
+        out.extend(pk.chunk(agent_id, targets, batch=batch, max_items=max_items))
+
+    add(1, pk.coverage_targets(ledgers))
+    for agent_id in sorted(by_agent):
+        add(agent_id, pk.finding_targets(by_agent[agent_id], observations))
+    add(
+        5,
+        pk.scenario_targets(
+            load_scenarios(conn, run_id).values(), findings, load_risks(conn, run_id)
+        ),
+    )
+    add(6, pk.recommendation_targets(load_recommendations(conn, run_id).values(), findings))
+    return out
+
+
+def narrative_packets(
+    results: list[tuple[NarrativeSubject, NarrativeResult]], *, batch: int, max_items: int
+) -> list[ValidationPacket]:
+    """Agent 7 reviews the narratives that passed deterministic grounding in this step."""
+    items = [
+        (f"nar-{s.purpose}-{s.subject_ref}", s, r.output)
+        for s, r in results
+        if r.status == "VALIDATED" and r.output is not None
+    ]
+    return pk.chunk(7, pk.narrative_targets(items), batch=batch, max_items=max_items)
+
+
+# llm_calls shares one status vocabulary across narrative and validation calls.
+_CALL_STATUS = {"VALID": "VALIDATED", "VALIDATOR_INVALID": "REJECTED", "UNAVAILABLE": "UNAVAILABLE"}
+
+
+def store_validations(
+    conn: Connection,
+    run: dict[str, Any],
+    results: list[tuple[ValidationPacket, ValidationResult]],
+    now: datetime,
+) -> None:
+    for packet, res in results:
+        verdicts = {v.target_ref: v for v in (res.output.verdicts if res.output else [])}
+        for t in packet.targets:
+            v = verdicts.get(t.target_ref) if res.status == "VALID" else None
+            verdict = v.verdict if v else ("NO_VERDICT" if res.status == "VALID" else res.status)
+            conn.execute(
+                text(
+                    "INSERT INTO ai_validations (tenant_id, run_id, target_ref, agent_id, packet_id, "
+                    "verdict, effect, issues, human_questions, validator_confidence, defects, "
+                    "model_id, prompt_version, input_hash, output_hash, created_at) VALUES (:t, :r, "
+                    ":ref, :a, :p, :v, :e, CAST(:i AS jsonb), CAST(:q AS jsonb), :c, CAST(:d AS jsonb), "
+                    ":m, :pv, :ih, :oh, :n) ON CONFLICT DO NOTHING"
+                ),
+                {
+                    "t": run["tenant_id"], "r": run["run_id"], "ref": t.target_ref,
+                    "a": packet.agent_id, "p": packet.packet_id, "v": verdict,
+                    "e": EFFECT.get(verdict, "NONE"),
+                    "i": json.dumps([i.model_dump(mode="json") for i in v.issues] if v else []),
+                    "q": json.dumps(v.human_questions if v else []),
+                    "c": v.validator_confidence if v else None,
+                    "d": json.dumps(res.defects + res.input_flags), "m": res.model_id,
+                    "pv": res.prompt_version, "ih": res.input_hash, "oh": res.output_hash, "n": now,
+                },
+            )  # fmt: skip
+        conn.execute(
+            text(
+                "INSERT INTO llm_calls (tenant_id, run_id, purpose, subject_ref, model_id, "
+                "prompt_version, input_hash, output_hash, status, attempts, defects, created_at) "
+                "VALUES (:t, :r, :p, :s, :m, :pv, :ih, :oh, :st, :a, CAST(:d AS jsonb), :n)"
+            ),
+            {"t": run["tenant_id"], "r": run["run_id"], "p": f"validation:agent-{packet.agent_id}",
+             "s": packet.packet_id, "m": res.model_id, "pv": res.prompt_version,
+             "ih": res.input_hash, "oh": res.output_hash, "st": _CALL_STATUS[res.status],
+             "a": res.attempts, "d": json.dumps(res.defects), "n": now},
+        )  # fmt: skip
+
+
+def load_ai_verdicts(conn: Connection, run_id: str) -> dict[str, str]:
+    return {
+        ref: verdict
+        for ref, verdict in conn.execute(
+            text("SELECT target_ref, verdict FROM ai_validations WHERE run_id=:r"), {"r": run_id}
+        )
+    }
+
+
+def validation_summary(conn: Connection, run_id: str) -> dict[str, Any]:
+    by_verdict: dict[str, int] = {}
+    by_agent: dict[str, dict[str, int]] = {}
+    models: set[str] = set()
+    for agent, verdict, model in conn.execute(
+        text("SELECT agent_id, verdict, model_id FROM ai_validations WHERE run_id=:r"),
+        {"r": run_id},
+    ):
+        by_verdict[verdict] = by_verdict.get(verdict, 0) + 1
+        slot = by_agent.setdefault(str(agent), {})
+        slot[verdict] = slot.get(verdict, 0) + 1
+        if model:
+            models.add(model)
+    return {
+        "total": sum(by_verdict.values()), "by_verdict": by_verdict, "by_agent": by_agent,
+        "held_for_review": by_verdict.get("DISSENT", 0),
+        "unavailable": by_verdict.get("UNAVAILABLE", 0) + by_verdict.get("VALIDATOR_INVALID", 0),
+        "models": sorted(models),
+    }  # fmt: skip
+
+
 # ------------------------------------------------------------------ Agent 7 (everything above findings)
 def _store_result(conn: Connection, tenant: str, run_id: str, res: AssuranceResult) -> None:
     conn.execute(
@@ -286,8 +452,11 @@ def assurance_analysis(
     *,
     rubric: Rubric,
     catalog: Catalog,
+    ai_verdicts: Mapping[str, str] | None = None,
 ) -> None:
+    """``ai_verdicts`` (target_ref -> validator verdict) can only hold ACCEPTed items for review."""
     tenant, run_id = run["tenant_id"], run["run_id"]
+    ai = ai_verdicts or {}
     findings = load_findings(conn, run_id)
     verdicts = {
         fid: AssuranceVerdict(v)
@@ -309,6 +478,7 @@ def assurance_analysis(
     scenarios = load_scenarios(conn, run_id)
     scenario_verdict: dict[str, AssuranceVerdict] = {}
     for res in assess_scenarios(list(scenarios.values()), findings, verdicts, risks, ctx):
+        res = apply_dissent(res, ai.get(res.item_ref))
         _store_result(conn, tenant, run_id, res)
         sid = res.item_ref.removeprefix("scenario:")
         scenario_verdict[sid] = res.verdict
@@ -322,7 +492,10 @@ def assurance_analysis(
     recs = load_recommendations(conn, run_id)
     rec_verdict: dict[str, AssuranceVerdict] = {}
     for rid, rec in recs.items():
-        res = assess_recommendation(rec, findings, verdicts, risks, catalog, ctx)
+        res = apply_dissent(
+            assess_recommendation(rec, findings, verdicts, risks, catalog, ctx),
+            ai.get(f"recommendation:{rid}"),
+        )
         _store_result(conn, tenant, run_id, res)
         rec_verdict[rid] = res.verdict
         conn.execute(
@@ -345,6 +518,7 @@ def assurance_analysis(
         nres = assess_narrative(_narrative_result(row), subject, parent, ctx)
         if nres is None:
             continue
+        nres = apply_dissent(nres, ai.get(f"narrative:{row['narrative_id']}"))
         _store_result(conn, tenant, run_id, nres)
         conn.execute(
             text("UPDATE narratives SET assurance_verdict=:v WHERE run_id=:r AND narrative_id=:n"),
@@ -406,9 +580,13 @@ def report_extras(conn: Connection, run: dict[str, Any]) -> dict[str, Any]:
                  "WHERE run_id=:r ORDER BY recommendation_id"), {"r": run_id})],
         "recommendation", "recommendation",
     )  # fmt: skip
+    ai: dict[str, Any] = {"mode": run["ai_mode"], "narratives_total": ai_total,
+                          "narratives_accepted": ai_shown, "not_shown": ai_total - ai_shown}  # fmt: skip
+    summary = validation_summary(conn, run_id)
+    if summary["total"]:
+        ai["validation"] = summary
+        models |= set(summary["models"])
     return {
         "risks": risks, "scenarios": scenarios, "recommendations": recommendations,
-        "analysis_excluded": excluded, "model_versions": sorted(models),
-        "ai": {"mode": run["ai_mode"], "narratives_total": ai_total,
-               "narratives_accepted": ai_shown, "not_shown": ai_total - ai_shown},
+        "analysis_excluded": excluded, "model_versions": sorted(models), "ai": ai,
     }  # fmt: skip

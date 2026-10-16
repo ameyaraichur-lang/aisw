@@ -35,6 +35,8 @@ test('risk is never invented, recommendations are drafts, and nothing is executa
   await page.getByText('Details, validation and rollback').first().click()
   await expect(page.getByText('Unknown: only the owner can estimate this').first()).toBeVisible()
   await expect(page.getByRole('region', { name: 'Draft recommendations' }).getByRole('button')).toHaveCount(0) // nothing to click: no execute, apply or fix control
+  await expect(page.getByRole('heading', { name: 'AI validation of agent outcomes' })).toBeVisible()
+  await expect(page.getByText('No AI validation for this run')).toBeVisible() // AI is off in e2e: nothing is reviewed or labelled
   await expect(tab(page, 'Analysis')).toBeVisible()
 })
 

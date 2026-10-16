@@ -71,6 +71,17 @@ export const VERDICT_DISPLAY: Record<string, Display> = {
   REJECT: { icon: '✕', label: 'Rejected by assurance', tone: 'bad' },
 }
 
+// AI validator verdicts (ADR-021): advisory only; a dissent can hold an item, never approve one.
+export const AI_VERDICT_DISPLAY: Record<string, Display> = {
+  CONCUR: { icon: '✓', label: 'AI concurs', tone: 'ok' },
+  CONCERN: { icon: '!', label: 'AI concern (review note)', tone: 'warn' },
+  INSUFFICIENT_EVIDENCE: { icon: '?', label: 'AI: insufficient evidence', tone: 'warn' },
+  DISSENT: { icon: '✕', label: 'AI dissent: held for review', tone: 'bad' },
+  NO_VERDICT: { icon: '–', label: 'No AI verdict', tone: 'neutral' },
+  VALIDATOR_INVALID: { icon: '⊘', label: 'AI reply rejected (ungrounded)', tone: 'neutral' },
+  UNAVAILABLE: { icon: '○', label: 'AI validation unavailable', tone: 'neutral' },
+}
+
 export const RECOMMENDATION_STATUS_DISPLAY: Record<string, Display> = {
   DRAFT: { icon: '…', label: 'Draft: awaiting a human decision', tone: 'neutral' },
   NEEDS_REVIEW: { icon: '?', label: 'Deferred: needs owner input', tone: 'warn' },

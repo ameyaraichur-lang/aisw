@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { api } from './client'
 import type {
-  AgentsResponse, AuditItem, Recommendation, Scenario, AuthMode, ControlRow, CoverageResponse, Connector, FindingDetail, FindingRow,
+  AgentsResponse, AiValidations, AuditItem, Recommendation, Scenario, AuthMode, ControlRow, CoverageResponse, Connector, FindingDetail, FindingRow,
   InventoryEntry, ManifestSummary, Me, Overview, Page, PolicyPackInfo, Project, ReportBody,
   ReportList, RunListItem, RunStatus, TaskView,
 } from './types'
@@ -59,6 +59,8 @@ export const useRunScenarios = (runId: string) =>
   useQuery({ queryKey: ['run', runId, 'scenarios'], queryFn: () => api<Scenario[]>(`/assessments/${runId}/scenarios`) })
 export const useRunRecommendations = (runId: string) =>
   useQuery({ queryKey: ['run', runId, 'recommendations'], queryFn: () => api<Recommendation[]>(`/assessments/${runId}/recommendations`) })
+export const useAiValidations = (runId: string) =>
+  useQuery({ queryKey: ['run', runId, 'ai-validations'], queryFn: () => api<AiValidations>(`/assessments/${runId}/ai-validations`) })
 export const useAllRecommendations = (p: { status?: string; run_id?: string; limit: number; offset: number }) =>
   useQuery({
     queryKey: ['recommendations', p],

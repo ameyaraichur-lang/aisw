@@ -169,7 +169,7 @@ def test_validated_narratives_are_shown_and_labelled(sl: Slice) -> None:
     assert rep["model_versions"] == ["stub-model-0"]
     assert rep["scenarios"][0]["narrative"]["model_id"] == "stub-model-0"
     assert all(
-        r["narrative"]["prompt_version"] == "narrative-1.0.0" for r in rep["recommendations"]
+        r["narrative"]["prompt_version"] == "narrative-1.1.0" for r in rep["recommendations"]
     )
     calls = sl.sql("SELECT status, attempts, input_hash FROM llm_calls WHERE run_id=:r", r=run_id)
     assert len(calls) == 3 and {c[0] for c in calls} == {"VALIDATED"} and all(c[2] for c in calls)

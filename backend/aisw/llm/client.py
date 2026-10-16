@@ -6,10 +6,16 @@ import json
 import urllib.error
 import urllib.request
 from typing import Any, Protocol
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
+
+from pydantic import SecretStr
+
+from aisw.core.config import astra_endpoint_problem
 
 MAX_RESPONSE_BYTES = 256 * 1024
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
+# Responses API output items that are not tool invocations. Anything else is refused.
+ASTRA_ALLOWED_OUTPUT_TYPES = {"message", "reasoning"}
 
 
 class ModelUnavailable(Exception):  # noqa: N818 - domain term, not an error class hierarchy
@@ -92,3 +98,114 @@ class OllamaClient:
         if not isinstance(content, str) or msg.get("tool_calls"):
             raise ModelUnavailable("MODEL_TOOL_CALL_REFUSED")
         return content
+
+
+class AstraClient:
+    """Astra (Azure OpenAI Responses API) client. Remote and opt-in only (ADR-020).
+
+    The endpoint must be an Azure OpenAI resource over https; redirects and proxies are refused,
+    the request never carries tools, responses are not stored service-side, and the API key is
+    only ever placed in the ``api-key`` header.
+    """
+
+    def __init__(
+        self,
+        endpoint: str,
+        deployment: str,
+        api_key: SecretStr,
+        *,
+        api_version: str,
+        max_output_tokens: int = 2048,
+        opener: urllib.request.OpenerDirector | None = None,
+    ) -> None:
+        if problem := astra_endpoint_problem(endpoint):
+            raise ValueError(problem)
+        if not api_key.get_secret_value().strip():
+            raise ValueError("astra api key is empty")
+        self._url = (
+            f"{endpoint.rstrip('/')}/openai/responses?api-version={quote(api_version, safe='')}"
+        )
+        self._key = api_key
+        self._max_output_tokens = max_output_tokens
+        self.model_id = deployment
+        self._opener = opener or urllib.request.build_opener(
+            _NoRedirect, urllib.request.ProxyHandler({})
+        )
+
+    def __repr__(self) -> str:
+        return f"AstraClient(url={self._url!r}, deployment={self.model_id!r})"
+
+    def complete(self, *, system: str, user: str, schema: dict[str, Any], timeout: float) -> str:
+        body = json.dumps(
+            {
+                "model": self.model_id,
+                "instructions": system,
+                "input": user,
+                "store": False,
+                "max_output_tokens": self._max_output_tokens,
+                "text": {
+                    "format": {
+                        "type": "json_schema",
+                        "name": "narrative_output",
+                        "schema": schema,
+                        "strict": False,
+                    }
+                },
+            }  # deliberately no "tools" key
+        ).encode()
+        req = urllib.request.Request(  # noqa: S310 - endpoint validated above (https, Azure host)
+            self._url,
+            data=body,
+            headers={"content-type": "application/json", "api-key": self._key.get_secret_value()},
+            method="POST",
+        )
+        try:
+            with self._opener.open(req, timeout=timeout) as resp:
+                raw = resp.read(MAX_RESPONSE_BYTES + 1)
+        except urllib.error.HTTPError as exc:
+            code = exc.code
+            exc.close()
+            if code in (401, 403):
+                raise ModelUnavailable("MODEL_AUTH_FAILED") from None
+            if code == 429:
+                raise ModelUnavailable("MODEL_RATE_LIMITED") from None
+            raise ModelUnavailable("MODEL_UNREACHABLE") from None
+        except TimeoutError as exc:
+            raise ModelUnavailable("MODEL_TIMEOUT") from exc
+        except (urllib.error.URLError, OSError) as exc:
+            if isinstance(getattr(exc, "reason", None), TimeoutError):
+                raise ModelUnavailable("MODEL_TIMEOUT") from exc
+            raise ModelUnavailable("MODEL_UNREACHABLE") from exc
+        if len(raw) > MAX_RESPONSE_BYTES:
+            raise ModelUnavailable("MODEL_RESPONSE_TOO_LARGE")
+        return _astra_text(raw)
+
+
+def _astra_text(raw: bytes) -> str:
+    try:
+        doc = json.loads(raw)
+        items = doc["output"]
+        if not isinstance(items, list):
+            raise TypeError
+    except (ValueError, KeyError, TypeError) as exc:
+        raise ModelUnavailable("MODEL_RESPONSE_UNREADABLE") from exc
+    if any(
+        not isinstance(i, dict) or i.get("type") not in ASTRA_ALLOWED_OUTPUT_TYPES for i in items
+    ):
+        raise ModelUnavailable("MODEL_TOOL_CALL_REFUSED")
+    if doc.get("status") != "completed":
+        raise ModelUnavailable("MODEL_RESPONSE_INCOMPLETE")
+    texts: list[str] = []
+    for item in items:
+        if item["type"] != "message":
+            continue
+        for part in item.get("content") or []:
+            kind = part.get("type") if isinstance(part, dict) else None
+            if kind == "refusal":
+                raise ModelUnavailable("MODEL_REFUSED")
+            if kind != "output_text" or not isinstance(part.get("text"), str):
+                raise ModelUnavailable("MODEL_RESPONSE_UNREADABLE")
+            texts.append(part["text"])
+    if not texts:
+        raise ModelUnavailable("MODEL_RESPONSE_UNREADABLE")
+    return "".join(texts)

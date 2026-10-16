@@ -86,6 +86,17 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
             f"AI-written summaries were unavailable or not accepted for {inp.ai['not_shown']} item(s); "
             "the deterministic description is shown instead."
         )
+    validation = inp.ai.get("validation") or {}
+    if validation.get("held_for_review"):
+        limitations.append(
+            f"The AI validator dissented on {validation['held_for_review']} item(s); accepted items "
+            "among them are held for human review and are not authoritative until resolved."
+        )
+    if validation.get("unavailable"):
+        limitations.append(
+            f"AI validation was unavailable or invalid for {validation['unavailable']} item(s); "
+            "their deterministic results stand unreviewed by the model."
+        )
     if not inp.ledgers:
         limitations.append("No coverage information was produced.")
 
@@ -187,6 +198,15 @@ def _analysis_html(body: dict[str, Any]) -> str:
                 f"<p>Owner questions:</p><ul>{questions or '<li>None</li>'}</ul>"
                 f"{_narrative_html(r.get('narrative'))}"
             )
+    v = (body.get("ai") or {}).get("validation")
+    if v:
+        verdicts = ", ".join(f"{_e(k)}: {n}" for k, n in sorted(v["by_verdict"].items()))
+        out += (
+            "<h2>AI validation of agent outcomes</h2>"
+            f"<p><em>An AI reviewer (model {_e(', '.join(v['models']) or 'unknown')}) checked "
+            f"{v['total']} agent outcome(s). It can only add caution: a dissent holds an item for "
+            f"human review, and nothing is ever marked as passing by it.</em></p><p>{verdicts}</p>"
+        )
     return out
 
 

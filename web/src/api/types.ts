@@ -266,12 +266,32 @@ export interface AgentInfo {
   read_only: boolean
   ai_capable: boolean
   ai_active: boolean
+  ai_validated: boolean
 }
 export interface AgentsResponse {
   agents: AgentInfo[]
-  ai: { enabled: boolean; model_id: string | null; model_license: string | null; endpoint_local_only: boolean; tools_available_to_model: boolean; may_decide: boolean }
+  ai: { enabled: boolean; model_id: string | null; model_license: string | null; provider: 'ollama' | 'astra' | null; endpoint_local_only: boolean; tools_available_to_model: boolean; may_decide: boolean; validation_enabled: boolean; validation_model: string | null }
   ticket_drafts_enabled: boolean
   rubric_version: string
+}
+export type AiVerdict = 'CONCUR' | 'CONCERN' | 'DISSENT' | 'INSUFFICIENT_EVIDENCE' | 'NO_VERDICT' | 'VALIDATOR_INVALID' | 'UNAVAILABLE'
+export interface AiValidationItem {
+  target_ref: string
+  agent_id: number
+  agent_name: string
+  verdict: AiVerdict
+  effect: 'HOLD_FOR_REVIEW' | 'REVIEW_ITEM' | 'ANNOTATION' | 'NONE'
+  issues: { code: string; explanation: string; evidence_refs: string[] }[]
+  human_questions: string[]
+  validator_confidence: 'LOW' | 'MEDIUM' | 'HIGH' | null
+  defects: string[]
+  model_id: string | null
+  prompt_version: string
+  ai_generated: true
+}
+export interface AiValidations {
+  summary: { total: number; by_verdict: Record<string, number>; by_agent: Record<string, number>; held_for_review: number; unavailable: number; models: string[] }
+  items: AiValidationItem[]
 }
 export interface TicketDraft {
   outbox_id: string

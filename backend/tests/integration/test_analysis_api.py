@@ -217,11 +217,13 @@ def test_agent_registry_maps_every_adapter_and_reports_ai_state(sl: Slice) -> No
     assert len(j["agents"]) == 9 and j["ai"]["enabled"] is False
     assert j["ai"]["tools_available_to_model"] is False and j["ai"]["may_decide"] is False
     assert j["ai"]["model_id"] is None and j["ticket_drafts_enabled"] is False
+    assert j["ai"]["provider"] is None and j["ai"]["endpoint_local_only"] is True
     assert not any(a["ai_active"] for a in j["agents"])
     sl.enable_ai(ScriptedModel(grounded))
     on = sl.call("GET", "/api/v1/agents", "carol").json()
     assert {a["agent_id"] for a in on["agents"] if a["ai_active"]} == {5, 6}
     assert on["ai"]["model_id"] == "stub-model-0" and on["ai"]["model_license"] == "Apache-2.0"
+    assert on["ai"]["provider"] == "ollama" and on["ai"]["endpoint_local_only"] is True
 
 
 def test_finding_detail_carries_risk_without_inventing_business_risk(sl: Slice) -> None:

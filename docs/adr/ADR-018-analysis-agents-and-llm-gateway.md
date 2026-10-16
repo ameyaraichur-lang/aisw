@@ -1,6 +1,6 @@
 # ADR-018: Analysis agents 5-8, versioned risk rubric, full assurance and the bounded LLM gateway (M7)
 
-**Status:** Accepted (M7)
+**Status:** Accepted (M7). Amended by [ADR-021](ADR-021-agent-validation-pass.md): a model may also review agent outcomes, with one-way effects only.
 
 ## Decision
 1. **Deterministic first; a model only explains.** Agents 5 (risk and correlation), 6 (architecture and modernization) and 7 (independent assurance) are deterministic handlers. The optional model (ADR-009) can only write a *candidate narrative* for a scenario or a recommendation. It never scores, selects, approves or changes anything, has no tool interface at all (`ModelClient.complete` takes text and a JSON schema, nothing else), and is off unless `ai_enabled` **and** a model id **and** its reviewed weights licence are configured. A run uses AI only if the launch request says `ai_assist: true` *and* the platform has AI enabled (otherwise 422 `AI_NOT_ENABLED`). The endpoint must be loopback; the client never follows redirects, ignores proxies, caps the response at 256 KB and refuses any reply carrying `tool_calls`. No weights are downloaded or bundled by this repository.

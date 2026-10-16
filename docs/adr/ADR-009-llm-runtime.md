@@ -1,6 +1,6 @@
 # ADR-009: LLM runtime
 
-**Status:** Accepted (M0, approved with development plan)
+**Status:** Accepted (M0, approved with development plan). Amended by [ADR-020](ADR-020-astra-remote-model-provider.md): Astra (Azure OpenAI) is allowed as an opt-in remote provider; the local runtime stays the default.
 
 ## Decision
 Ollama or vLLM, local only, disabled by default (AISW_AI_ENABLED=false). Enabling requires a recorded approved model id; weights licence reviewed separately from runtime licence.

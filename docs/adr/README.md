@@ -19,5 +19,7 @@
 - [ADR-017: Import adapters and Agent 1 reconciliation](ADR-017-import-adapters.md)
 - [ADR-018: Analysis agents, risk rubric, full assurance and the bounded LLM gateway](ADR-018-analysis-agents-and-llm-gateway.md)
 - [ADR-019: Hardening: permit renewal, retention, export controls, supply-chain gate](ADR-019-hardening-permits-retention-export.md)
+- [ADR-020: Astra (Azure OpenAI) as an opt-in remote model provider](ADR-020-astra-remote-model-provider.md)
+- [ADR-021: AI validation pass over agent outcomes (one-way, advisory)](ADR-021-agent-validation-pass.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

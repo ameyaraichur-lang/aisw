@@ -93,7 +93,7 @@ flowchart LR
     A5[Agent 5: risk rubric and scenarios]
     A6[Agent 6: draft recommendations]
     A7[Agent 7: independent assurance]
-    LLM[Optional LLM gateway: loopback only, no tools]
+    LLM[Optional LLM gateway: loopback or opt-in Astra, no tools]
   end
   DB[(PostgreSQL: forced RLS, audit chain)]
   EV[(Evidence store: content-addressed, write-once)]
@@ -142,6 +142,8 @@ flowchart LR
 | Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; real tool versions unverified. API upload only (no UI) |
 | Risk rubric, scenarios, recommendations, Agent 7 | 🟡 | Rubric weights and the architecture catalog are **samples** awaiting policy-owner approval |
 | LLM gateway (disabled by default, loopback only, no tools, grounding validator) | 🟡 | Tested with a **scripted stub only**; no model has ever run |
+| Astra (Azure OpenAI) provider, opt-in ([ADR-020](docs/adr/ADR-020-astra-remote-model-provider.md)) | 🟡 | Controls tested with an in-memory transport; **run live on synthetic fixtures** (gpt-6-astra, gpt-5.4, gpt-4.1-mini) on 2026-10-16. No real evidence sent |
+| AI validation pass over Agents 1–7 ([ADR-021](docs/adr/ADR-021-agent-validation-pass.md)) | 🟡 | One-way: a dissent holds an item for review, nothing else. Tested with a scripted model and run live on Astra (synthetic, including the prompt-injection fixture). Quality on real estates not measured |
 | Operator console (all main screens), SSE with cursor replay, accessibility | ✅ | Axe WCAG 2.2 AA automated on every main screen; no manual screen-reader test |
 | Report export controls (audited, watermark, drafts restricted) | ✅ | |
 | Evidence retention (dry-run, hash-pinned execute, holds, **soft purge**) | 🟡 | API only; no scheduler or UI; final deletion is a manual act |
@@ -157,7 +159,7 @@ flowchart LR
 | **Production sign-in (OIDC/Keycloak)** | ⛔ | Only the dev identity picker; the app refuses it outside dev/test. **Not deployable to production** |
 | Signing-key custody and rotation (OpenBao/HSM) | ⛔ | Local key file only; no tested rotation procedure |
 | Egress firewall enforcement | ⛔ | Application-layer checks only; runbook describes it |
-| A real language model, or a **remote** model such as Azure OpenAI | ⛔ | The platform only accepts a loopback model endpoint; a remote client needs a design change and your approval |
+| A real language model run on real evidence | ⛔ | Astra has run on synthetic fixtures only; real evidence needs the data-handling approval (ADR-020). No local model has been run |
 | Docker/compose deployment, container images, CI proof | ❓ | `deploy/` is empty; the CI workflow is written but has never run on a runner |
 | Asset/relationship explorer UI, graph reasoning, attack paths | ⛔ | Reconciliation runs in the backend; no explorer UI |
 | Import upload UI; task dependency ordering between imports | ⛔ | Import the CMDB first through the API |
@@ -241,7 +243,11 @@ The full threat model (20 threats, controls, tests, residual risk) is in [`docs/
 
 ## AI / LLM
 
-AI is **off by default** and nothing depends on it. When enabled, a model may write a short, clearly labelled explanation of a scenario or recommendation. It receives only a whitelisted projection of validated findings (never raw evidence), has **no tools**, and every identifier it mentions (CVE, control, IP, URL, port, risk tier, asset) must already exist in its input or the whole narrative is rejected. A model outage, timeout or rejection leaves the report identical. The endpoint must be loopback; enabling requires a model id **and** its reviewed weights licence. No weights are bundled or downloaded, and only a scripted stub has been used. See [`docs/adr/ADR-018`](docs/adr/ADR-018-analysis-agents-and-llm-gateway.md) and [`docs/runbooks/ai-enablement.md`](docs/runbooks/ai-enablement.md).
+AI is **off by default** and nothing depends on it. When enabled, a model may write a short, clearly labelled explanation of a scenario or recommendation. It receives only a whitelisted projection of validated findings (never raw evidence), has **no tools**, and every identifier it mentions (CVE, control, IP, URL, port, risk tier, asset) must already exist in its input or the whole narrative is rejected. A model outage, timeout or rejection leaves the report identical. By default the endpoint must be loopback and enabling requires a model id **and** its reviewed weights licence. No weights are bundled or downloaded, and only a scripted stub has been used. See [`docs/adr/ADR-018`](docs/adr/ADR-018-analysis-agents-and-llm-gateway.md) and [`docs/runbooks/ai-enablement.md`](docs/runbooks/ai-enablement.md).
+
+**Astra (Azure OpenAI), opt-in.** Setting `AISW_MODEL_PROVIDER=astra` switches the same gateway to the Astra Responses API. It needs the deployment name (`AISW_MODEL_ID`), an `https` endpoint on an Azure OpenAI host, the API key from your secret provider, and `AISW_ASTRA_DATA_APPROVAL_REF`, which records who approved sending redacted findings off-host. The settings are listed in [`.env.example`](.env.example). Requests carry no tools and set `store: false`, and the same grounding validator and Agent 7 decide what is accepted. See [`docs/adr/ADR-020`](docs/adr/ADR-020-astra-remote-model-provider.md).
+
+**AI validation of agent outcomes.** With AI on, a second deployment (`AISW_ASTRA_VALIDATION_DEPLOYMENT`, e.g. `gpt-5.4`) reviews what Agents 1–7 produced and returns one verdict per item. Its reply is grounded like a narrative. A `DISSENT` holds the item for human review; nothing the reviewer says can approve, re-score or add anything. Results appear on the run's Analysis tab and in the report. See [`docs/adr/ADR-021`](docs/adr/ADR-021-agent-validation-pass.md).
 
 ## Supply chain and licences
 
@@ -259,7 +265,7 @@ This is an engineering gate, not legal advice.
 backend/    FastAPI services (aisw/), Alembic migrations (0001-0006), tests, e2e test server
 web/        React/TypeScript console, Playwright specs, README screenshot capture
 schemas/    JSON Schemas exported from the contracts
-docs/       plan, status matrix, ADRs 001-019, threat model, runbooks, SBOM and licence report, scorecard, screenshots
+docs/       plan, status matrix, ADRs 001-020, threat model, runbooks, SBOM and licence report, scorecard, screenshots
 tools/      secret scan, schema export, SBOM, scorecard, stale-Postgres cleanup
 deploy/     reserved (empty: no Docker locally)
 ```
@@ -269,7 +275,7 @@ deploy/     reserved (empty: no Docker locally)
 | [`docs/implementation/development-plan.md`](docs/implementation/development-plan.md) | The approved plan and milestone gates |
 | [`docs/implementation/status.md`](docs/implementation/status.md) | Per-capability honesty matrix |
 | [`docs/implementation/scorecard.md`](docs/implementation/scorecard.md) | Results generated from actual test output |
-| [`docs/adr/`](docs/adr/README.md) | 19 architecture decisions |
+| [`docs/adr/`](docs/adr/README.md) | 20 architecture decisions |
 | [`docs/architecture/threat-model.md`](docs/architecture/threat-model.md) | Threats, controls, residual risk |
 | [`docs/runbooks/`](docs/runbooks/README.md) | Operating the worker, permits and keys, retention, AI, incidents, release |
 | [`docs/implementation/reconnaissance.md`](docs/implementation/reconnaissance.md) | Toolchain facts and lessons learned per milestone |
@@ -280,7 +286,7 @@ Configuration is fail-closed (`backend/aisw/core/config.py`): read-only mode, sc
 
 1. **M9 live validation**, only with your explicit authorisation per target: (a) passive smoke of `example.com`, (b) one bounded Nmap run on `scanme.nmap.org` after re-checking its terms, (c) ZAP baseline then active against your own Juice Shop. Each step needs an approved manifest and produces an evidence package.
 2. **Before any real use:** OIDC sign-in, key custody and rotation, egress firewall, a Docker/compose deployment, a real CI run, approval of the risk rubric and architecture catalog by the policy owner, legal review of licences.
-3. **Optional:** a remote-model client (for example Azure OpenAI) behind an explicit allow-list, key from the environment and your data-handling approval; asset explorer UI; import upload UI; retention UI.
+3. **Optional:** Astra token budget, routing and replay (pending plan §4); asset explorer UI; import upload UI; retention UI. The full list of pending work is in [`docs/implementation/pending-plan.md`](docs/implementation/pending-plan.md).
 
 ---
 *AISW produces assessment reports from recorded evidence. A report is not a certification and does not prove an estate is secure.*

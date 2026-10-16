@@ -18,9 +18,11 @@ from aisw.api.container import Container
 from aisw.api.deps import correlation_id, get_actor, get_engine
 from aisw.contracts.base import NonEmpty, StrictModel, canonical_hash
 from aisw.core.audit import append_audit
+from aisw.core.config import ModelProvider
 from aisw.core.db import tenant_connection
 from aisw.core.rbac import ActorContext, Permission, authorize
 from aisw.core.redaction import redact_obj, redact_text
+from aisw.orchestrator.analysis import validation_summary
 from aisw.policy.rubric import builtin as builtin_rubric
 
 router = APIRouter(prefix="/api/v1")
@@ -86,6 +88,27 @@ def _rec_row(
         "decision_reason": reason, "narrative": nar if verdict == "ACCEPT" else None,
         "executable": False,  # nothing in this platform executes a recommendation
     }  # fmt: skip
+
+
+@router.get("/assessments/{run_id}/ai-validations")
+def run_ai_validations(
+    run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
+) -> dict[str, Any]:
+    """The agent validation pass for a run (ADR-021). Model-written text, labelled as such."""
+    authorize(actor, Permission.FINDING_READ)
+    with tenant_connection(engine, actor.tenant_id) as conn:
+        _run_or_404(conn, run_id)
+        rows = conn.execute(
+            text("SELECT target_ref, agent_id, verdict, effect, issues, human_questions, "
+                 "validator_confidence, defects, model_id, prompt_version FROM ai_validations "
+                 "WHERE run_id=:r ORDER BY agent_id, target_ref"), {"r": run_id},
+        ).mappings().all()  # fmt: skip
+        summary = validation_summary(conn, run_id)
+    names = {a.agent_id: a.name for a in AGENTS}
+    return {
+        "summary": summary,
+        "items": [{**r, "agent_name": names[r["agent_id"]], "ai_generated": True} for r in rows],
+    }
 
 
 @router.get("/assessments/{run_id}/recommendations")
@@ -330,14 +353,20 @@ def agents(actor: ActorContext = Depends(get_actor), c: Container = Depends(_c))
                 "ai_active": a.ai_capable
                 and s.ai_enabled
                 and (s.ai_narrative_enabled if a.agent_id == 5 else s.ai_architecture_enabled),
+                "ai_validated": a.ai_validated and s.ai_enabled and s.ai_validation_enabled,
             }
             for a in AGENTS
         ],
         "ai": {
             "enabled": s.ai_enabled,
+            "validation_enabled": s.ai_enabled and s.ai_validation_enabled,
+            "validation_model": (s.astra_validation_deployment or s.model_id)
+            if s.ai_enabled and s.ai_validation_enabled
+            else None,
             "model_id": s.model_id if s.ai_enabled else None,
             "model_license": s.model_license if s.ai_enabled else None,
-            "endpoint_local_only": True,
+            "provider": s.model_provider.value if s.ai_enabled else None,
+            "endpoint_local_only": s.model_provider is ModelProvider.OLLAMA,
             "tools_available_to_model": False,
             "may_decide": False,  # a model explains; deterministic checks decide
         },

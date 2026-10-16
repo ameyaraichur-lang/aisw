@@ -2,14 +2,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link, NavLink, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { api, ApiError, apiText } from '../api/client'
-import { useControls, useCoverage, useReportBody, useReports, useRunFindings, useRunRecommendations, useRunScenarios, useRunStatus, useTasks } from '../api/hooks'
+import { useAiValidations, useControls, useCoverage, useReportBody, useReports, useRunFindings, useRunRecommendations, useRunScenarios, useRunStatus, useTasks } from '../api/hooks'
 import type { ControlRow, TaskView } from '../api/types'
 import { useSession } from '../auth/useSession'
 import { RecommendationBody, RecommendationHeader, ScenarioCard } from '../components/analysis'
 import { Badge, Banner, ConfirmDialog, CopyButton, DataState, PageHeader, Pagination, ShortHash } from '../components/ui'
 import { fmtTime } from '../lib/format'
 import { deriveStages, describeEvent, tasksFinished } from '../lib/events'
-import { OUTCOME_DISPLAY, RUN_STATE_DISPLAY, SEVERITY_DISPLAY, TASK_STATUS_DISPLAY, VERDICT_DISPLAY, display, type PolicyOutcome } from '../lib/status'
+import { AI_VERDICT_DISPLAY, OUTCOME_DISPLAY, RUN_STATE_DISPLAY, SEVERITY_DISPLAY, TASK_STATUS_DISPLAY, VERDICT_DISPLAY, display, type PolicyOutcome } from '../lib/status'
 import { useRunStream } from '../lib/useRunStream'
 
 const STAGE_BADGE = {
@@ -274,7 +274,59 @@ function Analysis({ runId }: { runId: string }) {
           )}
         </DataState>
       </section>
+      <AiValidationPanel runId={runId} />
     </>
+  )
+}
+
+function AiValidationPanel({ runId }: { runId: string }) {
+  const q = useAiValidations(runId)
+  const [filter, setFilter] = useState<'attention' | 'all'>('attention')
+  return (
+    <section aria-labelledby="av-h">
+      <h2 id="av-h">AI validation of agent outcomes</h2>
+      <p className="hint">An AI reviewer re-read each agent&apos;s outcomes against the facts they rest on. It is advisory: a dissent holds an item for human review, nothing else. It cannot approve, change a severity or add a finding.</p>
+      <DataState q={q} label="AI validation" isEmpty={(d) => d.summary.total === 0} empty={<p className="muted">No AI validation for this run: AI assist was off, or validation is disabled.</p>}>
+        {(d) => {
+          const attention = d.items.filter((i) => i.verdict !== 'CONCUR')
+          const shown = filter === 'all' ? d.items : attention
+          return (
+            <>
+              <p className="row" role="status">
+                {Object.entries(d.summary.by_verdict).map(([v, n]) => <span key={v}><Badge d={display(AI_VERDICT_DISPLAY, v)} /> {n}</span>)}
+                <span className="muted">Model: {d.summary.models.join(', ') || 'unknown'}</span>
+              </p>
+              {d.summary.held_for_review > 0 ? <Banner tone="warn" title="Held for review">The AI reviewer dissented on {d.summary.held_for_review} item(s). Accepted items among them are not authoritative until a human resolves them.</Banner> : null}
+              <fieldset className="row">
+                <legend className="sr-only">Show</legend>
+                <label><input type="radio" name="av-filter" checked={filter === 'attention'} onChange={() => setFilter('attention')} /> Needs attention ({attention.length})</label>
+                <label><input type="radio" name="av-filter" checked={filter === 'all'} onChange={() => setFilter('all')} /> All ({d.items.length})</label>
+              </fieldset>
+              {shown.length === 0 ? <p className="muted">The AI reviewer concurred with every outcome.</p> : (
+                <div className="table-wrap">
+                  <table>
+                    <caption>AI-generated review (advisory)</caption>
+                    <thead><tr><th scope="col">Agent</th><th scope="col">Item</th><th scope="col">Verdict</th><th scope="col">Why</th></tr></thead>
+                    <tbody>{shown.map((i) => (
+                      <tr key={i.target_ref}>
+                        <td>{i.agent_id}. {i.agent_name}</td>
+                        <td><code>{i.target_ref}</code></td>
+                        <td><Badge d={display(AI_VERDICT_DISPLAY, i.verdict)} />{i.validator_confidence ? <span className="muted"> ({i.validator_confidence.toLowerCase()} confidence)</span> : null}</td>
+                        <td>
+                          {i.issues.length ? <ul className="list-plain">{i.issues.map((x, n) => <li key={n}><code>{x.code}</code> {x.explanation}</li>)}</ul> : null}
+                          {i.human_questions.length ? <ul className="list-plain">{i.human_questions.map((x, n) => <li key={n}>Question: {x}</li>)}</ul> : null}
+                          {!i.issues.length && !i.human_questions.length && i.defects.length ? <span className="muted">{i.defects.join(', ')}</span> : null}
+                        </td>
+                      </tr>))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )
+        }}
+      </DataState>
+    </section>
   )
 }
 

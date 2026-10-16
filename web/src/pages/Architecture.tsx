@@ -22,7 +22,12 @@ function AgentsPanel() {
           <h2 id="agents-h">Bounded agents</h2>
           <p className="hint">
             Every agent is read-only. AI is <strong>{d.ai.enabled ? 'enabled' : 'disabled'}</strong>
-            {d.ai.enabled ? <> (model <code>{d.ai.model_id}</code>, licence {d.ai.model_license}, local endpoint only)</> : null}
+            {d.ai.enabled
+              ? d.ai.provider === 'astra'
+                ? <> (Astra deployment <code>{d.ai.model_id}</code>, remote Azure OpenAI endpoint; redacted findings leave this host under an approved data-handling decision)</>
+                : <> (model <code>{d.ai.model_id}</code>, licence {d.ai.model_license}, local endpoint only)</>
+              : null}
+            {d.ai.validation_enabled ? <>. Agent outcomes are reviewed by an AI validator (<code>{d.ai.validation_model}</code>) that can only hold items for human review</> : null}
             {'. '}A model never has tools and never decides: deterministic checks do. Risk rubric <code>{d.rubric_version}</code>.
           </p>
           <div className="table-wrap">
@@ -35,7 +40,10 @@ function AgentsPanel() {
                     <th scope="row">{a.agent_id}. {a.name}</th>
                     <td>{a.purpose}</td>
                     <td>{a.adapters.length ? a.adapters.join(', ') : '–'}</td>
-                    <td>{a.ai_active ? 'Explanations on' : a.ai_capable ? 'Off' : 'Not used'}</td>
+                    <td>
+                      {a.ai_active ? 'Explanations on' : a.ai_capable ? 'Off' : 'Not used'}
+                      {a.ai_validated ? <><br /><span className="muted">Outcomes reviewed by AI validator</span></> : null}
+                    </td>
                   </tr>
                 ))}
               </tbody>
