@@ -38,6 +38,7 @@ from aisw.gateway.gateway import GatewayDenied, ToolGateway, ToolRequest
 from aisw.gateway.registry import AdapterOutput, AdapterRegistry
 from aisw.llm.client import DisabledModelClient, ModelClient
 from aisw.llm.gateway import LlmGateway, NarrativeResult
+from aisw.llm.routing import BudgetedClient, TokenBudget
 from aisw.llm.schema import NarrativeSubject
 from aisw.llm.validation import (
     ValidationGateway,
@@ -94,6 +95,7 @@ class Worker:
     model_timeout: float = 60.0
     # Agent validation pass (ADR-021): off unless the container turns it on from settings.
     ai_validation: bool = False
+    run_token_budget: int = 0  # live tokens one run may spend on the model; 0 means no limit
     validation_model: ModelClient | None = None  # defaults to ``model``
     validation_batch: int = 12
     validation_max_items: int = 60
@@ -562,6 +564,7 @@ class Worker:
                 if not pending and not packets:
                     self._set_state(conn, run, "ASSURANCE")
                     return True
+                spent = analysis.tokens_used(conn, run_id) if self.run_token_budget else 0
             elif state == "ASSURANCE":
                 self._assurance_phase(conn, run)
                 self._report_phase(conn, run)
@@ -570,7 +573,14 @@ class Worker:
                 return False
         # Model calls happen OUTSIDE the run-row lock and any transaction: a slow or dead model can
         # never hold the run hostage, and a crash here simply repeats this idempotent step.
-        gateway = LlmGateway(self.model, timeout=self.model_timeout)
+        model, reviewer_model = self.model, self.validation_model or self.model
+        if self.run_token_budget:  # one allowance for every call this run makes, in any thread
+            budget = TokenBudget(self.run_token_budget, used=spent)
+            model, reviewer_model = (
+                BudgetedClient(model, budget),
+                BudgetedClient(reviewer_model, budget),
+            )
+        gateway = LlmGateway(model, timeout=self.model_timeout)
         results: list[tuple[NarrativeSubject, NarrativeResult]] = [
             (s, gateway.narrate(s)) for s in pending
         ]
@@ -579,9 +589,7 @@ class Worker:
             packets += analysis.narrative_packets(
                 results, batch=self.validation_batch, max_items=self.validation_max_items
             )
-            reviewer = ValidationGateway(
-                self.validation_model or self.model, timeout=self.model_timeout
-            )
+            reviewer = ValidationGateway(reviewer_model, timeout=self.model_timeout)
             with ThreadPoolExecutor(max_workers=self.validation_concurrency) as pool:
                 validations = list(zip(packets, pool.map(reviewer.validate, packets), strict=True))
         with tenant_connection(self.engine, tenant) as conn:

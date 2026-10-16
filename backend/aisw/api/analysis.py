@@ -22,7 +22,7 @@ from aisw.core.config import ModelProvider
 from aisw.core.db import tenant_connection
 from aisw.core.rbac import ActorContext, Forbidden, Permission, authorize
 from aisw.core.redaction import redact_obj, redact_text
-from aisw.orchestrator.analysis import validation_summary
+from aisw.orchestrator.analysis import usage_totals, validation_summary
 from aisw.orchestrator.events import append_event
 from aisw.policy.rubric import builtin as builtin_rubric
 
@@ -89,6 +89,28 @@ def _rec_row(
         "decision_reason": reason, "narrative": nar if verdict == "ACCEPT" else None,
         "executable": False,  # nothing in this platform executes a recommendation
     }  # fmt: skip
+
+
+@router.get("/assessments/{run_id}/model-calls")
+def run_model_calls(
+    run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
+) -> dict[str, Any]:
+    """The model-call ledger (ADR-023): who served each call, what it cost, and how it ended.
+    Hashes only; prompts and replies are never returned."""
+    authorize(actor, Permission.FINDING_READ)
+    with tenant_connection(engine, actor.tenant_id) as conn:
+        _run_or_404(conn, run_id)
+        rows = conn.execute(
+            text("SELECT purpose, subject_ref, model_id, prompt_version, status, attempts, defects, "
+                 "input_tokens, output_tokens, latency_ms, replayed, input_hash, output_hash, "
+                 "created_at FROM llm_calls WHERE run_id=:r ORDER BY created_at, purpose, "
+                 "subject_ref"), {"r": run_id},
+        ).mappings().all()  # fmt: skip
+        totals = usage_totals(conn, run_id)
+    return {
+        "totals": totals,
+        "items": [{**r, "created_at": r["created_at"].isoformat()} for r in rows],
+    }
 
 
 @router.get("/assessments/{run_id}/ai-validations")

@@ -44,8 +44,8 @@ def reviewer(decide: Decide) -> Callable[[str, str], str]:
     return step
 
 
-def ai_run(sl: Slice, step: Any) -> tuple[ScriptedModel, str]:
-    model = ScriptedModel(step) if not isinstance(step, ScriptedModel) else step
+def ai_run(sl: Slice, step: Any) -> tuple[Any, str]:
+    model = step if hasattr(step, "complete") else ScriptedModel(step)
     sl.enable_ai(model)
     sl.worker.ai_validation = True
     sl.worker.validation_concurrency = 1

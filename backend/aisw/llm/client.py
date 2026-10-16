@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from typing import Any, Protocol
 from urllib.parse import quote, urlparse
 
@@ -26,6 +27,23 @@ class ModelUnavailable(Exception):  # noqa: N818 - domain term, not an error cla
         self.code = code
 
 
+# Retrying cannot help with these, and must not hammer a refusing runtime or spend past a budget.
+NO_RETRY = frozenset(
+    {"AI_DISABLED", "MODEL_TOOL_CALL_REFUSED", "MODEL_AUTH_FAILED", "MODEL_BUDGET_EXHAUSTED",
+     "REPLAY_MISS"}
+)  # fmt: skip
+
+
+@dataclass(frozen=True, slots=True)
+class Usage:
+    """What one successful call cost and who served it. Tokens are None when not reported."""
+
+    model_id: str | None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    replayed: bool = False
+
+
 class ModelClient(Protocol):
     @property
     def model_id(self) -> str | None: ...
@@ -33,6 +51,23 @@ class ModelClient(Protocol):
     def complete(self, *, system: str, user: str, schema: dict[str, Any], timeout: float) -> str:
         """Return the model's raw text. Raises ModelUnavailable; never returns tool calls."""
         ...
+
+
+def complete_with_usage(
+    client: ModelClient, *, system: str, user: str, schema: dict[str, Any], timeout: float
+) -> tuple[str, Usage]:
+    """Clients that can report usage do; any other client is metered as unknown usage."""
+    metered = getattr(client, "complete_with_usage", None)
+    if metered is not None:
+        text, usage = metered(system=system, user=user, schema=schema, timeout=timeout)
+        return str(text), usage
+    return client.complete(system=system, user=user, schema=schema, timeout=timeout), Usage(
+        client.model_id
+    )
+
+
+def _tokens(value: Any) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
 
 
 class DisabledModelClient:
@@ -61,6 +96,11 @@ class OllamaClient:
         self._opener = urllib.request.build_opener(_NoRedirect, urllib.request.ProxyHandler({}))
 
     def complete(self, *, system: str, user: str, schema: dict[str, Any], timeout: float) -> str:
+        return self.complete_with_usage(system=system, user=user, schema=schema, timeout=timeout)[0]
+
+    def complete_with_usage(
+        self, *, system: str, user: str, schema: dict[str, Any], timeout: float
+    ) -> tuple[str, Usage]:
         body = json.dumps(
             {
                 "model": self.model_id,
@@ -91,13 +131,16 @@ class OllamaClient:
         if len(raw) > MAX_RESPONSE_BYTES:
             raise ModelUnavailable("MODEL_RESPONSE_TOO_LARGE")
         try:
-            msg = json.loads(raw)["message"]
+            doc = json.loads(raw)
+            msg = doc["message"]
             content = msg["content"]
         except (ValueError, KeyError, TypeError) as exc:
             raise ModelUnavailable("MODEL_RESPONSE_UNREADABLE") from exc
         if not isinstance(content, str) or msg.get("tool_calls"):
             raise ModelUnavailable("MODEL_TOOL_CALL_REFUSED")
-        return content
+        return content, Usage(
+            self.model_id, _tokens(doc.get("prompt_eval_count")), _tokens(doc.get("eval_count"))
+        )
 
 
 class AstraClient:
@@ -136,6 +179,11 @@ class AstraClient:
         return f"AstraClient(url={self._url!r}, deployment={self.model_id!r})"
 
     def complete(self, *, system: str, user: str, schema: dict[str, Any], timeout: float) -> str:
+        return self.complete_with_usage(system=system, user=user, schema=schema, timeout=timeout)[0]
+
+    def complete_with_usage(
+        self, *, system: str, user: str, schema: dict[str, Any], timeout: float
+    ) -> tuple[str, Usage]:
         body = json.dumps(
             {
                 "model": self.model_id,
@@ -178,17 +226,26 @@ class AstraClient:
             raise ModelUnavailable("MODEL_UNREACHABLE") from exc
         if len(raw) > MAX_RESPONSE_BYTES:
             raise ModelUnavailable("MODEL_RESPONSE_TOO_LARGE")
-        return _astra_text(raw)
+        doc = _astra_doc(raw)
+        reported = doc.get("usage")
+        usage: dict[str, Any] = reported if isinstance(reported, dict) else {}
+        return _astra_text(doc), Usage(
+            self.model_id, _tokens(usage.get("input_tokens")), _tokens(usage.get("output_tokens"))
+        )
 
 
-def _astra_text(raw: bytes) -> str:
+def _astra_doc(raw: bytes) -> dict[str, Any]:
     try:
         doc = json.loads(raw)
-        items = doc["output"]
-        if not isinstance(items, list):
+        if not isinstance(doc, dict) or not isinstance(doc["output"], list):
             raise TypeError
     except (ValueError, KeyError, TypeError) as exc:
         raise ModelUnavailable("MODEL_RESPONSE_UNREADABLE") from exc
+    return doc
+
+
+def _astra_text(doc: dict[str, Any]) -> str:
+    items = doc["output"]
     if any(
         not isinstance(i, dict) or i.get("type") not in ASTRA_ALLOWED_OUTPUT_TYPES for i in items
     ):

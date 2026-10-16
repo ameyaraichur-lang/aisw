@@ -105,6 +105,16 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
             f"AI validation was unavailable or invalid for {validation['unavailable']} item(s); "
             "their deterministic results stand unreviewed by the model."
         )
+    usage = inp.ai.get("usage") or {}
+    if usage.get("budget_refused"):
+        limitations.append(
+            f"The run's AI token budget was exhausted: {usage['budget_refused']} model call(s) "
+            "were not made and their deterministic results stand."
+        )
+    if usage.get("replayed"):
+        limitations.append(
+            f"{usage['replayed']} AI reply(ies) were replayed from a recording, not produced live."
+        )
     if not inp.ledgers:
         limitations.append("No coverage information was produced.")
 

@@ -54,6 +54,29 @@ Verdicts and what they do:
 
 Read the results on the run's Analysis tab, from `GET /api/v1/assessments/{run_id}/ai-validations`, or in the `ai_validations` and `llm_calls` tables (`purpose LIKE 'validation:%'`). Many dissents on findings that are clearly correct mean the reviewer is not usable for this estate; turn it off and record why.
 
+### Cost, failover and replay (ADR-023)
+
+- **Usage.** Every model call records:
+  - the deployment that served it;
+  - the input and output tokens the provider reported;
+  - the latency summed over all attempts;
+  - whether it was replayed.
+
+  Read this from `GET /api/v1/assessments/{run_id}/model-calls`. It returns hashes and costs only, never prompts or replies. The report's `ai.usage` block carries the same totals.
+- **Budget.** `AISW_AI_RUN_TOKEN_BUDGET` (default 200000; 0 means no limit) caps the live tokens one run may spend. Narration and validation share the budget, including calls made concurrently.
+  - A call whose prompt would not fit is not made. It is recorded with the defect `MODEL_BUDGET_EXHAUSTED` and is not retried. That item keeps its deterministic result.
+  - The report states how many calls were refused.
+  - Tokens already spent by an earlier attempt of the same step still count against the budget.
+- **Failover.** `AISW_ASTRA_FALLBACK_DEPLOYMENTS` lists deployments to try, in order, when a call fails transiently (unreachable, 429, timeout, incomplete).
+  - A deployment that failed is skipped for `AISW_ASTRA_FAILOVER_COOLDOWN_SECONDS`.
+  - Authentication failures, refusals and unreadable replies never fail over.
+  - The reviewer never fails over to the generating deployment (`AISW_MODEL_ID`).
+- **Record and replay** (dev and test only).
+  - `AISW_AI_REPLAY_MODE=record` stores each reply in `AISW_AI_REPLAY_DIR`, as mode-0600 files keyed by a hash of the request. Prompts are not stored.
+  - `replay` answers only from that store and never builds a network client, so it needs no key or data approval. A miss is `REPLAY_MISS`.
+  - Per-run ids are normalised in the key, so the same fixture replays across runs. Every replayed reply still passes full grounding.
+  - The report states how many replies were replayed.
+
 **Resolving a dissent (ADR-022).** A reviewer with `report:approve` who did not request the run opens the run's Analysis tab and chooses **Overrule** or **Uphold** on a dissent row, giving a reason. The API equivalent is `POST /api/v1/assessments/{run_id}/ai-validations/resolutions`.
 - **Uphold** keeps the item held and leaves the report unchanged.
 - **Overrule** re-runs assurance without that dissent and issues a new report revision (`rep-{run}-r2`, …). The old pending report becomes `SUPERSEDED`. Approve the newest revision.

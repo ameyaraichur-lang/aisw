@@ -10,7 +10,8 @@ from pydantic import ValidationError
 
 from aisw.contracts.base import StrictModel, canonical_hash
 from aisw.core.redaction import redact_obj
-from aisw.llm.client import ModelClient, ModelUnavailable
+from aisw.llm.client import NO_RETRY, ModelClient, ModelUnavailable
+from aisw.llm.routing import CallMeter
 from aisw.llm.schema import NarrativeOutput, NarrativeSubject
 from aisw.llm.validator import validate_narrative
 
@@ -54,6 +55,10 @@ class NarrativeResult(StrictModel):
     output_hash: str | None = None
     attempts: int = 0
     input_flags: list[str] = []
+    input_tokens: int | None = None  # summed over attempts; None when the provider did not say
+    output_tokens: int | None = None
+    latency_ms: int = 0
+    replayed: bool = False
 
 
 def _strip_descriptions(node: Any) -> Any:
@@ -92,18 +97,17 @@ class LlmGateway:
             "input_flags": injection_flags(subject),
         }
         schema = _strip_descriptions(NarrativeOutput.model_json_schema())
+        meter = CallMeter(self._client)
         defects: list[str] = []
         attempts = 0
         while attempts < MAX_ATTEMPTS:
             attempts += 1
             try:
-                raw = self._client.complete(
-                    system=system, user=user, schema=schema, timeout=self._timeout
-                )
+                raw = meter.complete(system=system, user=user, schema=schema, timeout=self._timeout)
             except ModelUnavailable as exc:
                 defects = [exc.code]
-                if exc.code in {"AI_DISABLED", "MODEL_TOOL_CALL_REFUSED", "MODEL_AUTH_FAILED"}:
-                    break  # retrying cannot help and must not hammer a refusing runtime
+                if exc.code in NO_RETRY:
+                    break
                 continue
             out_hash = canonical_hash({"raw": raw})
             try:
@@ -114,13 +118,13 @@ class LlmGateway:
             found = validate_narrative(out, subject)
             if found:
                 return NarrativeResult(
-                    status="REJECTED",
-                    defects=found,
-                    attempts=attempts,
-                    output_hash=out_hash,
-                    **base,
-                )
+                    status="REJECTED", defects=found, attempts=attempts, output_hash=out_hash,
+                    **(base | meter.provenance()),
+                )  # fmt: skip
             return NarrativeResult(
-                status="VALIDATED", output=out, attempts=attempts, output_hash=out_hash, **base
-            )
-        return NarrativeResult(status="UNAVAILABLE", defects=defects, attempts=attempts, **base)
+                status="VALIDATED", output=out, attempts=attempts, output_hash=out_hash,
+                **(base | meter.provenance()),
+            )  # fmt: skip
+        return NarrativeResult(
+            status="UNAVAILABLE", defects=defects, attempts=attempts, **(base | meter.provenance())
+        )

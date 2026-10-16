@@ -94,6 +94,7 @@ def main() -> int:
     print(json.dumps({
         "run_id": run_id, "state": state, "elapsed_s": elapsed,
         "validation_summary": val["summary"],
+        "model_calls": api("GET", f"/assessments/{run_id}/model-calls", "carol")["totals"],
         "attention": [
             {k: i[k] for k in ("agent_id", "target_ref", "verdict", "effect", "issues",
                                "human_questions", "validator_confidence", "defects")}

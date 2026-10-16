@@ -243,15 +243,9 @@ def store_narratives(
         ).rowcount  # fmt: skip
         if n == 1:  # provenance is written once per narrative, even if a replay re-ran the call
             conn.execute(
-                text(
-                    "INSERT INTO llm_calls (tenant_id, run_id, purpose, subject_ref, model_id, "
-                    "prompt_version, input_hash, output_hash, status, attempts, defects, created_at) "
-                    "VALUES (:t, :r, :p, :s, :m, :pv, :ih, :oh, :st, :a, CAST(:d AS jsonb), :n)"
-                ),
+                _INSERT_CALL,
                 {"t": run["tenant_id"], "r": run["run_id"], "p": subject.purpose,
-                 "s": subject.subject_ref, "m": res.model_id, "pv": res.prompt_version,
-                 "ih": res.input_hash, "oh": res.output_hash, "st": res.status, "a": res.attempts,
-                 "d": json.dumps(res.defects), "n": now},
+                 "s": subject.subject_ref, "st": res.status, "n": now, **_usage(res)},
             )  # fmt: skip
 
 
@@ -356,6 +350,41 @@ def narrative_packets(
 
 # llm_calls shares one status vocabulary across narrative and validation calls.
 _CALL_STATUS = {"VALID": "VALIDATED", "VALIDATOR_INVALID": "REJECTED", "UNAVAILABLE": "UNAVAILABLE"}
+_INSERT_CALL = text(
+    "INSERT INTO llm_calls (tenant_id, run_id, purpose, subject_ref, model_id, prompt_version, "
+    "input_hash, output_hash, status, attempts, defects, created_at, input_tokens, output_tokens, "
+    "latency_ms, replayed) VALUES (:t, :r, :p, :s, :m, :pv, :ih, :oh, :st, :a, CAST(:d AS jsonb), "
+    ":n, :it, :ot, :lat, :rp)"
+)
+
+
+def _usage(res: NarrativeResult | ValidationResult) -> dict[str, Any]:
+    return {"m": res.model_id, "pv": res.prompt_version, "ih": res.input_hash,
+            "oh": res.output_hash, "a": res.attempts, "d": json.dumps(res.defects),
+            "it": res.input_tokens, "ot": res.output_tokens, "lat": res.latency_ms,
+            "rp": res.replayed}  # fmt: skip
+
+
+def usage_totals(conn: Connection, run_id: str) -> dict[str, Any]:
+    """What the run's model calls cost, for the report and the model-call ledger."""
+    row = conn.execute(
+        text("SELECT count(*), coalesce(sum(input_tokens), 0), coalesce(sum(output_tokens), 0), "
+             "coalesce(sum(latency_ms), 0), count(*) FILTER (WHERE replayed), "
+             "count(*) FILTER (WHERE input_tokens IS NULL AND NOT replayed), "
+             "count(*) FILTER (WHERE defects ? 'MODEL_BUDGET_EXHAUSTED') "
+             "FROM llm_calls WHERE run_id=:r"), {"r": run_id},
+    ).one()  # fmt: skip
+    return {"calls": row[0], "input_tokens": row[1], "output_tokens": row[2],
+            "latency_ms": row[3], "replayed": row[4], "unmetered": row[5],
+            "budget_refused": row[6]}  # fmt: skip
+
+
+def tokens_used(conn: Connection, run_id: str) -> int:
+    """Live tokens already spent by a run (replays are free), so a repeated step cannot overspend."""
+    return int(conn.execute(
+        text("SELECT coalesce(sum(coalesce(input_tokens, 0) + coalesce(output_tokens, 0)), 0) "
+             "FROM llm_calls WHERE run_id=:r AND NOT replayed"), {"r": run_id},
+    ).scalar_one())  # fmt: skip
 
 
 def store_validations(
@@ -389,15 +418,9 @@ def store_validations(
                 },
             )  # fmt: skip
         conn.execute(
-            text(
-                "INSERT INTO llm_calls (tenant_id, run_id, purpose, subject_ref, model_id, "
-                "prompt_version, input_hash, output_hash, status, attempts, defects, created_at) "
-                "VALUES (:t, :r, :p, :s, :m, :pv, :ih, :oh, :st, :a, CAST(:d AS jsonb), :n)"
-            ),
+            _INSERT_CALL,
             {"t": run["tenant_id"], "r": run["run_id"], "p": f"validation:agent-{packet.agent_id}",
-             "s": packet.packet_id, "m": res.model_id, "pv": res.prompt_version,
-             "ih": res.input_hash, "oh": res.output_hash, "st": _CALL_STATUS[res.status],
-             "a": res.attempts, "d": json.dumps(res.defects), "n": now},
+             "s": packet.packet_id, "st": _CALL_STATUS[res.status], "n": now, **_usage(res)},
         )  # fmt: skip
 
 
@@ -612,6 +635,9 @@ def report_extras(conn: Connection, run: dict[str, Any]) -> dict[str, Any]:
     if summary["total"]:
         ai["validation"] = summary
         models |= set(summary["models"])
+    usage = usage_totals(conn, run_id)
+    if usage["calls"]:
+        ai["usage"] = usage
     return {
         "risks": risks, "scenarios": scenarios, "recommendations": recommendations,
         "analysis_excluded": excluded, "model_versions": sorted(models), "ai": ai,

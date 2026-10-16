@@ -44,6 +44,13 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     eng = make_db(pg_server, f"mig_{uuid.uuid4().hex[:8]}")
     migrate(eng, "head")
     assert _tables(eng) == TABLES
+    migrate(eng, "0008", down=True)  # 0009 (model-call usage) is independently reversible
+    assert _tables(eng) == TABLES
+    with eng.connect() as c:
+        assert not c.execute(
+            text("SELECT 1 FROM information_schema.columns WHERE table_name='llm_calls' "
+                 "AND column_name IN ('input_tokens', 'latency_ms', 'replayed')")
+        ).first()  # fmt: skip
     migrate(eng, "0007", down=True)  # 0008 (review revisions) is independently reversible
     assert _tables(eng) == TABLES - REVISIONS
     with eng.connect() as c:

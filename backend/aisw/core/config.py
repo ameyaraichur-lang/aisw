@@ -24,6 +24,12 @@ class Environment(StrEnum):
     PROD = "prod"
 
 
+class ReplayMode(StrEnum):
+    OFF = "off"
+    RECORD = "record"
+    REPLAY = "replay"
+
+
 class AssessmentMode(StrEnum):
     READ_ONLY = "read_only"
 
@@ -96,6 +102,12 @@ class Settings(BaseSettings):
     ai_validation_batch_size: int = Field(default=12, ge=1, le=50)
     ai_validation_max_items_per_agent: int = Field(default=60, ge=1, le=1000)
     ai_validation_concurrency: int = Field(default=4, ge=1, le=16)
+    # Model-call routing (ADR-023). Live tokens one run may spend; 0 means no limit.
+    ai_run_token_budget: int = Field(default=200_000, ge=0, le=10_000_000)
+    # record: store each reply under a hash of its request; replay: answer only from that store and
+    # never reach a model. Not available in prod (replies are kept on local disk).
+    ai_replay_mode: ReplayMode = ReplayMode.OFF
+    ai_replay_dir: Path | None = None
 
     # Astra (Azure OpenAI Responses API). Used only when model_provider=astra (ADR-020).
     astra_endpoint: str | None = None  # https://<resource>.openai.azure.com
@@ -107,6 +119,13 @@ class Settings(BaseSettings):
     astra_max_output_tokens: int = Field(default=2048, ge=256, le=16384)
     # Separate deployment for the validation pass, so the reviewer is not the generator.
     astra_validation_deployment: str | None = None
+    # Comma-separated deployments tried in order when the primary fails transiently (ADR-023).
+    astra_fallback_deployments: str | None = Field(default=None, pattern=r"^[\w.\-]+(,[\w.\-]+)*$")
+    astra_failover_cooldown_seconds: int = Field(default=60, ge=1, le=3600)
+
+    @property
+    def astra_fallbacks(self) -> list[str]:
+        return [d for d in (self.astra_fallback_deployments or "").split(",") if d]
 
     # Reference to the database DSN supplied by the secret provider; never logged or committed.
     database_url: SecretStr | None = None
@@ -138,7 +157,16 @@ class Settings(BaseSettings):
             problem := astra_endpoint_problem(self.astra_endpoint)
         ):
             raise ValueError(problem)
-        if self.ai_enabled and self.model_provider is ModelProvider.ASTRA:
+        if self.ai_replay_mode is not ReplayMode.OFF:
+            if self.env is Environment.PROD:
+                raise ValueError("ai_replay_mode is for dev and test only")
+            if self.ai_replay_dir is None:
+                raise ValueError("ai_replay_mode requires ai_replay_dir")
+        replay_only = self.ai_replay_mode is ReplayMode.REPLAY  # nothing can leave the host
+        if self.ai_enabled and replay_only:
+            if not self.model_id:
+                raise ValueError("ai_replay_mode=replay requires the recorded model_id")
+        elif self.ai_enabled and self.model_provider is ModelProvider.ASTRA:
             key = self.astra_api_key.get_secret_value().strip() if self.astra_api_key else ""
             if not (self.model_id and self.astra_endpoint and key):
                 raise ValueError(

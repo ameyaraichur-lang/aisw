@@ -22,8 +22,9 @@ from aisw.contracts.assurance import AssuranceResult
 from aisw.contracts.base import NonEmpty, StrictModel, canonical_hash
 from aisw.contracts.enums import AssuranceVerdict
 from aisw.core.redaction import redact_obj
-from aisw.llm.client import ModelClient, ModelUnavailable
+from aisw.llm.client import NO_RETRY, ModelClient, ModelUnavailable
 from aisw.llm.gateway import _strip_descriptions, injection_flags_text
+from aisw.llm.routing import CallMeter
 from aisw.llm.validator import extract
 
 PROMPT_VERSION = "agent-validation-1.0.0"
@@ -108,6 +109,10 @@ class ValidationResult(StrictModel):
     output_hash: str | None = None
     attempts: int = 0
     input_flags: list[str] = []
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    latency_ms: int = 0
+    replayed: bool = False
 
 
 SYSTEM_PROMPT = (
@@ -220,17 +225,16 @@ class ValidationGateway:
             "input_flags": injection_flags_text(user),
         }
         schema = _strip_descriptions(ValidationOutput.model_json_schema())
+        meter = CallMeter(self._client)
         defects: list[str] = []
         attempts = 0
         while attempts < MAX_ATTEMPTS:
             attempts += 1
             try:
-                raw = self._client.complete(
-                    system=system, user=user, schema=schema, timeout=self._timeout
-                )
+                raw = meter.complete(system=system, user=user, schema=schema, timeout=self._timeout)
             except ModelUnavailable as exc:
                 defects = [exc.code]
-                if exc.code in {"AI_DISABLED", "MODEL_TOOL_CALL_REFUSED", "MODEL_AUTH_FAILED"}:
+                if exc.code in NO_RETRY:
                     break
                 continue
             out_hash = canonical_hash({"raw": raw})
@@ -243,12 +247,15 @@ class ValidationGateway:
             if found:
                 return ValidationResult(
                     status="VALIDATOR_INVALID", defects=found, attempts=attempts,
-                    output_hash=out_hash, **base,
+                    output_hash=out_hash, **(base | meter.provenance()),
                 )  # fmt: skip
             return ValidationResult(
-                status="VALID", output=out, attempts=attempts, output_hash=out_hash, **base
-            )
-        return ValidationResult(status="UNAVAILABLE", defects=defects, attempts=attempts, **base)
+                status="VALID", output=out, attempts=attempts, output_hash=out_hash,
+                **(base | meter.provenance()),
+            )  # fmt: skip
+        return ValidationResult(
+            status="UNAVAILABLE", defects=defects, attempts=attempts, **(base | meter.provenance())
+        )
 
 
 def apply_dissent(res: AssuranceResult, verdict: str | None) -> AssuranceResult:

@@ -22,5 +22,6 @@
 - [ADR-020: Astra (Azure OpenAI) as an opt-in remote model provider](ADR-020-astra-remote-model-provider.md)
 - [ADR-021: AI validation pass over agent outcomes (one-way, advisory)](ADR-021-agent-validation-pass.md)
 - [ADR-022: Human resolution of AI validator dissents via assurance and report revisions](ADR-022-resolving-ai-dissents.md)
+- [ADR-023: Model-call routing: usage provenance, run budgets, failover, record/replay](ADR-023-model-call-routing.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.
