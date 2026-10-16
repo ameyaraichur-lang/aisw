@@ -409,17 +409,17 @@
      }
     }
    ],
-   "name": "httpcore",
+   "name": "httpcore2",
    "properties": [
     {
      "name": "aisw:licence-status",
      "value": "allow"
     }
    ],
-   "purl": "pkg:pypi/httpcore@1.0.9",
+   "purl": "pkg:pypi/httpcore2@2.13.1",
    "scope": "excluded",
    "type": "library",
-   "version": "1.0.9"
+   "version": "2.13.1"
   },
   {
    "licenses": [
@@ -429,17 +429,37 @@
      }
     }
    ],
-   "name": "httpx",
+   "name": "httpx2",
    "properties": [
     {
      "name": "aisw:licence-status",
      "value": "allow"
     }
    ],
-   "purl": "pkg:pypi/httpx@0.28.1",
+   "purl": "pkg:pypi/httpx2@2.13.1",
    "scope": "excluded",
    "type": "library",
-   "version": "0.28.1"
+   "version": "2.13.1"
+  },
+  {
+   "licenses": [
+    {
+     "license": {
+      "name": "UNKNOWN"
+     }
+    }
+   ],
+   "name": "httpx2-jsfetch",
+   "properties": [
+    {
+     "name": "aisw:licence-status",
+     "value": "deny"
+    }
+   ],
+   "purl": "pkg:pypi/httpx2-jsfetch@1.0",
+   "scope": "excluded",
+   "type": "library",
+   "version": "1.0"
   },
   {
    "licenses": [
@@ -1340,6 +1360,26 @@
    "scope": "excluded",
    "type": "library",
    "version": "1.2.0"
+  },
+  {
+   "licenses": [
+    {
+     "license": {
+      "id": "MIT"
+     }
+    }
+   ],
+   "name": "truststore",
+   "properties": [
+    {
+     "name": "aisw:licence-status",
+     "value": "allow"
+    }
+   ],
+   "purl": "pkg:pypi/truststore@0.10.5",
+   "scope": "excluded",
+   "type": "library",
+   "version": "0.10.5"
   },
   {
    "licenses": [
@@ -4408,7 +4448,7 @@
    }
   ]
  },
- "serialNumber": "urn:uuid:28b9849f-be80-5014-89a3-7b06112eb09d",
+ "serialNumber": "urn:uuid:1b1cc031-4fd7-5215-808e-e1ee4735e2bb",
  "specVersion": "1.5",
  "version": 1
 }

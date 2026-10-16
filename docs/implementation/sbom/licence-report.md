@@ -2,13 +2,13 @@
 
 Engineering gate, not legal advice. Source: `backend/uv.lock` + installed Python metadata, `web/package-lock.json`. **Not Syft/ScanCode**; native libraries inside wheels are not inventoried.
 
-Components: 74 Python, 112 npm; 35 are runtime (shipped) dependencies, the rest are build/test tooling.
+Components: 76 Python, 112 npm; 35 are runtime (shipped) dependencies, the rest are build/test tooling.
 
 ## Needs review (recorded acceptance required)
 
 | Component | Version | Eco | Scope | Licence | Acceptance |
 |---|---|---|---|---|---|
-| certifi | 2026.7.22 | pypi | excluded | MPL-2.0 | MPL-2.0 (file-level copyleft). Pulled only by the test HTTP client (httpx); not shipped in the runtime image. |
+| certifi | 2026.7.22 | pypi | excluded | MPL-2.0 | MPL-2.0 (file-level copyleft). Pulled only by dev tooling (requests, used by pip-audit); not shipped in the runtime image. |
 | pathspec | 1.1.1 | pypi | excluded | MPL-2.0 | MPL-2.0 (file-level copyleft). Development tool dependency of linters; not shipped in the runtime image. |
 | psycopg | 3.3.6 | pypi | required | LGPL-3.0-only | LGPL-3.0-only. Imported unmodified as a separate, replaceable Python package (dynamic use); the platform's own code stays under its own licence. Obligations for redistribution (notice, ability to replace the library) must be met in packaging (M8 runbook). Legal review pending. |
 | psycopg-binary | 3.3.6 | pypi | excluded | LGPL-3.0-only | LGPL-3.0-only. Same position as psycopg; ships libpq inside the wheel, so its notices travel with the wheel. Legal review pending. |
@@ -32,6 +32,7 @@ Components: 74 Python, 112 npm; 35 are runtime (shipped) dependencies, the rest 
 | Component | Version | Eco | Scope | Licence | Acceptance |
 |---|---|---|---|---|---|
 | colorama | 0.4.6 | pypi | excluded | UNKNOWN | Licence metadata is absent in the installed package, so it is UNKNOWN to this gate. Terminal-colour helper pulled by dev tooling only; not shipped. Upstream licence is believed to be BSD-3-Clause (not verified here). |
+| httpx2-jsfetch | 1.0 | pypi | excluded | UNKNOWN | Licence metadata unreadable (not installed on this platform). Pulled only under Pyodide (httpx2 marker sys_platform == 'emscripten') by the test HTTP client; never installed on a supported platform and not shipped. Re-check if a browser-hosted Python is ever used. |
 | pgserver | 0.1.4 | pypi | excluded | UNKNOWN | Licence metadata is missing in the package, so it is UNKNOWN to this gate. Development/test harness only (embedded PostgreSQL for tests); never shipped. Verify its upstream licence before any redistribution of the dev environment. |
 | tzdata | 2026.5 | pypi | excluded | UNKNOWN | Licence metadata unreadable (not installed on this platform). Pulled only on Windows (psycopg marker sys_platform == 'win32'), which is not a supported deployment platform; excluded from the runtime closure. Upstream licence is believed to be Apache-2.0 (not verified here). Re-check if Windows is ever supported. |
 

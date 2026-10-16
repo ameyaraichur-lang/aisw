@@ -76,7 +76,7 @@ Done on 2026-10-16:
 | Supply chain | Syft/ScanCode SBOM instead of the lockfile-based one; gitleaks instead of the stopgap secret scanner |
 | Scale | Multi-node worker soak test; DoS sizing |
 | Accessibility | Manual screen-reader pass (axe WCAG 2.2 AA automated only) |
-| Hygiene | Starlette `TestClient`/`httpx` deprecation warning in every test run |
+| Hygiene | ~~Starlette `TestClient`/`httpx` deprecation warning in every test run~~ **Done:** the test client uses `httpx2`, as Starlette now requires |
 
 ## 7. Suggested sequence
 
