@@ -20,6 +20,7 @@ from aisw.core.db import tenant_connection
 from aisw.core.rbac import ActorContext, Forbidden, Permission, authorize
 from aisw.orchestrator.events import append_event
 from aisw.orchestrator.runs import create_run
+from aisw.reporting.export import MEDIA, export, stamp_lines
 
 router = APIRouter(prefix="/api/v1")
 esc = _html.escape
@@ -310,7 +311,7 @@ def list_reports(
 @router.get("/reports/{report_id}")
 def get_report(
     report_id: str,
-    format: str = Query(default="json", pattern="^(json|html)$"),  # noqa: A002
+    format: str = Query(default="json", pattern="^(json|html|pdf|docx)$"),  # noqa: A002
     download: bool = False,
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
@@ -351,9 +352,12 @@ def get_report(
         "X-Exported-By": actor.actor_id, "X-Exported-At": now.isoformat(),
         "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'",
     }  # fmt: skip
-    ext = "html" if format == "html" else "json"
     if download:
-        headers["Content-Disposition"] = f'attachment; filename="{report_id}.{ext}"'
+        headers["Content-Disposition"] = f'attachment; filename="{report_id}.{format}"'
+    if format in MEDIA:
+        lines = stamp_lines(actor.actor_id, actor.tenant_id, now.isoformat(), approval, report_hash)
+        data = export(body, format, lines, approved=approval == "APPROVED")  # type: ignore[arg-type]
+        return Response(data, media_type=MEDIA[format], headers=headers)
     if format == "html":
         return Response(
             html.replace("<main>", "<main>" + stamp, 1), media_type="text/html", headers=headers

@@ -37,5 +37,6 @@
 - [ADR-035: Modernization roadmap waves and the scenario chain view](ADR-035-roadmap-waves-and-chain-view.md)
 - [ADR-036: AVP trigger policy and the Assurance Console](ADR-036-avp-trigger-policy-and-assurance-console.md)
 - [ADR-037: Ticket rendering for Jira and ServiceNow, and two-person delivery](ADR-037-itsm-ticket-rendering-and-delivery.md)
+- [ADR-038: PDF and DOCX report exports, control-gap matrix and architecture delta](ADR-038-report-exports-gap-matrix-and-delta.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

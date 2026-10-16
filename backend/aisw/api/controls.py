@@ -22,6 +22,7 @@ from aisw.core.rbac import ActorContext, Permission, authorize
 from aisw.core.redaction import redact_text
 from aisw.policy import mappings
 from aisw.policy.engine import PolicyPack
+from aisw.policy.mappings import latest_reviews as latest_reviews
 
 router = APIRouter(prefix="/api/v1")
 FINAL_RUN = {"REPORT_READY", "PARTIAL", "CLOSED"}
@@ -32,22 +33,6 @@ def _c(request: Request) -> Container:
     if c is None:
         raise HTTPException(status_code=503, detail="not configured")
     return c
-
-
-def latest_reviews(conn: Any, catalog: mappings.Catalog) -> dict[str, dict[str, Any]]:
-    rows = conn.execute(
-        text(
-            "SELECT DISTINCT ON (mapping_key) mapping_key, decision, reason, decided_by, decided_at "
-            "FROM framework_mapping_reviews WHERE catalog_version=:v "
-            "ORDER BY mapping_key, seq DESC"
-        ),
-        {"v": catalog.version},
-    ).all()
-    return {
-        r[0]: {"status": r[1], "reason": r[2], "reviewed_by": r[3],
-               "reviewed_at": r[4].isoformat()}
-        for r in rows
-    }  # fmt: skip
 
 
 def effective(

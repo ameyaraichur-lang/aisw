@@ -142,6 +142,7 @@ flowchart LR
 | Finding review and exceptions ([ADR-033](docs/adr/ADR-033-finding-review-and-exceptions.md)) | ✅ | Confirm, reject, reopen, request exception; a second person approves; an expired exception reports the FAIL again |
 | Assurance Console, AI validation trigger policy and model-call ledger ([ADR-036](docs/adr/ADR-036-avp-trigger-policy-and-assurance-console.md)) | 🟡 | Engine-vs-AI disagreement queue resolved by a human with a reason; the trigger policy is a sample awaiting policy-owner sign-off |
 | Modernization Roadmap and scenario chain view ([ADR-035](docs/adr/ADR-035-roadmap-waves-and-chain-view.md)) | ✅ | Waves follow the rubric tier only; work without a tier is left unscheduled rather than guessed |
+| Report exports: PDF and Word, control-gap matrix, architecture delta ([ADR-038](docs/adr/ADR-038-report-exports-gap-matrix-and-delta.md)) | ✅ | Built from the hashed report only; a draft is marked on every page; the gap matrix never says "compliant" |
 | Ticket rendering and two-person delivery to Jira or ServiceNow ([ADR-037](docs/adr/ADR-037-itsm-ticket-rendering-and-delivery.md)) | 🟡 | Off by default; a retry finds the ticket instead of duplicating it. Tested against a loopback fake only; real delivery awaits the `itsm-delivery` sign-off |
 | Asset Explorer | ✅ | Reconciled assets with sourced ownership, latest posture per rule and accepted findings; relationships are not modelled, so none is shown |
 | Passive URL smoke adapter | 🟡 | Proven against a **local server only** |

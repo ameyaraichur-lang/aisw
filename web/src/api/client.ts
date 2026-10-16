@@ -86,3 +86,9 @@ export async function apiText(path: string, accept = 'text/html'): Promise<strin
   if (!res.ok) throw new ApiError(res.status, null, res.statusText)
   return res.text()
 }
+
+export async function apiBlob(path: string): Promise<Blob> {
+  const res = await fetch(`/api/v1${path}`, { headers: authHeaders() })
+  if (!res.ok) throw new ApiError(res.status, null, res.statusText)
+  return res.blob()
+}

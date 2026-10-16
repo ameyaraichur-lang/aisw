@@ -10,9 +10,10 @@ import json
 import re
 from functools import cache
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import model_validator
+from sqlalchemy import text
 
 from aisw.contracts.base import NonEmpty, StrictModel
 
@@ -80,4 +81,28 @@ def builtin() -> Catalog:
     return Catalog.model_validate(json.loads(CATALOG_PATH.read_text(encoding="utf-8")))
 
 
-__all__ = ["CATALOG_PATH", "Catalog", "Framework", "Mapping", "MappingStatus", "builtin"]
+def latest_reviews(conn: Any, catalog: Catalog) -> dict[str, dict[str, Any]]:
+    rows = conn.execute(
+        text(
+            "SELECT DISTINCT ON (mapping_key) mapping_key, decision, reason, decided_by, decided_at "
+            "FROM framework_mapping_reviews WHERE catalog_version=:v "
+            "ORDER BY mapping_key, seq DESC"
+        ),
+        {"v": catalog.version},
+    ).all()
+    return {
+        r[0]: {"status": r[1], "reason": r[2], "reviewed_by": r[3],
+               "reviewed_at": r[4].isoformat()}
+        for r in rows
+    }  # fmt: skip
+
+
+__all__ = [
+    "CATALOG_PATH",
+    "Catalog",
+    "Framework",
+    "Mapping",
+    "MappingStatus",
+    "builtin",
+    "latest_reviews",
+]

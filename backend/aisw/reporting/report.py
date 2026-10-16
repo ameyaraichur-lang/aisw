@@ -16,6 +16,7 @@ from aisw.contracts.assurance import ReportBundle
 from aisw.contracts.base import canonical_hash
 from aisw.contracts.domain import CoverageLedger
 from aisw.policy import signoffs
+from aisw.reporting.gaps import GAP_LABEL, architecture_delta
 
 DISCLAIMER = (
     "Assessment report generated from recorded evidence. It is not a certification and does not "
@@ -57,6 +58,8 @@ class ReportInputs:
     verification_questions: dict[str, dict[str, Any]] = field(default_factory=dict)
     # ADR-033: exceptions that covered (APPLIED) or no longer covered (EXPIRED) a failing check.
     exceptions: list[dict[str, Any]] = field(default_factory=list)
+    # ADR-038: framework controls through the reviewed mappings, frozen with the report.
+    control_gaps: dict[str, Any] | None = None
 
 
 def _pending_signoffs(inp: ReportInputs) -> list[str]:
@@ -203,6 +206,8 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
         body["executive_summary"] = {**inp.executive_summary, "ai_generated": True}
     if inp.exceptions:
         body["exceptions"] = inp.exceptions
+    if inp.control_gaps is not None:
+        body["control_gaps"] = inp.control_gaps
     suffix = f"-r{inp.revision}" if inp.revision > 1 else ""
     bundle = ReportBundle(
         report_id=f"rep-{inp.run_id}{suffix}", tenant_id=inp.tenant_id, project_id=inp.project_id,
@@ -239,6 +244,43 @@ def _narrative_html(n: dict[str, Any] | None) -> str:
     )
 
 
+def _gaps_html(body: dict[str, Any]) -> str:
+    gaps = body.get("control_gaps")
+    if not gaps:
+        return ""
+    out = (f"<h2>Control-gap matrix</h2><p><em>{_e(gaps['notice'])} Mapping catalog "
+           f"{_e(gaps['catalog_version'])}. PROPOSED marks a mapping still awaiting policy-owner "
+           "review.</em></p>")  # fmt: skip
+    for fw in gaps["frameworks"]:
+        rows = "".join(
+            f"<tr><td>{_e(r['control_id'])}</td><td>{_e(r['title'])}</td>"
+            f"<td>{_e(GAP_LABEL[r['state']])}</td><td>"
+            + _e(", ".join(f"{p['control_id']} {p['outcome']}" for p in r["pack_controls"]))
+            + f"</td><td>{_e(r['mapping'])}</td></tr>"
+            for r in fw["rows"]
+        )
+        out += (f"<h3>{_e(fw['name'])} ({_e(fw['version'])})</h3><table><thead><tr><th>Control</th>"
+                "<th>Title</th><th>State</th><th>Pack checks</th><th>Mapping</th></tr></thead>"
+                f"<tbody>{rows}</tbody></table>")  # fmt: skip
+    return out
+
+
+def _delta_html(body: dict[str, Any]) -> str:
+    rows = "".join(
+        f"<tr><td>{_e(r['pattern'] or '-')}</td><td>{_e('; '.join(r['current']))}</td>"
+        f"<td>{_e(r['target'] or '-')}</td><td>{_e(', '.join(r['assets']) or '-')}</td>"
+        f"<td>{_e(r['tier'] or 'not rated')}</td></tr>"
+        for r in architecture_delta(body)
+    )
+    if not rows:
+        return ""
+    return ("<h2>Architecture delta (draft, for planning only)</h2><p><em>Current state, as "
+            "recorded in accepted findings, beside the approved target pattern. Effort is unknown "
+            "until the owner estimates it.</em></p><table><thead><tr><th>Pattern</th><th>Current "
+            "state</th><th>Target</th><th>Assets</th><th>Risk tier</th></tr></thead>"
+            f"<tbody>{rows}</tbody></table>")  # fmt: skip
+
+
 def _analysis_html(body: dict[str, Any]) -> str:
     out = ""
     if body.get("scenarios"):
@@ -252,6 +294,7 @@ def _analysis_html(body: dict[str, Any]) -> str:
                 f"<p>Validation steps: {_e('; '.join(s['validation_steps']))}</p>"
                 f"{_narrative_html(s.get('narrative'))}"
             )
+    out += _delta_html(body)
     if body.get("recommendations"):
         out += "<h2>Recommendations (draft, for planning only)</h2>"
         for r in body["recommendations"]:
@@ -348,6 +391,6 @@ def render_html(body: dict[str, Any]) -> str:
         f"<th>Assets</th><th>Evidence</th></tr></thead><tbody>{rows}</tbody></table>"
         "<h2>Coverage</h2><table><thead><tr><th>Segment</th><th>Expected</th><th>Reconciled</th>"
         f"<th>Unknown</th><th>Unsupported</th><th>Reasons</th></tr></thead><tbody>{cov}</tbody></table>"
-        f"{exceptions}{questions}{_analysis_html(body)}"
+        f"{_gaps_html(body)}{exceptions}{questions}{_analysis_html(body)}"
         f"<h2>Limitations</h2><ul>{limits}</ul></main></body></html>"
     )

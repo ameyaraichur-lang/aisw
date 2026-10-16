@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link, NavLink, Navigate, Route, Routes, useParams } from 'react-router-dom'
-import { api, ApiError, apiText } from '../api/client'
+import { api, ApiError, apiBlob, apiText } from '../api/client'
 import { useAiValidations, useControls, useCoverage, useReportBody, useReports, useRunFindings, useRunRecommendations, useRunScenarios, useRunStatus, useTasks } from '../api/hooks'
 import type { AiDecision, ControlRow, TaskView } from '../api/types'
 import { useSession } from '../auth/useSession'
@@ -409,10 +409,16 @@ function ReportTab({ runId }: { runId: string }) {
     onSuccess: () => { setConfirm(false); void qc.invalidateQueries({ queryKey: ['run', runId] }) },
   })
   const load = async () => setHtml(await apiText(`/reports/${first!.report_id}?format=html`))
-  const download = async (fmt: 'json' | 'html') => {
-    const text = await apiText(`/reports/${first!.report_id}?format=${fmt}&download=1`, fmt === 'json' ? 'application/json' : 'text/html')
-    const url = URL.createObjectURL(new Blob([text], { type: fmt === 'json' ? 'application/json' : 'text/html' }))
-    const a = document.createElement('a'); a.href = url; a.download = `${first!.report_id}.${fmt}`; a.click(); URL.revokeObjectURL(url)
+  const [dlError, setDlError] = useState<string | null>(null)
+  const download = async (fmt: 'json' | 'html' | 'pdf' | 'docx') => {
+    setDlError(null)
+    try {
+      const blob = await apiBlob(`/reports/${first!.report_id}?format=${fmt}&download=1`)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a'); a.href = url; a.download = `${first!.report_id}.${fmt}`; a.click(); URL.revokeObjectURL(url)
+    } catch (e) {
+      setDlError(e instanceof ApiError && e.status === 403 ? 'Only an approved report can be downloaded, unless you can approve reports.' : `Download failed: ${String(e)}`)
+    }
   }
   if (reports.isError)
     return reports.error instanceof ApiError && reports.error.status === 403 ? <Banner tone="warn" role="alert" title="Access denied">Reports require the report-reader or reviewer role.</Banner> : <Banner tone="bad" role="alert" title="Could not load reports">{String(reports.error)}</Banner>
@@ -463,9 +469,12 @@ function ReportTab({ runId }: { runId: string }) {
         <button type="button" className="btn" onClick={() => void load()}>Preview HTML report</button>
         <button type="button" className="btn" onClick={() => void download('json')}>Download JSON</button>
         <button type="button" className="btn" onClick={() => void download('html')}>Download HTML</button>
+        <button type="button" className="btn" onClick={() => void download('pdf')}>Download PDF</button>
+        <button type="button" className="btn" onClick={() => void download('docx')}>Download Word (DOCX)</button>
         {can('report:approve') && first.approval_state === 'PENDING' ? <button type="button" className="btn btn--primary" onClick={() => setConfirm(true)}>Approve report</button> : null}
       </div>
       {err ? <Banner tone="bad" role="alert" title={err.status === 403 ? 'You cannot approve this report' : 'Approval refused'}>{err.message}</Banner> : null}
+      {dlError ? <Banner tone="warn" role="alert" title="Not downloaded">{dlError}</Banner> : null}
       {html ? <iframe className="report" title="Report preview" sandbox="" srcDoc={html} /> : null}
       <ConfirmDialog open={confirm} title="Approve this report?" confirmLabel="Approve" busy={approve.isPending} onConfirm={() => approve.mutate()} onCancel={() => setConfirm(false)}>
         <p>Approval is bound to report hash <ShortHash value={first.report_hash} />. It does not certify the assessed estate.</p>

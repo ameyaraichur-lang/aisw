@@ -52,11 +52,13 @@ from aisw.llm.validation import (
 )
 from aisw.orchestrator import analysis
 from aisw.orchestrator.events import append_event
+from aisw.policy import mappings
 from aisw.policy.engine import PackRegistry, PolicyEvaluator, PolicyPack
 from aisw.policy.exceptions import Grant, effect_at
 from aisw.policy.results import RuleResult, dedupe_key, finding_id, rollup
 from aisw.policy.rubric import builtin as builtin_rubric
 from aisw.reporting.coverage import build_ledger
+from aisw.reporting.gaps import control_gaps
 from aisw.reporting.report import ReportInputs, build_report
 
 _SELECT_RUN = "SELECT * FROM assessment_runs WHERE run_id=:r"
@@ -961,6 +963,7 @@ class Worker:
             )
         ]
         now = self.clock()
+        catalog = mappings.builtin()
         revision = run["assurance_revision"]
         previous = conn.execute(
             text("SELECT report_id FROM reports WHERE run_id=:r AND revision < :v "
@@ -975,6 +978,9 @@ class Worker:
                 controls=controls, accepted=accepted, needs_review=needs_review,
                 rejected_count=rejected, evidence=evidence, run_partial=run["partial"],
                 generated_at=now, notice=pack.report_notice, exceptions=exceptions,
+                control_gaps=control_gaps(
+                    pack, {c["control_id"]: c["outcome"] for c in controls}, catalog,
+                    {k: v["status"] for k, v in mappings.latest_reviews(conn, catalog).items()}),
                 **analysis.report_extras(conn, run),
             )
         )  # fmt: skip
