@@ -1,0 +1,4 @@
+asset_id,hostname,ip,os_family,owner,criticality,environment,last_seen,source
+host-1,web-01.corp.test,10.20.0.11,linux,team-web,high,production,2026-10-10T09:00:00Z,cmdb-main
+host-2,db-01.corp.test,10.20.0.12,linux,TBD,critical,production,2026-10-11T09:00:00Z,cmdb-main
+host-3,win-01.corp.test,10.20.0.13,windows,team-win,,staging,2025-06-01T00:00:00Z,cmdb-main

@@ -1,0 +1,5 @@
+{"assets": [
+  {"asset_id": "host-1", "hostname": "web-01.corp.test", "ip": "10.20.0.11", "os_family": "linux", "owner": "team-web", "criticality": "high", "environment": "production", "last_seen": "2026-10-10T09:00:00Z", "source": "cmdb-main"},
+  {"asset_id": "host-2", "hostname": "db-01.corp.test", "ip": "10.20.0.12", "os_family": "linux", "owner": "unknown", "criticality": "critical", "environment": "production", "last_seen": "2026-10-11T09:00:00Z", "source": "cmdb-main"},
+  {"asset_id": "host-3", "hostname": "win-01.corp.test", "ip": "10.20.0.13", "os_family": "windows", "owner": "team-win", "criticality": "", "environment": "staging", "last_seen": "2025-06-01T00:00:00Z", "source": "cmdb-main"}
+]}

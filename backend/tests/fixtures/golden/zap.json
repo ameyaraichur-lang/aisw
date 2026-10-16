@@ -1,0 +1,14 @@
+{
+  "@version": "2.15.0",
+  "@generated": "Wed, 14 Oct 2026 10:00:00",
+  "site": [
+    {"@name": "https://app.corp.test", "@host": "app.corp.test", "@port": "443", "@ssl": "true", "alerts": [
+      {"pluginid": "10038", "alert": "Content Security Policy (CSP) Header Not Set", "riskcode": "2", "confidence": "3", "instances": [{"uri": "https://app.corp.test/", "method": "GET"}], "desc": "ignored body text", "solution": "ignored"},
+      {"pluginid": "10020", "alert": "Missing Anti-clickjacking Header", "riskcode": "2", "confidence": "2", "instances": []},
+      {"pluginid": "10096", "alert": "Timestamp Disclosure", "riskcode": "1", "confidence": "1", "instances": []}
+    ]},
+    {"@name": "https://not-ours.test", "@host": "not-ours.test", "@port": "443", "@ssl": "true", "alerts": [
+      {"pluginid": "10202", "alert": "Absence of Anti-CSRF Tokens", "riskcode": "3", "confidence": "2", "instances": []}
+    ]}
+  ]
+}

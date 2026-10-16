@@ -66,3 +66,10 @@ export async function signOut(page: Page) {
 
 export const tab = (page: Page, name: string) =>
   page.getByRole('list', { name: 'Assessment sections' }).getByRole('link', { name, exact: true })
+
+/** The wizard offers every compatible adapter; pick one by name. */
+export const useAdapter = async (page: Page, adapter: string, profile: string) => {
+  const group = page.getByRole('group', { name: new RegExp(`^${adapter}\\b`) })
+  await group.getByRole('checkbox', { name: 'Use this adapter' }).check()
+  await group.getByLabel('Profile', { exact: true }).selectOption(profile)
+}

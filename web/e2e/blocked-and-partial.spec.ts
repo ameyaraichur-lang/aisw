@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { GROUP, api, approvedManifest, json, launch, resume, seedProject, signIn, tab, untilState } from './helpers.ts'
+import { GROUP, api, approvedManifest, json, launch, resume, seedProject, signIn, tab, untilState, useAdapter } from './helpers.ts'
 
 test.afterEach(async ({ request }) => { await resume(request) })
 
@@ -14,8 +14,7 @@ test('blocked preflight explains why, stores nothing and offers no way forward',
   await page.getByLabel('Selector').fill(GROUP) // an exclusion that swallows the target
   await page.getByRole('button', { name: 'Add exclusion' }).click()
   await page.getByRole('button', { name: 'Next' }).click()
-  await page.getByRole('checkbox', { name: 'Use this adapter' }).check()
-  await page.getByLabel('Profile', { exact: true }).selectOption('FIXTURE_BASELINE')
+  await useAdapter(page, 'fixture', 'FIXTURE_BASELINE')
   await page.getByRole('button', { name: 'Next' }).click()
   await page.getByRole('button', { name: 'Next' }).click()
   await page.getByRole('button', { name: 'Run preflight' }).click()
@@ -30,12 +29,12 @@ test('blocked preflight explains why, stores nothing and offers no way forward',
 
 test('a target no adapter can handle is surfaced instead of assumed', async ({ page, request }) => {
   const { projectId } = await seedProject(request)
-  await json(await api(request, 'alice', 'post', '/inventory', { project_id: projectId, kind: 'cidr', selector: '192.0.2.0/24' }), 201)
+  await json(await api(request, 'alice', 'post', '/inventory', { project_id: projectId, kind: 'region', selector: 'eu-west-1' }), 201)
   await signIn(page, 'alice')
   await page.goto('/assessments/new')
   await page.getByLabel('Project and environment').selectOption(projectId)
   await page.getByRole('button', { name: 'Next' }).click()
-  await page.getByRole('checkbox', { name: /192\.0\.2\.0\/24/ }).check()
+  await page.getByRole('checkbox', { name: /eu-west-1/ }).check()
   await page.getByRole('button', { name: 'Next' }).click()
   await expect(page.getByText('No compatible adapter')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Next' })).toBeDisabled()

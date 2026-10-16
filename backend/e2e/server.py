@@ -8,6 +8,7 @@ Usage: uv run python e2e/server.py  (listens on 127.0.0.1:8099)
 from __future__ import annotations
 
 import secrets
+import signal
 import tempfile
 import threading
 import time
@@ -100,8 +101,22 @@ def main() -> None:
         state["step_delay"] = max(0, min(ms, 5000)) / 1000
         return {"step_delay": state["step_delay"]}
 
+    def _exit(
+        *_: Any,
+    ) -> None:  # uvicorn re-raises the signal to the ORIGINAL handler when it stops
+        raise SystemExit(0)
+
+    signal.signal(signal.SIGTERM, _exit)
     print(f"e2e server ready on {PORT}", flush=True)
-    uvicorn.run(api, host="127.0.0.1", port=PORT, log_level="warning")
+    try:
+        uvicorn.run(
+            api, host="127.0.0.1", port=PORT, log_level="warning"
+        )  # returns on SIGTERM/SIGINT
+    finally:  # never leave an embedded Postgres behind (the machine allows few shared-memory segments)
+        stop.set()
+        for eng in (app_engine, worker_engine, owner, admin):
+            eng.dispose()
+        server.cleanup()
 
 
 if __name__ == "__main__":

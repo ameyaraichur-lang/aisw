@@ -20,7 +20,7 @@ from aisw.contracts.enums import PolicyOutcome, Severity
 
 
 class Check(StrictModel):
-    op: Literal["equals", "gte", "lte", "in"]
+    op: Literal["equals", "gte", "lte", "in", "disjoint"]
     value: Any
 
 
@@ -47,6 +47,10 @@ class PackRule(StrictModel):
                 return PolicyOutcome.PASS if observed == expected else PolicyOutcome.FAIL
             if op == "in":
                 return PolicyOutcome.PASS if observed in expected else PolicyOutcome.FAIL
+            if op == "disjoint":  # observed list shares nothing with the pack's list
+                if not isinstance(observed, list):
+                    return PolicyOutcome.ERROR
+                return PolicyOutcome.FAIL if set(observed) & set(expected) else PolicyOutcome.PASS
             if isinstance(observed, bool) or not isinstance(observed, int | float):
                 return PolicyOutcome.ERROR  # check could not execute on this value type
             ok = observed >= expected if op == "gte" else observed <= expected

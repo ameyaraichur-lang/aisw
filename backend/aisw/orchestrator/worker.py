@@ -22,6 +22,7 @@ from typing import Any
 from sqlalchemy import Connection, Engine, text
 
 from aisw.agents.assurance import ArtifactMeta, AssuranceContext, assess_finding
+from aisw.agents.discovery import KnownAsset, resolve_identity
 from aisw.contracts.base import canonical_hash
 from aisw.contracts.domain import ControlMapping, Finding
 from aisw.contracts.enums import PolicyOutcome
@@ -41,6 +42,12 @@ from aisw.reporting.report import ReportInputs, build_report
 _SELECT_RUN = "SELECT * FROM assessment_runs WHERE run_id=:r"
 _SELECT_RUN_LOCKED = _SELECT_RUN + " FOR UPDATE"
 TRANSIENT_DENIALS = {"AUDIT_UNAVAILABLE"}
+# Task warnings that describe a coverage gap and are surfaced verbatim in the coverage ledger.
+GAP_PREFIXES = frozenset(
+    {"AMBIGUOUS_IDENTITY", "OUT_OF_SCOPE_RECORDS_DROPPED", "PERMISSION_DENIED", "STALE_RECORD",
+     "OWNER_UNKNOWN", "DUPLICATE_CANDIDATE", "CONFLICTING_RECORDS", "UNSUPPORTED_SERVICE",
+     "AGENT_DISCONNECTED", "FEED_STALE", "SCAN_INCOMPLETE", "RULES_NOT_CHECKED"}
+)  # fmt: skip
 ADVANCEABLE = (
     "AUTHORIZED",
     "ASSESSMENT_DISPATCH",
@@ -238,25 +245,73 @@ class Worker:
                 tool_version=f"{output.tool}@{output.tool_version}", collected_at=output.collected_at,
             )  # fmt: skip
             expected = set(task["expected_assets"])
-            attrs: dict[str, dict[str, str]] = {}
+            warnings.extend(batch.warnings)
+            known = [
+                KnownAsset(r[0], r[1], r[2])
+                for r in conn.execute(
+                    text(
+                        "SELECT asset_id, native_ids->>'ip', native_ids->>'hostname' "
+                        "FROM assets WHERE project_id=:p"
+                    ),
+                    {"p": project},
+                )
+            ]
+            keymap: dict[str, str] = {}
+            attrs: dict[str, dict[str, Any]] = {}  # final asset id -> merged attributes
             for a in batch.assets:
-                attrs[a.asset_id] = a.attrs
+                final = a.asset_id
+                confidence = "HIGH" if a.asset_id in expected else "LOW"
+                if (
+                    a.identity
+                ):  # scanner-style host: attach to a canonical asset only if unambiguous
+                    ident = a.identity.get("ip") or a.identity.get("hostname") or a.asset_id
+                    res = resolve_identity(
+                        known, ip=a.identity.get("ip"), hostname=a.identity.get("hostname")
+                    )
+                    if res.status == "MATCHED" and res.asset_id:
+                        final = res.asset_id
+                        # HIGH/MEDIUM only for members of the authoritative inventory. Scanners that
+                        # agree with each other about an unknown host do not make it a known asset.
+                        confidence = res.confidence if final in expected else "LOW"
+                    elif res.status == "AMBIGUOUS":
+                        warnings.append(f"AMBIGUOUS_IDENTITY:{ident}:{res.reason}")
+                keymap[a.asset_id] = final
+                existing = conn.execute(
+                    text("SELECT attrs FROM assets WHERE project_id=:p AND asset_id=:a"),
+                    {"p": project, "a": final},
+                ).scalar()
+                attrs[final] = {**(existing or {}), **a.attrs}
+                native = {
+                    **(a.native_ids or {"fixture": a.asset_id, "hostname": a.hostname}),
+                    **(a.identity or {}),
+                }
                 conn.execute(
                     text(
                         "INSERT INTO assets (tenant_id, project_id, asset_id, run_id, asset_type, "
-                        "native_ids, technology, attrs, first_seen, last_seen, match_confidence) VALUES "
+                        "native_ids, technology, attrs, first_seen, last_seen, match_confidence, "
+                        "owner, owner_source, criticality, criticality_source, environment) VALUES "
                         "(:t, :p, :a, :r, :atype, CAST(:n AS jsonb), :tech, CAST(:attrs AS jsonb), "
-                        ":ts, :ts, :mc) "
+                        ":ts, :ts, :mc, :o, :os, :c, :cs, :env) "
                         "ON CONFLICT (tenant_id, project_id, asset_id) DO UPDATE SET "
                         "last_seen=EXCLUDED.last_seen, run_id=EXCLUDED.run_id, "
-                        "technology=EXCLUDED.technology, attrs=EXCLUDED.attrs"
+                        "technology=COALESCE(EXCLUDED.technology, assets.technology), "
+                        "attrs=assets.attrs || EXCLUDED.attrs, "
+                        "native_ids=assets.native_ids || EXCLUDED.native_ids, "
+                        "owner=COALESCE(EXCLUDED.owner, assets.owner), "
+                        "owner_source=COALESCE(EXCLUDED.owner_source, assets.owner_source), "
+                        "criticality=COALESCE(EXCLUDED.criticality, assets.criticality), "
+                        "criticality_source=COALESCE(EXCLUDED.criticality_source, assets.criticality_source), "
+                        "environment=COALESCE(EXCLUDED.environment, assets.environment), "
+                        "match_confidence=CASE WHEN assets.match_confidence='HIGH' THEN 'HIGH' "
+                        "ELSE EXCLUDED.match_confidence END"
                     ),
                     {
-                        "t": tenant, "p": project, "a": a.asset_id, "r": run_id,
-                        "n": json.dumps(a.native_ids or {"fixture": a.asset_id, "hostname": a.hostname}),
-                        "atype": a.asset_type, "attrs": json.dumps(a.attrs),
-                        "tech": a.attrs.get("os_family"), "ts": output.collected_at,
-                        "mc": "HIGH" if a.asset_id in expected else "LOW",
+                        "t": tenant, "p": project, "a": final, "r": run_id,
+                        "n": json.dumps(native), "atype": a.asset_type, "attrs": json.dumps(a.attrs),
+                        "tech": a.attrs.get("os_family"), "ts": output.collected_at, "mc": confidence,
+                        "o": a.owner, "os": a.owner_source if a.owner else None,
+                        "c": a.criticality, "cs": a.criticality_source if a.criticality else None,
+                        "env": a.environment,
                     },
                 )  # fmt: skip
                 conn.execute(
@@ -267,13 +322,14 @@ class Worker:
                     ),
                     {
                         "t": tenant, "r": run_id, "k": task["task_id"], "s": task["target_selector"],
-                        "a": a.asset_id, "st": a.status, "re": redact_obj(a.reason),
+                        "a": final, "st": a.status, "re": redact_obj(a.reason),
                     },
                 )  # fmt: skip
             n_obs = 0
             for o in batch.observations:
+                asset_id = keymap.get(o.asset_id, o.asset_id)
                 outcome = self.evaluator.evaluate_observation(
-                    pack, rule_id=o.rule_id, value=o.value, attrs=attrs.get(o.asset_id, {})
+                    pack, rule_id=o.rule_id, value=o.value, attrs=attrs.get(asset_id, {})
                 )
                 if outcome is None:
                     warnings.append(f"UNMODELLED_OBSERVATION:{o.rule_id}")
@@ -288,7 +344,7 @@ class Worker:
                         "ON CONFLICT DO NOTHING"
                     ),
                     {
-                        "t": tenant, "r": run_id, "o": o.observation_id, "a": o.asset_id,
+                        "t": tenant, "r": run_id, "o": o.observation_id, "a": asset_id,
                         "s": task["adapter_id"], "rule": o.rule_id,
                         "v": json.dumps(redact_obj(o.value)),
                         "e": json.dumps(rule.check.value if rule else None),
@@ -554,10 +610,12 @@ class Worker:
             statuses = {r[1]: (r[2], r[3]) for r in seg_rows}
             outcomes = {a: rollup(asset_results.get(a, [])) for a in statuses}
             ledger = build_ledger(
-                tenant_id=tenant, run_id=run_id, segment=t["target_selector"],
+                tenant_id=tenant, run_id=run_id, segment=f"{t['target_selector']} [{t['adapter_id']}]",
                 expected=list(t["expected_assets"]), statuses=statuses, asset_outcomes=outcomes,
                 source_ok=t["status"] in {"SUCCEEDED", "PARTIAL"},
-                source_reasons=[f"TASK_{t['status']}"] if t["status"] != "SUCCEEDED" else [],
+                source_reasons=(
+                    [f"TASK_{t['status']}"] if t["status"] != "SUCCEEDED" else []
+                ) + [w for w in t["warnings"] if str(w).split(":")[0] in GAP_PREFIXES],
                 last_success_at=t["completed_at"],
             )  # fmt: skip
             conn.execute(

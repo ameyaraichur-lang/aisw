@@ -39,7 +39,18 @@ def test_identity_and_auth_mode(sl: Slice) -> None:
 
 def test_connectors_and_policy_packs(sl: Slice) -> None:
     c = {x["adapter_id"]: x for x in sl.call("GET", "/api/v1/connectors", "carol").json()}
-    assert set(c) == {"fixture", "url_smoke"} and all(x["read_only"] for x in c.values())
+    assert set(c) == {
+        "fixture",
+        "url_smoke",
+        "cmdb_import",
+        "prowler_import",
+        "greenbone_import",
+        "nmap_import",
+        "openscap_import",
+        "wazuh_import",
+        "zap_import",
+    }
+    assert all(x["read_only"] for x in c.values())
     assert c["fixture"]["profiles"] == [
         {"profile_id": "FIXTURE_BASELINE", "profile_class": "READ_ONLY"}
     ]
@@ -48,7 +59,11 @@ def test_connectors_and_policy_packs(sl: Slice) -> None:
     ]
     assert c["url_smoke"]["target_kinds"] == ["url"]  # it can only ever be pointed at a URL
     packs = {p["key"]: p for p in sl.call("GET", "/api/v1/policy-packs", "carol").json()}
-    assert set(packs) == {"fixture-baseline:1.0.0", "url-smoke-baseline:1.0.0"}
+    assert set(packs) == {
+        "fixture-baseline:1.0.0",
+        "url-smoke-baseline:1.0.0",
+        "import-baseline:1.0.0",
+    }
     assert (
         packs["fixture-baseline:1.0.0"]["rules"] == 3
         and packs["url-smoke-baseline:1.0.0"]["rules"] == 7

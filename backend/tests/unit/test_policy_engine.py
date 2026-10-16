@@ -124,5 +124,6 @@ def test_registry_only_serves_registered_packs() -> None:
     assert reg.get("fixture-baseline:1.0.0") and reg.get("fixture-baseline:9.9.9") is None
     assert reg.get("../../etc/passwd") is None and reg.keys() == [
         "fixture-baseline:1.0.0",
+        "import-baseline:1.0.0",
         "url-smoke-baseline:1.0.0",
     ]

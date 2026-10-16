@@ -15,7 +15,8 @@ export default defineConfig({
   use: { baseURL: WEB, channel: 'chrome', headless: true, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   webServer: [
     {
-      command: 'cd ../backend && uv run python e2e/server.py',
+      command: 'cd ../backend && exec .venv/bin/python e2e/server.py',  // exec: SIGTERM reaches Python
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 15_000 },
       url: 'http://127.0.0.1:8099/healthz',
       timeout: 180_000,
       reuseExistingServer: false,

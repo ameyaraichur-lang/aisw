@@ -29,7 +29,8 @@ from aisw.authz.net_guard import (
 from aisw.authz.signing import SignatureVerifier, signing_payload
 from aisw.contracts.base import NonEmpty, Sha256, Slug, StrictModel
 from aisw.contracts.enums import ManifestStatus, ProfileClass
-from aisw.gateway.registry import AdapterJob, AdapterRegistry
+from aisw.evidence.imports import ImportRejected, ImportStore
+from aisw.gateway.registry import AdapterJob, AdapterRegistry, ImportReadError
 from aisw.gateway.stores import AuditSink, AuthorizationStore
 
 ALLOWED_KINDS = {"cloud_account", "region", "asset_group", "cidr", "host", "url"}
@@ -101,6 +102,7 @@ class ToolGateway:
         resolver: Resolver = system_resolver,
         clock: Callable[[], datetime] = _utcnow,
         quotas: QuotaTracker | None = None,
+        imports: ImportStore | None = None,
     ) -> None:
         self.registry = registry
         self.store = store
@@ -109,6 +111,7 @@ class ToolGateway:
         self.resolver = resolver
         self.clock = clock
         self.quotas = quotas or QuotaTracker()
+        self.imports = imports
         self.dispatched = 0  # number of adapter executions actually started
 
     # ----------------------------------------------------------------------------------------
@@ -245,12 +248,35 @@ class ToolGateway:
                     allowed_ports=ports, internal_ranges=internal, resolver=self.resolver,
                 )  # fmt: skip
 
+        reader = None
+        if cap.kind == "import":
+            if self.imports is None:
+                raise GatewayDenied(["IMPORTS_NOT_CONFIGURED"])
+            store, tenant, project, kinds = (
+                self.imports,
+                req.tenant_id,
+                req.project_id,
+                cap.import_kinds,
+            )
+
+            def reader(import_id: str, accepted: frozenset[str] = kinds) -> bytes:
+                try:
+                    return store.read(tenant_id=tenant, project_id=project, import_id=import_id,
+                                      kinds=accepted & kinds)  # fmt: skip
+                except ImportRejected as exc:
+                    raise ImportReadError(exc.code) from exc
+
+        scope_body = body
+
+        def scope_check(kind: str, selector: str) -> bool:
+            return scope_rules.in_scope(scope_body, kind, selector)
+
         job = AdapterJob(
             tenant_id=req.tenant_id, project_id=req.project_id, run_id=req.run_id,
             task_id=req.task_id, profile=req.profile, target_kind=req.target_kind,
             target_selector=req.target_selector, params=params,
             pinned_addresses=vetted.addresses if vetted else (), request_budget=cost,
-            vet_redirect=redirect_hook,
+            vet_redirect=redirect_hook, read_import=reader, in_scope=scope_check,
         )  # fmt: skip
         return job, vetted, warnings, (body.quotas.max_concurrency, body.quotas.max_requests, cost)
 

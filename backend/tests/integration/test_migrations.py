@@ -21,7 +21,8 @@ PIPELINE = {
     "assets", "run_asset_status", "observations", "control_assessments", "findings",
     "assurance_results", "coverage_ledger", "reports",
 }  # fmt: skip
-TABLES = FOUNDATION | PIPELINE
+IMPORTS = {"imports"}
+TABLES = FOUNDATION | PIPELINE | IMPORTS
 
 
 def _tables(engine) -> set[str]:  # type: ignore[no-untyped-def]
@@ -36,6 +37,8 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     eng = make_db(pg_server, f"mig_{uuid.uuid4().hex[:8]}")
     migrate(eng, "head")
     assert _tables(eng) == TABLES
+    migrate(eng, "0003", down=True)  # 0004 (imports) is independently reversible
+    assert _tables(eng) == FOUNDATION | PIPELINE
     migrate(eng, "0002", down=True)  # 0003 (asset attrs) is independently reversible
     with eng.connect() as c:
         cols = {
@@ -44,7 +47,7 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
                 text("SELECT column_name FROM information_schema.columns WHERE table_name='assets'")
             )
         }
-    assert "attrs" not in cols and _tables(eng) == TABLES
+    assert "attrs" not in cols and _tables(eng) == FOUNDATION | PIPELINE
     migrate(eng, "0001", down=True)
     assert _tables(eng) == FOUNDATION  # pipeline migration is independently reversible
     migrate(eng, "base", down=True)

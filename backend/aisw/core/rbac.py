@@ -22,6 +22,7 @@ class Permission(StrEnum):
     PROJECT_READ = "project:read"
     CONNECTOR_MANAGE = "connector:manage"
     INVENTORY_MANAGE = "inventory:manage"
+    IMPORT_CREATE = "import:create"
     MANIFEST_CREATE = "manifest:create"
     MANIFEST_APPROVE = "manifest:approve"
     ASSESSMENT_LAUNCH = "assessment:launch"
@@ -41,7 +42,12 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
         {Permission.PROJECT_CREATE, Permission.PROJECT_READ, Permission.INVENTORY_MANAGE}
     ),
     Role.CONNECTOR_ADMIN: frozenset(
-        {Permission.PROJECT_READ, Permission.CONNECTOR_MANAGE, Permission.INVENTORY_MANAGE}
+        {
+            Permission.PROJECT_READ,
+            Permission.CONNECTOR_MANAGE,
+            Permission.INVENTORY_MANAGE,
+            Permission.IMPORT_CREATE,
+        }
     ),
     Role.ASSESSMENT_OPERATOR: frozenset(
         {
@@ -50,6 +56,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.ASSESSMENT_LAUNCH,
             Permission.ASSESSMENT_CANCEL,
             Permission.FINDING_READ,
+            Permission.IMPORT_CREATE,
         }
     ),
     Role.APPROVER: frozenset(

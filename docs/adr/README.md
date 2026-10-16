@@ -16,5 +16,6 @@
 - [ADR-014: Assessment pipeline design](ADR-014-assessment-pipeline-design.md)
 - [ADR-015: Operator console](ADR-015-operator-console.md)
 - [ADR-016: PASSIVE_HTTP_SMOKE adapter](ADR-016-passive-url-smoke.md)
+- [ADR-017: Import adapters and Agent 1 reconciliation](ADR-017-import-adapters.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

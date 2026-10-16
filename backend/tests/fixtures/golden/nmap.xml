@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nmaprun scanner="nmap" args="nmap -sT -T2 --top-ports 20 --max-retries 1 --host-timeout 60s -oX scan.xml 10.20.0.0/24" start="1760428800" version="7.95" xmloutputversion="1.05">
+  <scaninfo type="connect" protocol="tcp" numservices="20" services="21-23,25,53,80,110,111,135,139,143,443,445,993,995,1723,3306,3389,5900,8080"/>
+  <host><status state="up" reason="syn-ack"/><address addr="10.20.0.11" addrtype="ipv4"/>
+    <hostnames><hostname name="web-01.corp.test" type="PTR"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="22"><state state="open" reason="syn-ack"/><service name="ssh"/></port>
+      <port protocol="tcp" portid="443"><state state="open" reason="syn-ack"/><service name="https"/></port>
+      <port protocol="tcp" portid="3306"><state state="closed" reason="conn-refused"/><service name="mysql"/></port>
+    </ports></host>
+  <host><status state="up" reason="syn-ack"/><address addr="10.20.0.12" addrtype="ipv4"/>
+    <hostnames><hostname name="db-01.corp.test" type="PTR"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="22"><state state="open" reason="syn-ack"/><service name="ssh"/></port>
+      <port protocol="tcp" portid="445"><state state="open" reason="syn-ack"/><service name="microsoft-ds"/></port>
+    </ports></host>
+  <host><status state="up" reason="syn-ack"/><address addr="10.20.0.13" addrtype="ipv4"/>
+    <hostnames><hostname name="win-01.corp.test" type="PTR"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="3389"><state state="open" reason="syn-ack"/><service name="ms-wbt-server"/></port>
+    </ports></host>
+  <host><status state="up" reason="syn-ack"/><address addr="10.99.0.5" addrtype="ipv4"/>
+    <hostnames><hostname name="stray-01.other.test" type="PTR"/></hostnames>
+    <ports><port protocol="tcp" portid="23"><state state="open" reason="syn-ack"/><service name="telnet"/></port></ports></host>
+  <runstats><finished time="1760429000" elapsed="200" exit="success"/><hosts up="4" down="0" total="4"/></runstats>
+</nmaprun>

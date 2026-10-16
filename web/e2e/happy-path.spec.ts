@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { GROUP, resume, seedProject, signIn, signOut, tab } from './helpers.ts'
+import { GROUP, resume, seedProject, signIn, signOut, tab, useAdapter } from './helpers.ts'
 
 test.afterEach(async ({ request }) => { await resume(request) })
 
@@ -16,8 +16,7 @@ test('operator drafts, approver approves, operator launches, reviewer closes: fu
   await page.getByRole('checkbox', { name: new RegExp(GROUP) }).check()
   await expect(page.getByText(/resolves to/)).toContainText('3 expected asset(s)')
   await page.getByRole('button', { name: 'Next' }).click()
-  await page.getByRole('checkbox', { name: 'Use this adapter' }).check()
-  await page.getByLabel('Profile', { exact: true }).selectOption('FIXTURE_BASELINE')
+  await useAdapter(page, 'fixture', 'FIXTURE_BASELINE')
   await page.getByRole('button', { name: 'Next' }).click()
   await expect(page.getByLabel('Maximum concurrency')).toBeVisible()
   await page.getByRole('button', { name: 'Next' }).click()

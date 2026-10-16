@@ -1,0 +1,15 @@
+{
+  "manager_version": "4.9.0",
+  "agents": {"data": {"affected_items": [
+    {"id": "001", "name": "web-01.corp.test", "ip": "10.20.0.11", "status": "active", "lastKeepAlive": "2026-10-15T11:58:00Z", "os": {"name": "Ubuntu"}},
+    {"id": "002", "name": "db-01.corp.test", "ip": "10.20.0.12", "status": "active", "lastKeepAlive": "2026-10-15T11:59:00Z", "os": {"name": "Ubuntu"}},
+    {"id": "003", "name": "win-01.corp.test", "ip": "10.20.0.13", "status": "disconnected", "lastKeepAlive": "2026-09-01T00:00:00Z", "os": {"name": "Windows"}}
+  ]}},
+  "sca": {
+    "001": {"data": {"affected_items": [{"policy_id": "cis_ubuntu22-04", "checks": [
+      {"id": 28500, "title": "Ensure SSH root login is disabled", "result": "failed"},
+      {"id": 28501, "title": "Ensure password policy", "result": "passed"}]}]}},
+    "002": {"data": {"affected_items": [{"policy_id": "cis_ubuntu22-04", "checks": [
+      {"id": 28500, "title": "Ensure SSH root login is disabled", "result": "passed"}]}]}}
+  }
+}

@@ -1,0 +1,244 @@
+{
+  "pack_id": "import-baseline",
+  "version": "1.0.0",
+  "description": "Policy over imported inventory and scanner results. Synthetic baseline; thresholds and mappings need policy-owner review.",
+  "framework": {
+    "name": "AISW-IMPORT-BASELINE",
+    "version": "1.0.0"
+  },
+  "rules": [
+    {
+      "rule_id": "cmdb.owner_known",
+      "control_id": "IB-1",
+      "title": "Asset has a named owner in the authoritative inventory",
+      "category": "asset_governance",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "asset_class": [
+          "host"
+        ]
+      },
+      "check": {
+        "op": "equals",
+        "value": true
+      },
+      "mappings": []
+    },
+    {
+      "rule_id": "cmdb.criticality_known",
+      "control_id": "IB-2",
+      "title": "Asset has an owner-supplied criticality",
+      "category": "asset_governance",
+      "severity": "LOW",
+      "applies_to": {
+        "asset_class": [
+          "host"
+        ]
+      },
+      "check": {
+        "op": "equals",
+        "value": true
+      },
+      "mappings": []
+    },
+    {
+      "rule_id": "cmdb.record_fresh",
+      "control_id": "IB-3",
+      "title": "Inventory record was seen recently",
+      "category": "asset_governance",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "asset_class": [
+          "host"
+        ]
+      },
+      "check": {
+        "op": "equals",
+        "value": true
+      },
+      "mappings": []
+    },
+    {
+      "rule_id": "vuln.max_cvss",
+      "control_id": "IB-4",
+      "title": "Highest CVSS score reported for the host is below 7.0",
+      "category": "vulnerability",
+      "severity": "HIGH",
+      "applies_to": {
+        "asset_class": [
+          "host"
+        ]
+      },
+      "check": {
+        "op": "lte",
+        "value": 6.9
+      },
+      "mappings": []
+    },
+    {
+      "rule_id": "vuln.critical_high_findings",
+      "control_id": "IB-5",
+      "title": "No critical or high vulnerability findings are reported",
+      "category": "vulnerability",
+      "severity": "HIGH",
+      "applies_to": {
+        "asset_class": [
+          "host"
+        ]
+      },
+      "check": {
+        "op": "equals",
+        "value": []
+      },
+      "mappings": []
+    },
+    {
+      "rule_id": "scan.feed_age_days",
+      "control_id": "IB-6",
+      "title": "Vulnerability feed used for the scan is at most 7 days old",
+      "category": "vulnerability",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "asset_class": [
+          "host"
+        ]
+      },
+      "check": {
+        "op": "lte",
+        "value": 7
+      },
+      "mappings": []
+    },
+    {
+      "rule_id": "net.open_ports",
+      "control_id": "IB-7",
+      "title": "No cleartext or legacy remote-access ports are open",
+      "category": "network_exposure",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "asset_class": [
+          "host"
+        ]
+      },
+      "check": {
+        "op": "disjoint",
+        "value": [
+          21,
+          23,
+          69,
+          135,
+          139,
+          445,
+          512,
+          513,
+          514,
+          3389,
+          5900
+        ]
+      },
+      "mappings": []
+    },
+    {
+      "rule_id": "scap.failed_rules",
+      "control_id": "IB-8",
+      "title": "No SCAP benchmark rules fail",
+      "category": "host_configuration",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "asset_class": [
+          "host"
+        ]
+      },
+      "check": {
+        "op": "equals",
+        "value": []
+      },
+      "mappings": []
+    },
+    {
+      "rule_id": "sca.failed_checks",
+      "control_id": "IB-9",
+      "title": "No endpoint configuration-assessment checks fail",
+      "category": "host_configuration",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "asset_class": [
+          "host"
+        ]
+      },
+      "check": {
+        "op": "equals",
+        "value": []
+      },
+      "mappings": []
+    },
+    {
+      "rule_id": "cloud.high_critical_failures",
+      "control_id": "IB-10",
+      "title": "No high or critical cloud posture checks fail",
+      "category": "cloud_posture",
+      "severity": "HIGH",
+      "applies_to": {
+        "asset_class": [
+          "cloud_resource"
+        ]
+      },
+      "check": {
+        "op": "equals",
+        "value": []
+      },
+      "mappings": []
+    },
+    {
+      "rule_id": "cloud.other_failures",
+      "control_id": "IB-11",
+      "title": "No medium or low cloud posture checks fail",
+      "category": "cloud_posture",
+      "severity": "LOW",
+      "applies_to": {
+        "asset_class": [
+          "cloud_resource"
+        ]
+      },
+      "check": {
+        "op": "equals",
+        "value": []
+      },
+      "mappings": []
+    },
+    {
+      "rule_id": "web.high_alerts",
+      "control_id": "IB-12",
+      "title": "No high-risk web alerts are reported",
+      "category": "web_security",
+      "severity": "HIGH",
+      "applies_to": {
+        "asset_class": [
+          "web"
+        ]
+      },
+      "check": {
+        "op": "equals",
+        "value": []
+      },
+      "mappings": []
+    },
+    {
+      "rule_id": "web.medium_alerts",
+      "control_id": "IB-13",
+      "title": "No medium-risk web alerts are reported",
+      "category": "web_security",
+      "severity": "MEDIUM",
+      "applies_to": {
+        "asset_class": [
+          "web"
+        ]
+      },
+      "check": {
+        "op": "equals",
+        "value": []
+      },
+      "mappings": []
+    }
+  ]
+}

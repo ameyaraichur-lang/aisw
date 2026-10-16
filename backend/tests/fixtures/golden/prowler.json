@@ -1,0 +1,9 @@
+[
+  {"Provider": "aws", "AccountId": "123456789012", "Region": "us-east-1", "ServiceName": "s3", "CheckID": "s3_bucket_public_access", "Severity": "high", "Status": "FAIL", "ResourceId": "corp-logs", "StatusExtended": "Bucket corp-logs allows public access", "ProwlerVersion": "4.5.0"},
+  {"Provider": "aws", "AccountId": "123456789012", "Region": "us-east-1", "ServiceName": "s3", "CheckID": "s3_bucket_versioning", "Severity": "medium", "Status": "FAIL", "ResourceId": "corp-logs", "StatusExtended": "Versioning disabled", "ProwlerVersion": "4.5.0"},
+  {"Provider": "aws", "AccountId": "123456789012", "Region": "us-east-1", "ServiceName": "s3", "CheckID": "s3_bucket_encryption", "Severity": "medium", "Status": "PASS", "ResourceId": "corp-logs", "StatusExtended": "Encrypted", "ProwlerVersion": "4.5.0"},
+  {"Provider": "aws", "AccountId": "123456789012", "Region": "us-east-1", "ServiceName": "ec2", "CheckID": "ec2_sg_open_ssh", "Severity": "high", "Status": "PASS", "ResourceId": "sg-0abc", "StatusExtended": "No open SSH", "ProwlerVersion": "4.5.0"},
+  {"Provider": "aws", "AccountId": "123456789012", "Region": "eu-west-1", "ServiceName": "kms", "CheckID": "kms_key_rotation", "Severity": "medium", "Status": "ERROR", "ResourceId": "key-0", "StatusExtended": "AccessDeniedException: not authorized to perform kms:ListKeys", "ProwlerVersion": "4.5.0"},
+  {"Provider": "aws", "AccountId": "123456789012", "Region": "us-east-1", "ServiceName": "cloudtrail", "CheckID": "cloudtrail_review", "Severity": "low", "Status": "MANUAL", "ResourceId": "trail-0", "StatusExtended": "Manual review required", "ProwlerVersion": "4.5.0"},
+  {"Provider": "aws", "AccountId": "999999999999", "Region": "us-east-1", "ServiceName": "s3", "CheckID": "s3_bucket_public_access", "Severity": "high", "Status": "FAIL", "ResourceId": "someone-elses-bucket", "StatusExtended": "public", "ProwlerVersion": "4.5.0"}
+]

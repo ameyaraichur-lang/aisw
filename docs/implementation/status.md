@@ -63,7 +63,16 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | URL negative suite: unapproved/unregistered URL, bad scheme/userinfo/ambiguous IP, unapproved port, loopback/private/metadata DNS, DNS rebinding after approval, expired manifest/permit, scope-hash mismatch, unapproved profile/adapter, hostile params, request budget, hostile redirects | Implemented (M5) | each asserts zero server requests and zero connection attempts |
 | Live validation against https://example.com | Not started | M9 only; needs your explicit authorisation |
 | Real-CA, IPv6-only, HTTP/2-only, proxy and unusual-server behaviour | Unverified | local self-signed test PKI only |
-| Scanner/CMDB import adapters | Planned (M6) | |
+| Import foundation: upload API (size/UTF-8/redaction/RBAC/audit), immutable `imports` table (migration 0004), gateway-mediated tenant/project/kind/hash-verified reader, `in_scope` hook | Implemented (M6) | `tests/security/test_import_pipeline.py` (23) |
+| Import adapters: CMDB CSV/JSON, Prowler JSON, Greenbone XML, OpenSCAP XCCDF, Wazuh JSON, Nmap XML, ZAP JSON | Implemented (M6), **synthetic fixtures only** | `tests/security/test_import_adapters.py` (144); real-tool version compatibility **Unverified** |
+| Hostile-input handling: XXE/entity bombs/external DTD refused, garbage fails closed, 20k record cap, scope drop for IP/account/URL, profile violations (Nmap args, ZAP active rules) refused | Implemented (M6) | per-adapter parametrised tests; 12 mutation checks |
+| Agent 1: CMDB reconciliation (unknown stays unknown, duplicates flagged not merged, conflicts untrusted, stale named) + identity resolver; confidence only from authoritative inventory | Implemented (M6) | `tests/unit/test_discovery.py`; multi-source pipeline test |
+| Registry hardening (registration refusals, health, capability metadata, contract test for every adapter) | Implemented (M6) | `tests/contract/test_adapter_contract.py` |
+| Policy pack `import-baseline:1.0.0` (13 controls) + `disjoint` operator; per-adapter coverage ledgers; gap warnings in ledger | Implemented (M6) | |
+| Task dependency ordering between imports | Planned | import the CMDB first |
+| Upload / import-parameter UI | Planned | API only; wizard cannot supply import ids |
+| Retention/purge of raw uploads | Planned (M8) | raw uploads keep the original (secret-redacted) file |
+| Live Nmap / Greenbone / ZAP / Wazuh / Prowler execution | Not planned for MVP imports; live Nmap only in M9 with authorisation | |
 | Agents 2–8, assurance, LLM gateway | Planned (M7) | |
 | SBOM / licence gate, runbooks, scorecard | Planned (M8) | |
 | Live external tests (example.com, scanme.nmap.org, Juice Shop) | Not started (M9; needs explicit authorisation) | |

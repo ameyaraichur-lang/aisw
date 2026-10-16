@@ -68,6 +68,12 @@ def connectors(
                     {"profile_id": k, "profile_class": v.value} for k, v in cap.profiles.items()
                 ],
                 "read_only": not cap.mutates_infrastructure,
+                "kind": cap.kind,
+                "import_kinds": sorted(cap.import_kinds),
+                "formats": list(cap.formats),
+                "health": next(
+                    (h.status for h in c.registry.health() if h.adapter_id == aid), "DISABLED"
+                ),
             }
         )
     return out

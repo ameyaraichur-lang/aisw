@@ -41,7 +41,12 @@ def build_ledger(
     reasons += [f"EXPECTED_ASSET_ABSENT:{a}" for a in absent]
     reasons += [f"ASSET_UNREACHABLE:{a}:{statuses[a][1] or 'no reason'}" for a in unreachable]
     reasons += [f"ASSET_UNSUPPORTED:{a}:{statuses[a][1] or 'no reason'}" for a in unsupported]
-    reasons += [f"UNEXPECTED_ASSET:{a}" for a in unexpected]  # unmatched queue; owner unknown
+    if expected_set:
+        reasons += [f"UNEXPECTED_ASSET:{a}" for a in unexpected]  # unmatched queue; owner unknown
+    elif statuses:
+        reasons.append(
+            "NO_EXPECTED_ASSET_LIST"
+        )  # nothing to reconcile against: say so, do not spam
 
     by_outcome: dict[PolicyOutcome, int] = {}
     for asset in sorted(expected_set | found):
