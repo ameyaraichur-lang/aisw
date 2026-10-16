@@ -262,7 +262,8 @@ class ScopeService:
                     tenant_id=m.body.tenant_id, project_id=m.body.project_id,
                     manifest_id=m.manifest_id, version=m.version, canonical_hash=m.canonical_hash,
                 )  # fmt: skip
-                signature = self.signer.sign(payload)
+                signed = self.signer.sign_detached(payload)
+                signature = signed.signature
                 conn.execute(
                     text(
                         "UPDATE scope_manifests SET status='SUPERSEDED' WHERE project_id=:p "
@@ -276,7 +277,7 @@ class ScopeService:
                             "UPDATE scope_manifests SET status='APPROVED', signature=:s, "
                             "key_id=:k, approved_by=ARRAY[:a] WHERE manifest_id=:m RETURNING *"
                         ),
-                        {"s": signature, "k": self.signer.key_id, "a": actor.actor_id,
+                        {"s": signature, "k": signed.key_id, "a": actor.actor_id,
                          "m": manifest_id},
                     )
                     .mappings()

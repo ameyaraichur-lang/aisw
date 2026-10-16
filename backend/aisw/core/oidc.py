@@ -14,7 +14,6 @@ import json
 import re
 import threading
 import time
-import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable
@@ -22,6 +21,7 @@ from typing import Any
 
 import jwt
 
+from aisw.core import safe_http
 from aisw.core.auth import AuthError
 from aisw.core.config import Settings, oidc_url_problem
 from aisw.core.rbac import ActorContext, Role
@@ -39,27 +39,14 @@ class OidcError(AuthError):
     """Any OIDC failure. Callers answer 401; the reason is for logs, never for the client."""
 
 
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *_: Any, **__: Any) -> None:
-        return None
-
-
 Fetch = Callable[[urllib.request.Request], bytes]
 
 
 def _default_fetch(req: urllib.request.Request) -> bytes:
-    opener = urllib.request.build_opener(_NoRedirect, urllib.request.ProxyHandler({}))
     try:
-        with opener.open(req, timeout=10) as resp:  # noqa: S310 - URLs validated by oidc_url_problem
-            raw: bytes = resp.read(MAX_DOC_BYTES + 1)
-    except urllib.error.HTTPError as exc:
-        exc.close()
-        raise OidcError(f"idp answered {exc.code}") from None
-    except (urllib.error.URLError, OSError, TimeoutError) as exc:
-        raise OidcError("idp unreachable") from exc
-    if len(raw) > MAX_DOC_BYTES:
-        raise OidcError("idp response too large")
-    return raw
+        return safe_http.fetch(req, max_bytes=MAX_DOC_BYTES)
+    except safe_http.HttpError as exc:
+        raise OidcError(f"idp {exc}") from None
 
 
 def _json(raw: bytes) -> dict[str, Any]:

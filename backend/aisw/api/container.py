@@ -31,6 +31,7 @@ from aisw.authz.net_guard import Resolver, system_resolver
 from aisw.authz.policy import GatePolicy
 from aisw.authz.service import ScopeService
 from aisw.authz.signing import KeyRing, LocalKeySigner, ManifestSigner
+from aisw.authz.transit import transit_from_settings
 from aisw.core.config import Environment, Settings
 from aisw.evidence.imports import ImportStore
 from aisw.evidence.store import EvidenceStore
@@ -133,7 +134,9 @@ def build_container(
         registry.register(imp(clock=clock))
     if settings.env is not Environment.PROD:
         registry.register(FixtureAdapter(clock=clock))
-    if signer is None and settings.signing_key_path and settings.env is not Environment.PROD:
+    if signer is None and settings.signing_backend == "transit":
+        signer, keyring = transit_from_settings(settings)
+    elif signer is None and settings.signing_key_path and settings.env is not Environment.PROD:
         local = LocalKeySigner.load_or_create("local-1", settings.signing_key_path)
         signer, keyring = local, KeyRing.from_signer(local)
     if evidence is None and settings.evidence_dir is not None:

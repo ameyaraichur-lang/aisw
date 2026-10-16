@@ -1,4 +1,4 @@
-"""Scope-manifest signing (Ed25519). Production custody: OpenBao Transit (planned, M8).
+"""Scope-manifest signing (Ed25519). Production custody: a Transit-compatible KMS (ADR-027).
 
 The signed payload binds tenant, project, manifest id, version and the canonical body hash, so a
 valid signature cannot be lifted onto another tenant's or another version's manifest.
@@ -11,6 +11,10 @@ from __future__ import annotations
 import base64
 import os
 import stat
+import threading
+import time
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
@@ -45,10 +49,17 @@ def signing_payload(
     )
 
 
-class ManifestSigner(Protocol):
-    key_id: str
+@dataclass(frozen=True)
+class Signed:
+    """A signature together with the key that made it: never read the key id separately, since
+    a rotation between the two reads would record the wrong key."""
 
-    def sign(self, payload: bytes) -> str: ...
+    key_id: str
+    signature: str
+
+
+class ManifestSigner(Protocol):
+    def sign_detached(self, payload: bytes) -> Signed: ...
 
 
 class SignatureVerifier(Protocol):
@@ -91,18 +102,63 @@ class LocalKeySigner:
     def sign(self, payload: bytes) -> str:
         return base64.b64encode(self._key.sign(payload)).decode("ascii")
 
+    def sign_detached(self, payload: bytes) -> Signed:
+        return Signed(self.key_id, self.sign(payload))
+
     def public_key(self) -> Ed25519PublicKey:
         return self._key.public_key()
 
 
-class KeyRing:
-    """Trusted public keys by id. Unknown key ids never verify (fail closed)."""
+KeyLoader = Callable[[], dict[str, Ed25519PublicKey]]
+REFRESH_MIN_SECONDS = 30.0
 
-    def __init__(self) -> None:
+
+class KeyRing:
+    """Trusted public keys by id. Unknown and revoked key ids never verify (fail closed).
+
+    With a ``loader`` (the KMS's published public keys), an unknown key id triggers one reload,
+    at most every ``REFRESH_MIN_SECONDS``, so a rotation is picked up without a restart while
+    garbage key ids cannot drive traffic to the KMS.
+    """
+
+    def __init__(
+        self, *, revoked: Iterable[str] = (), loader: KeyLoader | None = None,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:  # fmt: skip
         self._keys: dict[str, Ed25519PublicKey] = {}
+        self._revoked = frozenset(revoked)
+        self._loader = loader
+        self._clock = clock
+        self._loaded_at: float | None = None
+        self._lock = threading.Lock()
+        self._maybe_refresh()  # a KMS that is down at startup only means nothing verifies yet
 
     def add(self, key_id: str, public_key: Ed25519PublicKey) -> None:
         self._keys[key_id] = public_key
+
+    def key_ids(self) -> list[str]:
+        return sorted(k for k in self._keys if k not in self._revoked)
+
+    def is_revoked(self, key_id: str) -> bool:
+        return key_id in self._revoked
+
+    def refresh(self) -> None:
+        if self._loader is None:
+            return
+        keys = self._loader()
+        with self._lock:
+            self._keys.update(keys)
+            self._loaded_at = self._clock()
+
+    def _maybe_refresh(self) -> None:
+        with self._lock:
+            due = self._loaded_at is None or self._clock() - self._loaded_at >= REFRESH_MIN_SECONDS
+        if self._loader is not None and due:
+            try:
+                self.refresh()
+            except Exception:  # noqa: BLE001 - an unreachable KMS just means "unknown key"
+                with self._lock:
+                    self._loaded_at = self._clock()
 
     @classmethod
     def from_signer(cls, signer: LocalKeySigner) -> KeyRing:
@@ -111,7 +167,12 @@ class KeyRing:
         return ring
 
     def verify(self, key_id: str, payload: bytes, signature: str) -> bool:
+        if key_id in self._revoked:
+            return False
         key = self._keys.get(key_id)
+        if key is None:
+            self._maybe_refresh()
+            key = self._keys.get(key_id)
         if key is None:
             return False
         try:

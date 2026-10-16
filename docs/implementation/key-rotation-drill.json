@@ -1,0 +1,78 @@
+{
+  "target": "local Transit emulator (loopback)",
+  "key": "aisw-manifests",
+  "rotate": true,
+  "passed": true,
+  "steps": [
+    {
+      "name": "kms_reachable",
+      "passed": true,
+      "detail": "key aisw-manifests type ed25519"
+    },
+    {
+      "name": "key_not_exportable",
+      "passed": true,
+      "detail": "exportable=False"
+    },
+    {
+      "name": "key_deletion_disallowed",
+      "passed": true,
+      "detail": "deletion_allowed=False"
+    },
+    {
+      "name": "signs_with_latest_version",
+      "passed": true,
+      "detail": "transit.aisw-manifests.v1"
+    },
+    {
+      "name": "signature_verifies_locally",
+      "passed": true,
+      "detail": "verified with the published public key"
+    },
+    {
+      "name": "tampered_payload_fails",
+      "passed": true,
+      "detail": "one changed byte is rejected"
+    },
+    {
+      "name": "revoked_key_fails_closed",
+      "passed": true,
+      "detail": "transit.aisw-manifests.v1 listed as revoked does not verify"
+    },
+    {
+      "name": "rotated",
+      "passed": true,
+      "detail": "v1 -> v2"
+    },
+    {
+      "name": "new_signatures_use_new_version",
+      "passed": true,
+      "detail": "transit.aisw-manifests.v2"
+    },
+    {
+      "name": "old_signature_still_verifies",
+      "passed": true,
+      "detail": "transit.aisw-manifests.v1 still trusted after rotation"
+    },
+    {
+      "name": "new_signature_verifies",
+      "passed": true,
+      "detail": "transit.aisw-manifests.v2"
+    },
+    {
+      "name": "retired_old_versions",
+      "passed": true,
+      "detail": "min_encryption_version=2"
+    },
+    {
+      "name": "retired_version_cannot_sign",
+      "passed": true,
+      "detail": "v1 refused: kms POST sign: answered 400"
+    },
+    {
+      "name": "old_signature_verifies_after_retirement",
+      "passed": true,
+      "detail": "retirement does not invalidate existing manifests"
+    }
+  ]
+}

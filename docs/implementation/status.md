@@ -22,7 +22,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Execution-permit table | Implemented structurally only (M1) | no issuance logic or behavioural tests until Agent 0 (M2) |
 | Domain data tables (assets, findings, coverage, evidence, runs) | Planned (M3) | contracts exist; persistence deferred per plan |
 | OIDC authentication: generic OIDC through the BFF (code + PKCE, signed HttpOnly session cookie, CSRF, revocable logout, bearer JWTs for API clients), ADR-026 | Implemented, mock IdP only | `tests/unit/test_oidc.py`, `tests/integration/test_oidc_flow.py`, `web/e2e/sso.spec.ts`; no real IdP tenant connected yet. Dev stub still refused outside dev/test |
-| Manifest signing/key custody | Planned (M2) | contract fields exist, no signer yet |
+| Manifest signing/key custody: Ed25519 local file (dev/test) or Transit-compatible KMS with local verification, revocation and rotation drill (ADR-027) | Implemented, emulator only | `tests/unit/test_transit.py`, `tests/integration/test_key_rotation.py`, `docs/implementation/key-rotation-drill.md`; no real KMS provisioned |
 | `net_guard` URL canonicalisation + SSRF/egress vetting (A/AAAA at preflight and dispatch, redirects, rebinding, IPv4-mapped/6to4/NAT64) | Implemented (M2) | `tests/security/test_net_guard.py` (98 cases, fake resolver; no real DNS/network touched) |
 | Agent 0 scope gate (resolve, policy caps, wildcard/exclusion rules, approvals, hash of resolved manifest) | Implemented (M2) | `tests/security/test_agent0_gate.py` (43 cases) |
 | Manifest signing (Ed25519, payload bound to tenant/project/id/version/hash) + key ring | Implemented (M2) dev/test custody only | `tests/unit/test_signing.py`; OpenBao Transit custody Planned (M8) |

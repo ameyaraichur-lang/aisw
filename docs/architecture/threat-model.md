@@ -37,7 +37,7 @@ Scope manifests and execution permits (authority to touch anything) · evidence 
 | T17 | 6 | Premature or unreviewed deletion of evidence | Dry-run plan, execution pinned to the reviewed plan hash, legal holds, shared-blob protection, **soft purge** (quarantine, not delete), append-only action log (`test_retention`) | Quarantined files are removed only by a person (runbook); no automatic scheduler |
 | T18 | all | Vulnerable or non-compliant dependency | pip-audit, npm audit, SBOM + licence gate with recorded acceptances (`test_sbom_gate`) | SBOM is lockfile-based, not Syft/ScanCode; native libs in wheels not inventoried; legal review of LGPL (psycopg) pending |
 | T19 | 1 | Clickjacking / content injection in report preview | Escaped HTML, CSP `default-src 'none'`, sandboxed iframe, nosniff | |
-| T20 | 2 | Signing key theft or loss | Ed25519 key in a local file, public keys in a key ring | **Local custody only**: no HSM/OpenBao, **no rotation procedure tested**; compromise would allow forged manifests |
+| T20 | 2 | Signing key theft or loss | Transit KMS custody (key never exported, app token read+sign only), local verification, revocation list, rotation drill (ADR-027, `test_transit`, `test_key_rotation`) | Drilled on the loopback emulator only; dev/test still use a local key file; a real KMS is not yet provisioned |
 
 ## Findings from building the tests (fixed)
 Late worker double-write after lease loss; scanner self-corroboration promoting a stray host to HIGH confidence; zero-rule OpenSCAP result read as clean; coverage ledger overwritten across adapters; export denials not recorded because the audit row was rolled back with the request transaction (M8). Each now has a regression test.

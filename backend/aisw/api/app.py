@@ -12,6 +12,7 @@ from aisw import __version__
 from aisw.api import analysis, assessments, auth, imports, projects, retention, scope, views
 from aisw.api.container import Container, build_container
 from aisw.authz.service import ScopeDenied
+from aisw.authz.signing import SigningError
 from aisw.core.auth import AuthError
 from aisw.core.config import Settings, get_settings
 from aisw.core.db import make_engine
@@ -48,6 +49,10 @@ def create_app(
     @app.exception_handler(AuthError)
     async def _auth(_: Request, __: AuthError) -> JSONResponse:
         return JSONResponse({"error": "unauthenticated"}, status_code=401)
+
+    @app.exception_handler(SigningError)
+    async def _signer(_: Request, __: SigningError) -> JSONResponse:
+        return JSONResponse({"error": "signer_unavailable"}, status_code=503)
 
     @app.exception_handler(Forbidden)
     async def _forbidden(_: Request, __: Forbidden) -> JSONResponse:

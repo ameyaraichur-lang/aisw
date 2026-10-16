@@ -14,6 +14,7 @@ import json
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 from urllib.parse import urlparse
 
 from pydantic import Field, SecretStr, model_validator
@@ -122,6 +123,17 @@ def oidc_url_problem(name: str, url: str, env: Environment) -> str | None:
     return f"{name} must use https (http is allowed only on loopback outside prod)"
 
 
+def kms_url_problem(url: str, env: Environment) -> str | None:
+    u = urlparse(url)
+    if u.username is not None or u.password is not None:
+        return "kms_addr must not carry credentials"
+    if not u.hostname or u.path not in ("", "/") or u.query or u.fragment:
+        return "kms_addr must be an origin (scheme://host:port)"
+    if u.scheme == "https" or (env is not Environment.PROD and _loopback_http(url)):
+        return None
+    return "kms_addr must use https (http is allowed only on loopback outside prod)"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AISW_", extra="forbid", frozen=True)
 
@@ -202,12 +214,26 @@ class Settings(BaseSettings):
     # Filesystem locations (paths only; key material stays in the file, never in settings).
     evidence_dir: Path | None = None
     signing_key_path: Path | None = None
+    # Manifest signing custody (ADR-027). local_file: dev/test only. transit: a Transit-compatible
+    # KMS (OpenBao/Vault); the token is read from a 0600 file written by the secret provider.
+    signing_backend: Literal["local_file", "transit"] = "local_file"
+    kms_addr: str | None = None
+    kms_mount: str = Field(default="transit", pattern=r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$")
+    kms_key: str | None = Field(default=None, pattern=r"^[A-Za-z0-9][A-Za-z0-9_\-]{0,47}$")
+    kms_token_file: Path | None = None
+    kms_namespace: str | None = None
+    # Comma-separated key ids that must never verify again (compromise), e.g. transit.aisw-manifests.v1.
+    signing_revoked_key_ids: str | None = None
     worker_enabled: bool = False
 
     evidence_retention_days: int = Field(default=365, ge=1)
     max_assessment_concurrency: int = Field(default=2, ge=1, le=32)
     enable_itsm_ticket_creation: bool = False
     log_redaction_enabled: bool = True
+
+    @property
+    def revoked_signing_keys(self) -> list[str]:
+        return [k.strip() for k in (self.signing_revoked_key_ids or "").split(",") if k.strip()]
 
     @property
     def oidc_enabled(self) -> bool:
@@ -262,6 +288,13 @@ class Settings(BaseSettings):
             raise ValueError(problem)
         if self.oidc_issuer is not None:
             self._check_oidc()
+        if self.signing_backend == "transit":
+            if not (self.kms_addr and self.kms_key and self.kms_token_file):
+                raise ValueError(
+                    "signing_backend=transit requires kms_addr, kms_key, kms_token_file"
+                )
+            if problem := kms_url_problem(self.kms_addr, self.env):
+                raise ValueError(problem)
         if self.astra_proxy is not None:
             if problem := astra_proxy_problem(self.astra_proxy):
                 raise ValueError(problem)
