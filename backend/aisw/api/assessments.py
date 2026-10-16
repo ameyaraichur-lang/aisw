@@ -130,8 +130,9 @@ def status(
             text("SELECT COALESCE(MAX(seq),0) FROM run_events WHERE run_id=:r"), {"r": run_id}
         ).scalar_one()
         report = conn.execute(
-            text("SELECT report_id, approval_state FROM reports WHERE run_id=:r"), {"r": run_id}
-        ).first()
+            text("SELECT report_id, approval_state FROM reports WHERE run_id=:r "
+                 "ORDER BY revision DESC LIMIT 1"), {"r": run_id},
+        ).first()  # fmt: skip
     counts = {s: n for s, n in tasks}
     return {
         "run_id": run_id,
@@ -290,13 +291,15 @@ def list_reports(
         rows = conn.execute(
             text(
                 "SELECT report_id, approval_state, report_hash, generated_at, "
-                "(body->>'coverage_complete')::boolean FROM reports WHERE run_id=:r"
+                "(body->>'coverage_complete')::boolean, revision, supersedes FROM reports "
+                "WHERE run_id=:r ORDER BY revision DESC"
             ),
             {"r": run_id},
         ).all()
-    return [
+    return [  # newest revision first; older ones are SUPERSEDED history
         {"report_id": r[0], "approval_state": r[1], "report_hash": r[2],
-         "generated_at": r[3].isoformat(), "coverage_complete": r[4]}
+         "generated_at": r[3].isoformat(), "coverage_complete": r[4], "revision": r[5],
+         "supersedes": r[6]}
         for r in rows
     ]  # fmt: skip
 

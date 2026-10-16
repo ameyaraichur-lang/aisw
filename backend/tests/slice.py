@@ -162,7 +162,7 @@ class Slice:
 
     def report(self, run_id: str) -> dict[str, Any]:
         rows = self.call("GET", f"/api/v1/assessments/{run_id}/reports", "carol").json()
-        assert len(rows) == 1
+        assert rows and all(row["approval_state"] == "SUPERSEDED" for row in rows[1:])
         r = self.call("GET", f"/api/v1/reports/{rows[0]['report_id']}", "carol")
         assert r.status_code == 200
         return dict(r.json())

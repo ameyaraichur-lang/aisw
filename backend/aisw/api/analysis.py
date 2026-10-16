@@ -20,9 +20,10 @@ from aisw.contracts.base import NonEmpty, StrictModel, canonical_hash
 from aisw.core.audit import append_audit
 from aisw.core.config import ModelProvider
 from aisw.core.db import tenant_connection
-from aisw.core.rbac import ActorContext, Permission, authorize
+from aisw.core.rbac import ActorContext, Forbidden, Permission, authorize
 from aisw.core.redaction import redact_obj, redact_text
 from aisw.orchestrator.analysis import validation_summary
+from aisw.orchestrator.events import append_event
 from aisw.policy.rubric import builtin as builtin_rubric
 
 router = APIRouter(prefix="/api/v1")
@@ -103,12 +104,105 @@ def run_ai_validations(
                  "validator_confidence, defects, model_id, prompt_version FROM ai_validations "
                  "WHERE run_id=:r ORDER BY agent_id, target_ref"), {"r": run_id},
         ).mappings().all()  # fmt: skip
+        resolutions = {
+            r["target_ref"]: {k: r[k] for k in ("decision", "reason", "decided_by")}
+            | {"decided_at": r["decided_at"].isoformat()}
+            for r in conn.execute(
+                text("SELECT target_ref, decision, reason, decided_by, decided_at "
+                     "FROM ai_validation_resolutions WHERE run_id=:r"), {"r": run_id},
+            ).mappings()
+        }  # fmt: skip
         summary = validation_summary(conn, run_id)
     names = {a.agent_id: a.name for a in AGENTS}
     return {
         "summary": summary,
-        "items": [{**r, "agent_name": names[r["agent_id"]], "ai_generated": True} for r in rows],
-    }
+        "items": [
+            {**r, "agent_name": names[r["agent_id"]], "ai_generated": True,
+             "resolution": resolutions.get(r["target_ref"])}
+            for r in rows
+        ],
+    }  # fmt: skip
+
+
+class ResolutionRequest(StrictModel):
+    target_ref: NonEmpty
+    decision: Literal["OVERRULE", "UPHOLD"]
+    reason: NonEmpty
+
+
+@router.post("/assessments/{run_id}/ai-validations/resolutions")
+def resolve_dissent(
+    run_id: str,
+    body: ResolutionRequest,
+    response: Response,
+    actor: ActorContext = Depends(get_actor),
+    engine: Engine = Depends(get_engine),
+    c: Container = Depends(_c),
+    cid: str = Depends(correlation_id),
+) -> dict[str, Any]:
+    """A human decides an AI dissent (ADR-022). OVERRULE re-runs assurance without it and issues a
+    new report revision; UPHOLD records agreement and changes nothing. Nothing is ever ACCEPTed
+    here directly: assurance decides again from the evidence."""
+    authorize(actor, Permission.REPORT_APPROVE)
+    reason = redact_text(body.reason)[:1000]
+    with tenant_connection(engine, actor.tenant_id) as conn:
+        _run_or_404(conn, run_id)
+        run = dict(conn.execute(
+            text("SELECT * FROM assessment_runs WHERE run_id=:r FOR UPDATE"), {"r": run_id},
+        ).mappings().one())  # fmt: skip
+        verdict = conn.execute(
+            text("SELECT verdict FROM ai_validations WHERE run_id=:r AND target_ref=:t"),
+            {"r": run_id, "t": body.target_ref},
+        ).scalar()
+        if verdict is None:
+            raise HTTPException(status_code=404, detail="not found")
+        prior = conn.execute(
+            text("SELECT decision, reason FROM ai_validation_resolutions "
+                 "WHERE run_id=:r AND target_ref=:t"), {"r": run_id, "t": body.target_ref},
+        ).first()  # fmt: skip
+        if prior is not None:
+            if tuple(prior) == (body.decision, reason):
+                response.headers["Idempotent-Replay"] = "true"
+                return {"target_ref": body.target_ref, "decision": body.decision, "replayed": True}
+            raise HTTPException(status_code=409, detail=f"already resolved: {prior[0]}")
+        if verdict != "DISSENT":
+            raise HTTPException(status_code=409, detail="only an AI dissent can be resolved")
+        if run["requested_by"] == actor.actor_id:
+            raise Forbidden("the requester of a run cannot resolve its AI dissents")
+        latest = conn.execute(
+            text("SELECT approval_state FROM reports WHERE run_id=:r "
+                 "ORDER BY revision DESC LIMIT 1"), {"r": run_id},
+        ).scalar()  # fmt: skip
+        if run["state"] not in {"REPORT_READY", "PARTIAL"} or latest != "PENDING":
+            raise HTTPException(status_code=409, detail="run is not awaiting report approval")
+        now = c.clock()
+        revision = run["assurance_revision"] + (body.decision == "OVERRULE")
+        conn.execute(
+            text("INSERT INTO ai_validation_resolutions (tenant_id, run_id, target_ref, decision, "
+                 "reason, decided_by, decided_at, assurance_revision) VALUES (:t, :r, :ref, :d, "
+                 ":why, :b, :n, :v)"),
+            {"t": actor.tenant_id, "r": run_id, "ref": body.target_ref, "d": body.decision,
+             "why": reason, "b": actor.actor_id, "n": now, "v": revision},
+        )  # fmt: skip
+        if body.decision == "OVERRULE":
+            conn.execute(
+                text("UPDATE assessment_runs SET state='ASSURANCE', assurance_revision=:v, "
+                     "updated_at=:n WHERE run_id=:r"), {"v": revision, "n": now, "r": run_id},
+            )  # fmt: skip
+            append_event(
+                conn, tenant_id=actor.tenant_id, run_id=run_id, now=now,
+                event_type="phase.changed",
+                payload={"from": run["state"], "to": "ASSURANCE", "reason": "AI_DISSENT_OVERRULED"},
+            )  # fmt: skip
+        append_audit(
+            conn, tenant_id=actor.tenant_id, actor=actor.actor_id,
+            action=f"ai_validation.{body.decision.lower()}",
+            resource=f"ai_validation:{run_id}:{body.target_ref}", result="SUCCESS",
+            correlation_id=cid, before_hash=canonical_hash({"verdict": verdict}),
+            after_hash=canonical_hash({"decision": body.decision, "reason": reason}),
+        )  # fmt: skip
+    return {"target_ref": body.target_ref, "decision": body.decision, "decided_by": actor.actor_id,
+            "assurance_revision": revision, "reassessing": body.decision == "OVERRULE"}  # fmt: skip
 
 
 @router.get("/assessments/{run_id}/recommendations")

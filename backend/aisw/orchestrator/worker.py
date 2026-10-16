@@ -796,20 +796,7 @@ class Worker:
             res = apply_dissent(
                 assess_finding(Finding.model_validate(body), ctx), ai_verdicts.get(f"finding:{fid}")
             )
-            conn.execute(
-                text(
-                    "INSERT INTO assurance_results (tenant_id, run_id, item_ref, verdict, "
-                    "defect_codes, missing_refs, stale_refs, validation_version, validated_at) "
-                    "VALUES (:t, :r, :i, :v, CAST(:d AS jsonb), CAST(:m AS jsonb), "
-                    "CAST(:s AS jsonb), :ver, :at) ON CONFLICT DO NOTHING"
-                ),
-                {
-                    "t": tenant, "r": run_id, "i": res.item_ref, "v": res.verdict.value,
-                    "d": json.dumps(res.defect_codes), "m": json.dumps(res.missing_refs),
-                    "s": json.dumps(res.stale_refs), "ver": res.validation_version,
-                    "at": res.validated_at,
-                },
-            )  # fmt: skip
+            analysis.store_assurance_result(conn, tenant, run_id, res, run["assurance_revision"])
             conn.execute(
                 text("UPDATE findings SET assurance_verdict=:v WHERE run_id=:r AND finding_id=:f"),
                 {"v": res.verdict.value, "r": run_id, "f": fid},
@@ -885,9 +872,15 @@ class Worker:
             )
         ]
         now = self.clock()
+        revision = run["assurance_revision"]
+        previous = conn.execute(
+            text("SELECT report_id FROM reports WHERE run_id=:r AND revision < :v "
+                 "ORDER BY revision DESC LIMIT 1"), {"r": run_id, "v": revision},
+        ).scalar()  # fmt: skip
         bundle, body, html = build_report(
             ReportInputs(
-                tenant_id=tenant, project_id=project, run_id=run_id,
+                tenant_id=tenant, project_id=project, run_id=run_id, revision=revision,
+                supersedes=previous,
                 manifest_hash=run["manifest_hash"], manifest_version=manifest_version,
                 policy_version=pack.key, pack_hash=pack.pack_hash, tasks=tasks, ledgers=ledgers,
                 controls=controls, accepted=accepted, needs_review=needs_review,
@@ -899,12 +892,18 @@ class Worker:
         conn.execute(
             text(
                 "INSERT INTO reports (report_id, tenant_id, project_id, run_id, body, html, "
-                "report_hash, generated_at) VALUES (:id, :t, :p, :r, CAST(:b AS jsonb), :h, :rh, "
-                ":n) ON CONFLICT (run_id) DO NOTHING"
+                "report_hash, generated_at, revision, supersedes) VALUES (:id, :t, :p, :r, "
+                "CAST(:b AS jsonb), :h, :rh, :n, :v, :sup) ON CONFLICT (run_id, revision) DO NOTHING"
             ),
             {"id": bundle.report_id, "t": tenant, "p": project, "r": run_id,
-             "b": json.dumps(body), "h": html, "rh": bundle.report_hash, "n": now},
+             "b": json.dumps(body), "h": html, "rh": bundle.report_hash, "n": now,
+             "v": revision, "sup": previous},
         )  # fmt: skip
+        if previous is not None:
+            conn.execute(
+                text("UPDATE reports SET approval_state='SUPERSEDED' WHERE run_id=:r "
+                     "AND revision < :v AND approval_state='PENDING'"), {"r": run_id, "v": revision},
+            )  # fmt: skip
         partial = run["partial"] or not bundle.coverage_complete
         append_event(
             conn, tenant_id=tenant, run_id=run_id, now=now,

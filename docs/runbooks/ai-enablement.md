@@ -54,6 +54,12 @@ Verdicts and what they do:
 
 Read the results on the run's Analysis tab, from `GET /api/v1/assessments/{run_id}/ai-validations`, or in the `ai_validations` and `llm_calls` tables (`purpose LIKE 'validation:%'`). Many dissents on findings that are clearly correct mean the reviewer is not usable for this estate; turn it off and record why.
 
+**Resolving a dissent (ADR-022).** A reviewer with `report:approve` who did not request the run opens the run's Analysis tab and chooses **Overrule** or **Uphold** on a dissent row, giving a reason. The API equivalent is `POST /api/v1/assessments/{run_id}/ai-validations/resolutions`.
+- **Uphold** keeps the item held and leaves the report unchanged.
+- **Overrule** re-runs assurance without that dissent and issues a new report revision (`rep-{run}-r2`, …). The old pending report becomes `SUPERSEDED`. Approve the newest revision.
+
+Both decisions are final and audited. Resolve every dissent before approving, because an approved report cannot be revised.
+
 ### Live check on synthetic data
 From `backend/`, with the key in a gitignored env file (here `../.env.astra`):
 ```bash

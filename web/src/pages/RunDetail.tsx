@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { Link, NavLink, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { api, ApiError, apiText } from '../api/client'
 import { useAiValidations, useControls, useCoverage, useReportBody, useReports, useRunFindings, useRunRecommendations, useRunScenarios, useRunStatus, useTasks } from '../api/hooks'
-import type { ControlRow, TaskView } from '../api/types'
+import type { AiDecision, ControlRow, TaskView } from '../api/types'
 import { useSession } from '../auth/useSession'
 import { RecommendationBody, RecommendationHeader, ScenarioCard } from '../components/analysis'
 import { Badge, Banner, ConfirmDialog, CopyButton, DataState, PageHeader, Pagination, ShortHash } from '../components/ui'
@@ -281,7 +281,18 @@ function Analysis({ runId }: { runId: string }) {
 
 function AiValidationPanel({ runId }: { runId: string }) {
   const q = useAiValidations(runId)
+  const { can } = useSession()
+  const qc = useQueryClient()
   const [filter, setFilter] = useState<'attention' | 'all'>('attention')
+  const [pending, setPending] = useState<{ ref: string; decision: AiDecision } | null>(null)
+  const [reason, setReason] = useState('')
+  const resolve = useMutation({
+    mutationFn: (p: { ref: string; decision: AiDecision }) =>
+      api(`/assessments/${runId}/ai-validations/resolutions`, { method: 'POST', body: { target_ref: p.ref, decision: p.decision, reason: reason.trim() } }),
+    onSuccess: () => { setPending(null); setReason(''); void qc.invalidateQueries({ queryKey: ['run', runId] }) },
+  })
+  const open = (ref: string, decision: AiDecision) => { resolve.reset(); setReason(''); setPending({ ref, decision }) }
+  const err = resolve.error instanceof ApiError ? resolve.error : null
   return (
     <section aria-labelledby="av-h">
       <h2 id="av-h">AI validation of agent outcomes</h2>
@@ -297,6 +308,7 @@ function AiValidationPanel({ runId }: { runId: string }) {
                 <span className="muted">Model: {d.summary.models.join(', ') || 'unknown'}</span>
               </p>
               {d.summary.held_for_review > 0 ? <Banner tone="warn" title="Held for review">The AI reviewer dissented on {d.summary.held_for_review} item(s). Accepted items among them are not authoritative until a human resolves them.</Banner> : null}
+              {d.summary.overruled || d.summary.upheld ? <p className="muted">Human decisions: {d.summary.overruled} overruled (assurance re-ran and a new report revision was issued), {d.summary.upheld} upheld.</p> : null}
               <fieldset className="row">
                 <legend className="sr-only">Show</legend>
                 <label><input type="radio" name="av-filter" checked={filter === 'attention'} onChange={() => setFilter('attention')} /> Needs attention ({attention.length})</label>
@@ -306,7 +318,7 @@ function AiValidationPanel({ runId }: { runId: string }) {
                 <div className="table-wrap">
                   <table>
                     <caption>AI-generated review (advisory)</caption>
-                    <thead><tr><th scope="col">Agent</th><th scope="col">Item</th><th scope="col">Verdict</th><th scope="col">Why</th></tr></thead>
+                    <thead><tr><th scope="col">Agent</th><th scope="col">Item</th><th scope="col">Verdict</th><th scope="col">Why</th><th scope="col">Human decision</th></tr></thead>
                     <tbody>{shown.map((i) => (
                       <tr key={i.target_ref}>
                         <td>{i.agent_id}. {i.agent_name}</td>
@@ -317,6 +329,16 @@ function AiValidationPanel({ runId }: { runId: string }) {
                           {i.human_questions.length ? <ul className="list-plain">{i.human_questions.map((x, n) => <li key={n}>Question: {x}</li>)}</ul> : null}
                           {!i.issues.length && !i.human_questions.length && i.defects.length ? <span className="muted">{i.defects.join(', ')}</span> : null}
                         </td>
+                        <td>
+                          {i.resolution ? (
+                            <span><Badge d={i.resolution.decision === 'OVERRULE' ? { icon: '↺', label: 'Overruled', tone: 'neutral' } : { icon: '✓', label: 'Upheld', tone: 'warn' }} /> by {i.resolution.decided_by}: {i.resolution.reason}</span>
+                          ) : i.verdict === 'DISSENT' && can('report:approve') ? (
+                            <span className="row">
+                              <button type="button" className="btn" onClick={() => open(i.target_ref, 'OVERRULE')}>Overrule</button>
+                              <button type="button" className="btn" onClick={() => open(i.target_ref, 'UPHOLD')}>Uphold</button>
+                            </span>
+                          ) : i.verdict === 'DISSENT' ? <span className="muted">Awaiting a reviewer</span> : null}
+                        </td>
                       </tr>))}
                     </tbody>
                   </table>
@@ -326,6 +348,25 @@ function AiValidationPanel({ runId }: { runId: string }) {
           )
         }}
       </DataState>
+      <ConfirmDialog
+        open={pending !== null}
+        title={pending?.decision === 'OVERRULE' ? 'Overrule this AI dissent?' : 'Uphold this AI dissent?'}
+        confirmLabel={pending?.decision === 'OVERRULE' ? 'Overrule' : 'Uphold'}
+        busy={resolve.isPending}
+        confirmDisabled={!reason.trim()}
+        onConfirm={() => { if (pending) resolve.mutate(pending) }}
+        onCancel={() => setPending(null)}
+      >
+        <p>
+          {pending?.decision === 'OVERRULE'
+            ? 'Independent assurance re-runs without this dissent and a new report revision replaces the unapproved one. The item is only accepted if its evidence still holds.'
+            : 'The item stays held for review. Your decision is recorded; the report does not change.'}
+        </p>
+        <p><code>{pending?.ref}</code></p>
+        <label htmlFor="av-reason">Reason (required, recorded in the audit log)</label>
+        <textarea id="av-reason" value={reason} maxLength={1000} rows={3} onChange={(e) => setReason(e.target.value)} />
+        {err ? <Banner tone="bad" role="alert" title={err.status === 403 ? 'You cannot resolve this dissent' : 'Decision refused'}>{err.message}</Banner> : null}
+      </ConfirmDialog>
     </section>
   )
 }
@@ -381,6 +422,7 @@ function ReportTab({ runId }: { runId: string }) {
       <p className="row">
         {first.approval_state === 'APPROVED' ? <Badge d={{ icon: '✓', label: 'Approved', tone: 'ok' }} /> : <Badge d={{ icon: '◐', label: 'Awaiting review', tone: 'warn' }} />}
         <span>Report hash <ShortHash value={first.report_hash} /> generated {fmtTime(first.generated_at)}</span>
+        {first.revision > 1 ? <span data-testid="report-revision">Revision {first.revision}; supersedes <code>{first.supersedes}</code> (now marked superseded and no longer approvable)</span> : null}
       </p>
       <DataState q={body} label="report">
         {(b) => (

@@ -7,6 +7,7 @@ Usage: uv run python e2e/server.py  (listens on 127.0.0.1:8099)
 
 from __future__ import annotations
 
+import json
 import os
 import secrets
 import signal
@@ -29,9 +30,31 @@ from aisw.api.container import build_container
 from aisw.authz.signing import KeyRing, LocalKeySigner
 from aisw.core.config import Settings
 from aisw.evidence.store import EvidenceStore
+from aisw.llm.client import ModelUnavailable
+from aisw.llm.validation import SYSTEM_PROMPT as VALIDATION_PROMPT
 
 BACKEND = Path(__file__).resolve().parents[1]
 PORT = int(os.environ.get("AISW_E2E_PORT", "8099"))
+
+
+class DissentingReviewer:
+    """No weights, no network. Narration is unavailable (the deterministic text stands); review
+    concurs with everything except the first finding of each batch."""
+
+    model_id = "e2e-reviewer-0"
+
+    def complete(self, *, system: str, user: str, schema: dict[str, Any], timeout: float) -> str:
+        if not system.startswith(VALIDATION_PROMPT[:40]):
+            raise ModelUnavailable("MODEL_UNREACHABLE")
+        targets = json.loads(user.removeprefix("DATA:\n"))["targets"]
+        first = next((t["target_ref"] for t in targets if t["kind"] == "finding"), None)
+        return json.dumps({"verdicts": [
+            {"target_ref": t["target_ref"], "verdict": "DISSENT" if t["target_ref"] == first else "CONCUR",
+             "validator_confidence": "MEDIUM",
+             "issues": [{"code": "OUTCOME_NOT_SUPPORTED", "explanation": "The observed value is ambiguous.",
+                         "evidence_refs": t["evidence_refs"][:1]}] if t["target_ref"] == first else []}
+            for t in targets
+        ]})  # fmt: skip
 
 
 def main() -> None:
@@ -98,6 +121,25 @@ def main() -> None:
     def resume() -> dict[str, bool]:
         state["paused"] = False
         return {"paused": False}
+
+    plain = (container.settings, worker.model, worker.ai_validation)
+
+    @api.post("/__e2e/ai-reviewer/{mode}")
+    def ai_reviewer(mode: str) -> dict[str, str]:
+        """``dissent``: a local scripted reviewer that dissents on the first finding it sees, so the
+        UI's dissent resolution can be driven end to end. ``off`` restores the AI-off server."""
+        if mode == "off":
+            container.settings, worker.model, worker.ai_validation = plain
+        else:
+            container.settings = settings.model_copy(
+                update={
+                    "ai_enabled": True,
+                    "model_id": "e2e-reviewer-0",
+                    "model_license": "Apache-2.0",
+                }
+            )
+            worker.model, worker.ai_validation = DissentingReviewer(), True
+        return {"mode": mode}
 
     @api.post("/__e2e/delay/{ms}")
     def delay(ms: int) -> dict[str, float]:

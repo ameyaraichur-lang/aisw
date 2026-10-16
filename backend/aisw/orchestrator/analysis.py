@@ -402,10 +402,17 @@ def store_validations(
 
 
 def load_ai_verdicts(conn: Connection, run_id: str) -> dict[str, str]:
+    """Validator verdicts that still apply: a dissent a human overruled no longer holds anything."""
     return {
         ref: verdict
         for ref, verdict in conn.execute(
-            text("SELECT target_ref, verdict FROM ai_validations WHERE run_id=:r"), {"r": run_id}
+            text(
+                "SELECT v.target_ref, v.verdict FROM ai_validations v "
+                "LEFT JOIN ai_validation_resolutions x ON x.run_id = v.run_id "
+                "AND x.target_ref = v.target_ref WHERE v.run_id=:r "
+                "AND (x.decision IS NULL OR x.decision <> 'OVERRULE')"
+            ),
+            {"r": run_id},
         )
     }
 
@@ -414,35 +421,59 @@ def validation_summary(conn: Connection, run_id: str) -> dict[str, Any]:
     by_verdict: dict[str, int] = {}
     by_agent: dict[str, dict[str, int]] = {}
     models: set[str] = set()
-    for agent, verdict, model in conn.execute(
-        text("SELECT agent_id, verdict, model_id FROM ai_validations WHERE run_id=:r"),
+    overruled = upheld = 0
+    for agent, verdict, model, decision in conn.execute(
+        text(
+            "SELECT v.agent_id, v.verdict, v.model_id, x.decision FROM ai_validations v "
+            "LEFT JOIN ai_validation_resolutions x ON x.run_id = v.run_id "
+            "AND x.target_ref = v.target_ref WHERE v.run_id=:r"
+        ),
         {"r": run_id},
     ):
         by_verdict[verdict] = by_verdict.get(verdict, 0) + 1
         slot = by_agent.setdefault(str(agent), {})
         slot[verdict] = slot.get(verdict, 0) + 1
+        overruled += decision == "OVERRULE"
+        upheld += decision == "UPHOLD"
         if model:
             models.add(model)
     return {
         "total": sum(by_verdict.values()), "by_verdict": by_verdict, "by_agent": by_agent,
-        "held_for_review": by_verdict.get("DISSENT", 0),
+        "held_for_review": by_verdict.get("DISSENT", 0) - overruled,
+        "overruled": overruled, "upheld": upheld,
         "unavailable": by_verdict.get("UNAVAILABLE", 0) + by_verdict.get("VALIDATOR_INVALID", 0),
         "models": sorted(models),
     }  # fmt: skip
 
 
 # ------------------------------------------------------------------ Agent 7 (everything above findings)
-def _store_result(conn: Connection, tenant: str, run_id: str, res: AssuranceResult) -> None:
+def store_assurance_result(
+    conn: Connection, tenant: str, run_id: str, res: AssuranceResult, revision: int
+) -> None:
     conn.execute(
         text(
             "INSERT INTO assurance_results (tenant_id, run_id, item_ref, verdict, defect_codes, "
-            "missing_refs, stale_refs, validation_version, validated_at) VALUES (:t, :r, :i, :v, "
-            "CAST(:d AS jsonb), CAST(:m AS jsonb), CAST(:s AS jsonb), :ver, :at) ON CONFLICT DO NOTHING"
+            "missing_refs, stale_refs, validation_version, validated_at, revision) VALUES (:t, :r, "
+            ":i, :v, CAST(:d AS jsonb), CAST(:m AS jsonb), CAST(:s AS jsonb), :ver, :at, :rev) "
+            "ON CONFLICT DO NOTHING"
         ),
         {"t": tenant, "r": run_id, "i": res.item_ref, "v": res.verdict.value,
          "d": json.dumps(res.defect_codes), "m": json.dumps(res.missing_refs),
-         "s": json.dumps(res.stale_refs), "ver": res.validation_version, "at": res.validated_at},
+         "s": json.dumps(res.stale_refs), "ver": res.validation_version, "at": res.validated_at,
+         "rev": revision},
     )  # fmt: skip
+
+
+def current_assurance(conn: Connection, run_id: str, item_ref: str) -> Any:
+    """The assurance row of the run's current revision (earlier revisions are history)."""
+    return conn.execute(
+        text(
+            "SELECT a.verdict, a.defect_codes, a.missing_refs, a.stale_refs, a.validation_version, "
+            "a.validated_at FROM assurance_results a JOIN assessment_runs r ON r.run_id = a.run_id "
+            "AND a.revision = r.assurance_revision WHERE a.run_id=:r AND a.item_ref=:i"
+        ),
+        {"r": run_id, "i": item_ref},
+    ).first()
 
 
 def assurance_analysis(
@@ -455,7 +486,7 @@ def assurance_analysis(
     ai_verdicts: Mapping[str, str] | None = None,
 ) -> None:
     """``ai_verdicts`` (target_ref -> validator verdict) can only hold ACCEPTed items for review."""
-    tenant, run_id = run["tenant_id"], run["run_id"]
+    tenant, run_id, rev = run["tenant_id"], run["run_id"], run["assurance_revision"]
     ai = ai_verdicts or {}
     findings = load_findings(conn, run_id)
     verdicts = {
@@ -471,7 +502,7 @@ def assurance_analysis(
     risks: dict[str, RiskAssessment] = {}
     for fid, risk in stored_risks.items():
         res = assess_risk(risk, findings.get(fid), rubric, ctx)
-        _store_result(conn, tenant, run_id, res)
+        store_assurance_result(conn, tenant, run_id, res, rev)
         if res.verdict is AssuranceVerdict.ACCEPT:
             risks[fid] = risk  # an irreproducible risk is treated as absent, never trusted
 
@@ -479,7 +510,7 @@ def assurance_analysis(
     scenario_verdict: dict[str, AssuranceVerdict] = {}
     for res in assess_scenarios(list(scenarios.values()), findings, verdicts, risks, ctx):
         res = apply_dissent(res, ai.get(res.item_ref))
-        _store_result(conn, tenant, run_id, res)
+        store_assurance_result(conn, tenant, run_id, res, rev)
         sid = res.item_ref.removeprefix("scenario:")
         scenario_verdict[sid] = res.verdict
         conn.execute(
@@ -496,7 +527,7 @@ def assurance_analysis(
             assess_recommendation(rec, findings, verdicts, risks, catalog, ctx),
             ai.get(f"recommendation:{rid}"),
         )
-        _store_result(conn, tenant, run_id, res)
+        store_assurance_result(conn, tenant, run_id, res, rev)
         rec_verdict[rid] = res.verdict
         conn.execute(
             text(
@@ -519,7 +550,7 @@ def assurance_analysis(
         if nres is None:
             continue
         nres = apply_dissent(nres, ai.get(f"narrative:{row['narrative_id']}"))
-        _store_result(conn, tenant, run_id, nres)
+        store_assurance_result(conn, tenant, run_id, nres, rev)
         conn.execute(
             text("UPDATE narratives SET assurance_verdict=:v WHERE run_id=:r AND narrative_id=:n"),
             {"v": nres.verdict.value, "r": run_id, "n": row["narrative_id"]},
@@ -533,13 +564,8 @@ def report_extras(conn: Connection, run: dict[str, Any]) -> dict[str, Any]:
     risks = {
         fid: r.model_dump(mode="json")
         for fid, r in load_risks(conn, run_id).items()
-        if (
-            conn.execute(
-                text("SELECT verdict FROM assurance_results WHERE run_id=:r AND item_ref=:i"),
-                {"r": run_id, "i": f"risk:{fid}"},
-            ).scalar()
-            == "ACCEPT"
-        )
+        if (row := current_assurance(conn, run_id, f"risk:{fid}")) is not None
+        and row[0] == "ACCEPT"
     }
     narratives: dict[tuple[str, str], dict[str, Any]] = {}
     ai_total = ai_shown = 0

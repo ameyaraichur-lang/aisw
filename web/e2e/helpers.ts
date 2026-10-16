@@ -36,11 +36,11 @@ export async function approvedManifest(request: APIRequestContext, projectId: st
   return json(await api(request, 'bob', 'post', `/scope-manifests/${id}/approve`, {}))
 }
 
-export async function launch(request: APIRequestContext, projectId: string, m: { manifest_id: string; canonical_hash: string }, fixtureSet = 'baseline-ok') {
+export async function launch(request: APIRequestContext, projectId: string, m: { manifest_id: string; canonical_hash: string }, fixtureSet = 'baseline-ok', aiAssist = false) {
   const r = await json(
     await api(request, 'alice', 'post', '/assessments', {
       project_id: projectId, scope_manifest_id: m.manifest_id, scope_manifest_hash: m.canonical_hash,
-      assessment_profile: 'baseline-readonly-v1', adapter_params: { fixture: { fixture_set: fixtureSet } },
+      assessment_profile: 'baseline-readonly-v1', adapter_params: { fixture: { fixture_set: fixtureSet } }, ai_assist: aiAssist,
     }, { 'Idempotency-Key': uniq() }),
     202,
   )

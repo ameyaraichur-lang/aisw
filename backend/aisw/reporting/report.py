@@ -49,6 +49,8 @@ class ReportInputs:
     analysis_excluded: dict[str, int] = field(default_factory=dict)  # e.g. scenarios_rejected: 2
     ai: dict[str, Any] = field(default_factory=lambda: {"mode": "disabled"})
     model_versions: list[str] = field(default_factory=list)
+    revision: int = 1  # > 1 after a human overruled an AI dissent and assurance re-ran (ADR-022)
+    supersedes: str | None = None
 
 
 def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
@@ -91,6 +93,12 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
         limitations.append(
             f"The AI validator dissented on {validation['held_for_review']} item(s); accepted items "
             "among them are held for human review and are not authoritative until resolved."
+        )
+    if validation.get("overruled") or validation.get("upheld"):
+        limitations.append(
+            f"A reviewer overruled {validation.get('overruled', 0)} and upheld "
+            f"{validation.get('upheld', 0)} AI validator dissent(s); each decision is recorded "
+            "with its reason."
         )
     if validation.get("unavailable"):
         limitations.append(
@@ -137,8 +145,11 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
         },
         "pending_review": inp.needs_review, "tasks": inp.tasks, "evidence_manifest": manifest,
     }  # fmt: skip
+    if inp.revision > 1:
+        body["revision"] = {"number": inp.revision, "supersedes": inp.supersedes}
+    suffix = f"-r{inp.revision}" if inp.revision > 1 else ""
     bundle = ReportBundle(
-        report_id=f"rep-{inp.run_id}", tenant_id=inp.tenant_id, project_id=inp.project_id,
+        report_id=f"rep-{inp.run_id}{suffix}", tenant_id=inp.tenant_id, project_id=inp.project_id,
         run_id=inp.run_id, scope_manifest_hash=inp.manifest_hash,
         policy_versions=[inp.policy_version], tool_versions=tools, model_versions=inp.model_versions,
         coverage_complete=coverage_complete, limitations=limitations, finding_counts=counts,
@@ -228,6 +239,11 @@ def render_html(body: dict[str, Any]) -> str:
     banner = f'<p role="alert"><strong>{_e(body["banner"])}</strong></p>' if body["banner"] else ""
     if body.get("notice"):
         banner = f'<p role="note"><strong>{_e(body["notice"])}</strong></p>' + banner
+    if rev := body.get("revision"):
+        banner += (
+            f'<p role="note">Revision {int(rev["number"])}; supersedes report '
+            f"{_e(rev['supersedes'] or '')} after a human review of AI validator dissent.</p>"
+        )
     counts = ", ".join(f"{_e(k)}: {v}" for k, v in body["finding_counts"].items())
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'

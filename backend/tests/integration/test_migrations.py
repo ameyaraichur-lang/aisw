@@ -28,7 +28,8 @@ ANALYSIS = {
 }  # fmt: skip
 HARDENING = {"retention_holds", "retention_actions"}
 AI_VALIDATION = {"ai_validations"}
-TABLES = FOUNDATION | PIPELINE | IMPORTS | ANALYSIS | HARDENING | AI_VALIDATION
+REVISIONS = {"ai_validation_resolutions"}
+TABLES = FOUNDATION | PIPELINE | IMPORTS | ANALYSIS | HARDENING | AI_VALIDATION | REVISIONS
 
 
 def _tables(engine) -> set[str]:  # type: ignore[no-untyped-def]
@@ -43,10 +44,17 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     eng = make_db(pg_server, f"mig_{uuid.uuid4().hex[:8]}")
     migrate(eng, "head")
     assert _tables(eng) == TABLES
+    migrate(eng, "0007", down=True)  # 0008 (review revisions) is independently reversible
+    assert _tables(eng) == TABLES - REVISIONS
+    with eng.connect() as c:
+        assert not c.execute(
+            text("SELECT 1 FROM information_schema.columns WHERE table_name='reports' "
+                 "AND column_name='revision'")
+        ).first()  # fmt: skip
     migrate(eng, "0006", down=True)  # 0007 (agent validation) is independently reversible
-    assert _tables(eng) == TABLES - AI_VALIDATION
+    assert _tables(eng) == TABLES - REVISIONS - AI_VALIDATION
     migrate(eng, "0005", down=True)  # 0006 (hardening) is independently reversible
-    assert _tables(eng) == TABLES - AI_VALIDATION - HARDENING
+    assert _tables(eng) == TABLES - REVISIONS - AI_VALIDATION - HARDENING
     with eng.connect() as c:
         assert not c.execute(
             text("SELECT 1 FROM pg_trigger WHERE tgname='assessment_runs_permit_swap'")

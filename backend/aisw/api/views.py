@@ -17,6 +17,7 @@ from aisw.core.auth import list_dev_users
 from aisw.core.config import Environment
 from aisw.core.db import tenant_connection
 from aisw.core.rbac import ROLE_PERMISSIONS, ActorContext, Permission, authorize
+from aisw.orchestrator.analysis import current_assurance
 from aisw.orchestrator.stream import stream_events
 from aisw.policy.results import finding_id as make_finding_id
 
@@ -270,18 +271,14 @@ def finding_detail(
             ),
             {"r": run_id, "a": body["affected_assets"], "refs": body["evidence_refs"]},
         ).all()
-        assurance = conn.execute(
-            text(
-                "SELECT verdict, defect_codes, missing_refs, stale_refs, validation_version, "
-                "validated_at FROM assurance_results WHERE run_id=:r AND item_ref=:i"
-            ),
-            {"r": run_id, "i": f"finding:{finding_id}"},
-        ).first()
+        assurance = current_assurance(conn, run_id, f"finding:{finding_id}")
         risk_row = conn.execute(
             text(
                 "SELECT r.rubric_version, r.tier, r.provisional_tier, r.basis, r.factors, "
                 "r.missing_evidence, r.rationale, a.verdict FROM risk_assessments r "
+                "JOIN assessment_runs ar ON ar.run_id = r.run_id "
                 "LEFT JOIN assurance_results a ON a.run_id=r.run_id AND a.item_ref='risk:' || r.finding_id "
+                "AND a.revision = ar.assurance_revision "
                 "WHERE r.run_id=:r AND r.finding_id=:f"
             ),
             {"r": run_id, "f": finding_id},

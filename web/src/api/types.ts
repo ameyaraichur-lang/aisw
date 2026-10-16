@@ -288,9 +288,12 @@ export interface AiValidationItem {
   model_id: string | null
   prompt_version: string
   ai_generated: true
+  resolution: AiResolution | null
 }
+export type AiDecision = 'OVERRULE' | 'UPHOLD'
+export interface AiResolution { decision: AiDecision; reason: string; decided_by: string; decided_at: string }
 export interface AiValidations {
-  summary: { total: number; by_verdict: Record<string, number>; by_agent: Record<string, number>; held_for_review: number; unavailable: number; models: string[] }
+  summary: { total: number; by_verdict: Record<string, number>; by_agent: Record<string, number>; held_for_review: number; unavailable: number; overruled: number; upheld: number; models: string[] }
   items: AiValidationItem[]
 }
 export interface TicketDraft {
@@ -305,6 +308,8 @@ export interface ReportList {
   report_hash: string
   generated_at: string
   coverage_complete: boolean
+  revision: number
+  supersedes: string | null
 }
 export interface ReportBody {
   title: string
