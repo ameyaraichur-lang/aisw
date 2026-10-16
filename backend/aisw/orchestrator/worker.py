@@ -24,6 +24,7 @@ from sqlalchemy import Connection, Engine, text
 from aisw.agents.architecture import builtin_catalog
 from aisw.agents.assurance import ArtifactMeta, AssuranceContext, assess_finding
 from aisw.agents.discovery import KnownAsset, resolve_identity
+from aisw.authz.service import ScopeDenied
 from aisw.contracts.base import canonical_hash
 from aisw.contracts.domain import ControlMapping, Finding
 from aisw.contracts.enums import PolicyOutcome
@@ -48,6 +49,7 @@ from aisw.reporting.report import ReportInputs, build_report
 _SELECT_RUN = "SELECT * FROM assessment_runs WHERE run_id=:r"
 _SELECT_RUN_LOCKED = _SELECT_RUN + " FOR UPDATE"
 TRANSIENT_DENIALS = {"AUDIT_UNAVAILABLE"}
+CAP_ONLY_DENIALS = {"PERMIT_RENEWAL_LIMIT", "PERMIT_LIFETIME_EXCEEDED", "PERMIT_CANNOT_EXTEND"}
 # Task warnings that describe a coverage gap and are surfaced verbatim in the coverage ledger.
 GAP_PREFIXES = frozenset(
     {"AMBIGUOUS_IDENTITY", "OUT_OF_SCOPE_RECORDS_DROPPED", "PERMISSION_DENIED", "STALE_RECORD",
@@ -85,9 +87,14 @@ class Worker:
     model_timeout: float = 60.0
     rubric_version: str = "1.0.0"
     catalog_version: str = "1.0.0"
+    # Agent 0 hook: extends a still-valid permit shortly before it expires (None = never renew).
+    renew_permit: Callable[..., str | None] | None = None
+    renew_sweep_seconds: float = 30.0
+    _last_sweep: datetime | None = field(default=None, repr=False)
 
     # ------------------------------------------------------------------ main loop
     def step(self) -> bool:
+        self.sweep_permits()
         task = self.claim()
         if task is not None:
             self.process(task)
@@ -177,6 +184,13 @@ class Worker:
             if run["cancel_requested"]:
                 self._finish_if_owner(conn, task, "CANCELLED", errors=["CANCELLED_BEFORE_START"])
                 return
+        denied = self._renew(tenant, task["run_id"])
+        if denied is not None:
+            with tenant_connection(self.engine, tenant) as conn:
+                self._finish_if_owner(conn, task, "REJECTED", errors=denied)
+            return
+        with tenant_connection(self.engine, tenant) as conn:
+            run = self._run(conn, task["run_id"])  # may now point at a renewed permit
         req = ToolRequest(
             tenant_id=tenant, project_id=str(run["project_id"]), run_id=task["run_id"],
             task_id=str(task["task_id"]), task_type=task["task_type"], adapter_id=task["adapter_id"],
@@ -202,6 +216,39 @@ class Worker:
                 self._finish_if_owner(conn, task, "FAILED", errors=["BAD_ADAPTER_OUTPUT"])
             return
         self._ingest(task, run, output, result.warnings)
+
+    def _renew(self, tenant: str, run_id: str) -> list[str] | None:
+        """Renew the run's permit if it is about to expire. Returns denial codes, or None to go on."""
+        if self.renew_permit is None:
+            return None
+        try:
+            self.renew_permit(tenant, run_id, cid=f"renew-{run_id}")
+        except ScopeDenied as exc:
+            if set(exc.reason_codes) <= CAP_ONLY_DENIALS:
+                return (
+                    None  # nothing more to grant; the current permit stays usable until it lapses
+                )
+            return [f"PERMIT_RENEWAL_DENIED:{c}" for c in exc.reason_codes]
+        return None
+
+    def sweep_permits(self) -> None:
+        """Keep permits of runs that are waiting (queued, backing off) from lapsing unnoticed."""
+        now = self.clock()
+        if self.renew_permit is None or (
+            self._last_sweep is not None
+            and (now - self._last_sweep).total_seconds() < self.renew_sweep_seconds
+        ):
+            return
+        self._last_sweep = now
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                text(
+                    "SELECT run_id, tenant_id FROM assessment_runs WHERE state IN "
+                    "('AUTHORIZED','ASSESSMENT_DISPATCH') AND NOT cancel_requested LIMIT 50"
+                )
+            ).all()
+        for run_id, tenant in rows:
+            self._renew(tenant, run_id)  # a denial is surfaced when the task is dispatched
 
     def _retry_or_fail(self, task: dict[str, Any], codes: list[str]) -> None:
         now = self.clock()

@@ -16,6 +16,9 @@ class GatePolicy(BaseModel):
 
     max_manifest_validity: timedelta = timedelta(days=7)
     permit_ttl: timedelta = timedelta(minutes=15)
+    permit_max_lifetime: timedelta = timedelta(hours=2)  # across renewals, per run
+    permit_max_renewals: int = 8
+    permit_renew_margin: timedelta = timedelta(minutes=5)  # renew only inside this window
     max_concurrency: int = 4
     max_requests: int = 10_000
     max_duration_seconds: int = 7200

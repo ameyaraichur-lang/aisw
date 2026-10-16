@@ -18,5 +18,6 @@
 - [ADR-016: PASSIVE_HTTP_SMOKE adapter](ADR-016-passive-url-smoke.md)
 - [ADR-017: Import adapters and Agent 1 reconciliation](ADR-017-import-adapters.md)
 - [ADR-018: Analysis agents, risk rubric, full assurance and the bounded LLM gateway](ADR-018-analysis-agents-and-llm-gateway.md)
+- [ADR-019: Hardening: permit renewal, retention, export controls, supply-chain gate](ADR-019-hardening-permits-retention-export.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

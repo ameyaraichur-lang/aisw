@@ -62,3 +62,16 @@ class EvidenceStore:
         except EvidenceIntegrityError:
             return False
         return True
+
+    def quarantine(self, tenant_id: str, content_hash: str) -> bool:
+        """Move a blob out of the live store (retention). Nothing is deleted: an operator removes
+        quarantined files by hand, under their own change control. False if there was nothing to move."""
+        path = self._path(tenant_id, content_hash)
+        if not path.exists():
+            return False
+        dest = self.root / ".quarantine" / tenant_id / path.name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if dest.exists():  # already quarantined once (restored and purged again): keep both
+            dest = dest.with_name(f"{path.name}.{int(path.stat().st_mtime_ns)}")
+        os.rename(path, dest)
+        return True

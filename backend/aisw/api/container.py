@@ -87,6 +87,8 @@ class Container:
         kw.setdefault("ai_scenario_narratives", self.settings.ai_narrative_enabled)
         kw.setdefault("ai_recommendation_narratives", self.settings.ai_architecture_enabled)
         kw.setdefault("model_timeout", float(self.settings.model_timeout_seconds))
+        if self.service is not None:
+            kw.setdefault("renew_permit", self.service.renew_permit)
         return Worker(
             engine=worker_engine or self.engine, gateway=self.gateway, registry=self.registry,
             packs=self.packs, evaluator=self.evaluator, evidence=self.evidence,

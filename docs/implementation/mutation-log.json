@@ -1,0 +1,197 @@
+{
+ "note": "Each entry is a deliberate one-line break of a control; the targeted tests must fail. A 'first_run' of SURVIVED means a test was too weak and was strengthened before the final CAUGHT result.",
+ "M7": [
+  {
+   "mutation": "rubric threshold shifted",
+   "first_run": "SURVIVED",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "rubric fabricates a tier for unknown criticality",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "validator ignores ungrounded CVEs",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "validator allows invented tiers",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "gateway accepts grounding failures",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "gateway skips redaction before the model",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "client follows redirects",
+   "first_run": "SURVIVED",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "client passes tools through",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "client accepts tool_calls in the reply",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "assurance ignores rejected constituents",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "assurance trusts stored narrative without re-validation",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "assurance does not recompute risk",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "assurance allows effort estimates",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "scenario tier check removed",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "API lists rejected candidates to everyone",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "API lets unassured recommendation be accepted",
+   "first_run": "SURVIVED",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "tickets always enabled",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "report lists non-accepted scenarios",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "report shows narratives that assurance did not accept",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "criticality text is guessed",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "config: AI enabled without licence",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "config: any endpoint allowed",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "model called while the run row is locked",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  }
+ ],
+ "M8": [
+  {
+   "mutation": "renewal: lapsed permit renewed",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "renewal: revoked permit renewed",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "renewal: launch policy not re-checked",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "renewal: no renewal cap",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "renewal: may extend beyond lifetime/manifest",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "revoke only touches one permit",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "retention: legal hold ignored",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "retention: shared blobs not protected",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "retention: unfinished runs eligible",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "retention: plan hash not enforced",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "retention: purge deletes instead of quarantining",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "export: drafts downloadable by readers",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "export: watermark not escaped",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "export: denial not audited",
+   "first_run": "SURVIVED",
+   "final": "CAUGHT"
+  },
+  {
+   "mutation": "sbom: unaccepted licences pass",
+   "first_run": "CAUGHT",
+   "final": "CAUGHT"
+  }
+ ]
+}

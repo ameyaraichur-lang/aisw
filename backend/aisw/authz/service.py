@@ -433,14 +433,87 @@ class ScopeService:
         if outcome.decision.decision is not Decision.ALLOW:
             raise ScopeDenied(outcome.decision.reason_codes, outcome)
 
+    # -- permit renewal (Agent 0 re-check for long runs) ---------------------------------------
+    def renew_permit(self, tenant_id: str, run_id: str, *, cid: str) -> str | None:
+        """Issue a successor permit shortly before the current one expires.
+
+        Returns the new permit id, or None when no renewal is needed or possible *by this path*
+        (revoked and lapsed permits are never renewed: the gateway denies them and a new launch
+        is required). Raises ScopeDenied when the full launch policy no longer passes, the run
+        is finished/cancelled, or the lifetime/renewal caps are reached.
+        """
+        now = self.clock()
+        pol = self.gate.policy
+        with tenant_connection(self.engine, tenant_id) as conn:
+            run = (
+                conn.execute(text("SELECT * FROM assessment_runs WHERE run_id=:r FOR UPDATE"), {"r": run_id})
+                .mappings()
+                .first()
+            )  # fmt: skip
+            if run is None:
+                return None
+            if run["cancel_requested"] or run["state"] not in {"AUTHORIZED", "ASSESSMENT_DISPATCH"}:
+                raise ScopeDenied(["RUN_NOT_RENEWABLE"])
+            cur = (
+                conn.execute(text("SELECT * FROM execution_permits WHERE permit_id=:p"), {"p": str(run["permit_id"])})
+                .mappings()
+                .one()
+            )  # fmt: skip
+            if cur["revoked_at"] is not None or cur["expires_at"] <= now:
+                return None  # revoked is final; lapsed needs a fresh, human-initiated launch
+            if cur["expires_at"] - now > pol.permit_renew_margin:
+                return None
+            first, count = conn.execute(
+                text("SELECT min(issued_at), count(*) FROM execution_permits WHERE run_id=:r"),
+                {"r": run_id},
+            ).one()
+            if count > pol.permit_max_renewals:
+                raise ScopeDenied(["PERMIT_RENEWAL_LIMIT"])
+            if now - first >= pol.permit_max_lifetime:
+                raise ScopeDenied(["PERMIT_LIFETIME_EXCEEDED"])
+            m = self._load(conn, str(run["manifest_id"]))
+            if m.canonical_hash != run["manifest_hash"]:
+                raise ScopeDenied(["STALE_HASH"])
+            service_actor = ActorContext(tenant_id, "orchestrator", frozenset())
+            self._check_launchable(
+                service_actor, conn, m, str(run["project_id"]), m.canonical_hash, None
+            )
+            expires = min(now + pol.permit_ttl, m.body.expires_at, first + pol.permit_max_lifetime)
+            if expires <= cur["expires_at"]:
+                raise ScopeDenied(["PERMIT_CANNOT_EXTEND"])  # capped by lifetime or manifest expiry
+            new_id = str(
+                conn.execute(
+                    text(
+                        "INSERT INTO execution_permits (tenant_id, project_id, run_id, manifest_id, "
+                        "manifest_hash, allowed_task_types, issued_at, expires_at, policy_version) "
+                        "VALUES (:t, :p, :r, :m, :h, :a, :i, :e, :v) RETURNING permit_id"
+                    ),
+                    {"t": tenant_id, "p": str(run["project_id"]), "r": run_id,
+                     "m": str(run["manifest_id"]), "h": cur["manifest_hash"],
+                     "a": list(cur["allowed_task_types"]), "i": now, "e": expires,
+                     "v": cur["policy_version"]},
+                ).scalar_one()
+            )  # fmt: skip
+            conn.execute(
+                text("UPDATE assessment_runs SET permit_id=:p WHERE run_id=:r"),
+                {"p": new_id, "r": run_id},
+            )
+            append_audit(
+                conn, tenant_id=tenant_id, actor="orchestrator", action="permit.renew",
+                resource=f"run:{run_id}", result="SUCCESS", correlation_id=cid,
+                before_hash=canonical_hash({"permit": str(cur["permit_id"])}),
+                after_hash=canonical_hash({"permit": new_id, "expires_at": expires.isoformat()}),
+            )  # fmt: skip
+            return new_id
+
     def revoke_permit(self, actor: ActorContext, permit_id: str, *, cid: str) -> None:
         self._authorize(actor, Permission.ASSESSMENT_CANCEL, "permit.revoke", cid)()
         with tenant_connection(self.engine, actor.tenant_id) as conn:
             n = conn.execute(
                 text(
-                    "UPDATE execution_permits SET revoked_at=:t "
-                    "WHERE permit_id=:p AND revoked_at IS NULL"
-                ),
+                    "UPDATE execution_permits SET revoked_at=:t WHERE revoked_at IS NULL AND run_id IN "
+                    "(SELECT run_id FROM execution_permits WHERE permit_id=:p)"
+                ),  # every permit of the run, so a superseded one cannot outlive the revocation
                 {"t": self.clock(), "p": permit_id},
             ).rowcount
             if n:

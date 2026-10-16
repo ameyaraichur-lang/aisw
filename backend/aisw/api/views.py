@@ -256,7 +256,8 @@ def finding_detail(
         evidence = conn.execute(
             text(
                 "SELECT evidence_ref, content_hash, source, tool_version, collected_at, redacted, "
-                "media_type, size_bytes FROM evidence_artifacts WHERE tenant_id=:t "
+                "media_type, size_bytes, (SELECT executed_at FROM retention_actions a WHERE a.kind='EVIDENCE' "
+                "AND a.ref=evidence_artifacts.evidence_ref) FROM evidence_artifacts WHERE tenant_id=:t "
                 "AND evidence_ref = ANY(:refs)"
             ),
             {"t": actor.tenant_id, "refs": body["evidence_refs"]},
@@ -313,7 +314,8 @@ def finding_detail(
         "finding": body, "assurance_verdict": verdict, "authoritative": verdict == "ACCEPT",
         "evidence": [
             {"evidence_ref": e[0], "content_hash": e[1], "source": e[2], "tool_version": e[3],
-             "collected_at": e[4].isoformat(), "redacted": e[5], "media_type": e[6], "size_bytes": e[7]}
+             "collected_at": e[4].isoformat(), "redacted": e[5], "media_type": e[6], "size_bytes": e[7],
+             "purged_at": e[8].isoformat() if e[8] else None}
             for e in evidence
         ],
         "observation": (

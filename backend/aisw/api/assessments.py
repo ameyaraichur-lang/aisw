@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html as _html
 import json
 from typing import Any
 
@@ -21,6 +22,7 @@ from aisw.orchestrator.events import append_event
 from aisw.orchestrator.runs import create_run
 
 router = APIRouter(prefix="/api/v1")
+esc = _html.escape
 TERMINAL_RUN = {"CLOSED", "FAILED", "CANCELLED", "EXPIRED"}
 
 
@@ -303,21 +305,67 @@ def list_reports(
 def get_report(
     report_id: str,
     format: str = Query(default="json", pattern="^(json|html)$"),  # noqa: A002
+    download: bool = False,
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
+    c: Container = Depends(_container),
+    cid: str = Depends(correlation_id),
 ) -> Response:
     authorize(actor, Permission.REPORT_READ)  # checked again at download time
+    now = c.clock()
     with tenant_connection(engine, actor.tenant_id) as conn:
         row = conn.execute(
-            text("SELECT body, html, report_hash FROM reports WHERE report_id=:i"), {"i": report_id}
+            text(
+                "SELECT body, html, report_hash, approval_state, run_id FROM reports "
+                "WHERE report_id=:i"
+            ),
+            {"i": report_id},
         ).first()
-    if row is None:
-        raise HTTPException(status_code=404, detail="not found")
-    headers = {"X-Report-Hash": row[2], "X-Content-Type-Options": "nosniff",
-               "Content-Security-Policy": "default-src 'none'"}  # fmt: skip
+        if row is None:
+            raise HTTPException(status_code=404, detail="not found")
+        body, html, report_hash, approval, run_id = row
+        # Exporting a draft is a distribution decision: only people who can approve may do it.
+        denied = download and approval != "APPROVED" and not actor.can(Permission.REPORT_APPROVE)
+        if not denied:
+            append_audit(
+                conn, tenant_id=actor.tenant_id, actor=actor.actor_id,
+                action="report.export" if download else "report.view", resource=f"report:{report_id}",
+                result="SUCCESS", correlation_id=cid, after_hash=report_hash,
+            )  # fmt: skip
+    if denied:  # audited on its own connection: the 403 below rolls back the read transaction
+        with tenant_connection(engine, actor.tenant_id) as conn:
+            append_audit(
+                conn, tenant_id=actor.tenant_id, actor=actor.actor_id, action="report.export",
+                resource=f"report:{report_id}", result="DENIED", correlation_id=cid,
+            )  # fmt: skip
+        raise HTTPException(status_code=403, detail="only an approved report can be downloaded")
+    stamp = _watermark(actor.actor_id, actor.tenant_id, now.isoformat(), approval, report_hash)
+    headers = {
+        "X-Report-Hash": report_hash, "X-Report-Approval": approval,
+        "X-Exported-By": actor.actor_id, "X-Exported-At": now.isoformat(),
+        "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'",
+    }  # fmt: skip
+    ext = "html" if format == "html" else "json"
+    if download:
+        headers["Content-Disposition"] = f'attachment; filename="{report_id}.{ext}"'
     if format == "html":
-        return Response(row[1], media_type="text/html", headers=headers)
-    return Response(json.dumps(row[0]), media_type="application/json", headers=headers)
+        return Response(
+            html.replace("<main>", "<main>" + stamp, 1), media_type="text/html", headers=headers
+        )
+    return Response(json.dumps(body), media_type="application/json", headers=headers)
+
+
+def _watermark(actor: str, tenant: str, when: str, approval: str, report_hash: str) -> str:
+    draft = (
+        ""
+        if approval == "APPROVED"
+        else "<strong>DRAFT: this report has not been approved and must not be distributed.</strong> "
+    )
+    return (
+        f'<p role="note" style="border:2px solid #444;padding:.5em">{draft}'
+        f"Exported by {esc(actor)} ({esc(tenant)}) at {esc(when)}. Approval state: {esc(approval)}. "
+        f"Report hash {esc(report_hash)}.</p>"
+    )
 
 
 @router.post("/reports/{report_id}/approve")

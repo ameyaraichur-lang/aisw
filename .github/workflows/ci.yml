@@ -16,6 +16,7 @@ jobs:
       - run: uv run pytest -q
       - run: uv run pip-audit
       - run: uv run python ../tools/export_schemas.py --check
+      - run: uv run python ../tools/sbom.py --check  # SBOM + licence gate (unverified on a runner: Python metadata may differ by platform)
   web:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: web } }

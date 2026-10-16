@@ -9,6 +9,7 @@ Requirements: `uv` (provides Python 3.12), Node >= 24, npm.
 cd backend && uv sync && uv run ruff check . && uv run mypy && uv run pytest -q
 cd web && npm install && npm run lint && npm run typecheck && npm test && npm run build
 python3 tools/secret_scan.py .
+cd backend && uv run python ../tools/sbom.py --check   # SBOM + licence gate
 ```
 
 Run the API: `cd backend && AISW_ENV=dev uv run uvicorn --factory aisw.api.app:create_app`
@@ -18,6 +19,7 @@ Run the worker: `cd backend && AISW_WORKER_DATABASE_URL=<dsn for role aisw_worke
 Run e2e (starts its own embedded Postgres, API and Vite; uses system Chrome): `cd web && npm run e2e`.
 Troubleshooting: if test setup fails in `initdb`, an earlier killed run left embedded Postgres servers behind (macOS allows few shared-memory segments). Run `tools/stop_stale_test_postgres.sh`.
 Run the UI: `cd web && npm run dev`
+Runbooks: `docs/runbooks/` · threat model: `docs/architecture/threat-model.md` · scorecard: `docs/implementation/scorecard.md`
 
 ## Safety defaults
 Configuration is fail-closed (`backend/aisw/core/config.py`): read-only mode, scope manifest required, active scans need approval, AI and ticket creation off, dev auth stub only in dev/test. Copy `.env.example` for names only — never commit real values.

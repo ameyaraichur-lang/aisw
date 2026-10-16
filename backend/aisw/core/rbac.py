@@ -33,13 +33,19 @@ class Permission(StrEnum):
     RECOMMENDATION_DECIDE = "recommendation:decide"
     AUDIT_READ = "audit:read"
     POLICY_APPROVE = "policy:approve"
+    RETENTION_MANAGE = "retention:manage"
 
 
 _ALL_READ = {Permission.PROJECT_READ}
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     Role.PROJECT_ADMIN: frozenset(
-        {Permission.PROJECT_CREATE, Permission.PROJECT_READ, Permission.INVENTORY_MANAGE}
+        {
+            Permission.PROJECT_CREATE,
+            Permission.PROJECT_READ,
+            Permission.INVENTORY_MANAGE,
+            Permission.RETENTION_MANAGE,
+        }
     ),
     Role.CONNECTOR_ADMIN: frozenset(
         {

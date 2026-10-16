@@ -43,7 +43,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | API: scope manifests, inventory, assessments, events, cancel, coverage, findings, reports | Implemented (M3) | `tests/integration/test_vertical_slice.py` |
 | Fixture adapter (synthetic scanner replay; non-prod only) | Implemented (M3), **Mocked data** | proves the pipeline, not any real tool |
 | Worker process entry point (`python -m aisw.orchestrator`) | Unverified | written, not run live |
-| Permit renewal for runs longer than 15 min | Planned (M8) | permits are not renewed mid-run |
+| Permit renewal for runs longer than 15 min (successor permits, full launch re-check, caps, never for lapsed/revoked) | Implemented (M8) | `tests/security/test_permit_renewal.py` (12); simulated clock only |
 | Console API read models: me/auth-mode, connectors, policy packs, inventory/manifest/run lists, tasks, controls, finding detail (evidence + matched observation + assurance), tenant-wide findings, overview with denominators, audit events | Implemented (M4) | `tests/integration/test_console_api.py` |
 | SSE stream with cursor resume, heartbeat, rotation and clean end | Implemented (M4) | `tests/integration/test_console_api.py`; browser side in e2e |
 | Web shell: role-aware nav, skip link, landmarks, focus management, route guards | Implemented (M4) | `e2e/permissions.spec.ts`, `e2e/a11y.spec.ts` |
@@ -71,7 +71,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Policy pack `import-baseline:1.0.0` (13 controls) + `disjoint` operator; per-adapter coverage ledgers; gap warnings in ledger | Implemented (M6) | |
 | Task dependency ordering between imports | Planned | import the CMDB first |
 | Upload / import-parameter UI | Planned | API only; wizard cannot supply import ids |
-| Retention/purge of raw uploads | Planned (M8) | raw uploads keep the original (secret-redacted) file |
+| Retention: dry-run plan, hash-pinned execute, legal holds, shared-blob protection, soft purge to quarantine, append-only log (evidence and raw uploads) | Implemented (M8), API only | `tests/security/test_retention.py` (9); no scheduler, no UI, manual final deletion |
 | Live Nmap / Greenbone / ZAP / Wazuh / Prowler execution | Not planned for MVP imports; live Nmap only in M9 with authorisation | |
 | Migration 0005: risk assessments, scenarios, recommendations, narratives, append-only `llm_calls`, ticket outbox (forced RLS, least-privilege grants, CHECKs against fabricated tiers/unreviewed acceptance) | Implemented (M7) | `tests/security/test_analysis_security.py` (17), `test_migrations.py` (reversible) |
 | Versioned risk rubric `risk-rubric-1.0.0`; tier never fabricated (unknown criticality -> no tier, labelled severity-only indication) | Implemented (M7), **sample weights need policy-owner approval** | `tests/unit/test_rubric.py` (25) |
@@ -85,6 +85,9 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | UI: Architecture & Modernization workbench, run Analysis tab, finding risk panel, analysis timeline stages, AI labelling | Implemented (M7) | `e2e/analysis.spec.ts` (3), axe on new screens |
 | Real model behaviour, quality and latency; model licence review | Unverified / Planned | needs an approved open-source model and your go-ahead to run one locally |
 | Approved architecture catalog and rubric weights (policy owner) | Planned | the shipped ones are samples |
-| SBOM / licence gate, runbooks, scorecard | Planned (M8) | |
+| SBOM (CycloneDX, lockfile-based) + licence gate with recorded acceptances | Implemented (M8), **not Syft/ScanCode** | `tests/security/test_sbom_gate.py`; `docs/implementation/sbom/`; LGPL (psycopg) legal review pending |
+| Report export controls: audited views/exports (incl. denials), drafts downloadable only by approvers, visible watermark | Implemented (M8) | `tests/security/test_hardening.py` |
+| Hardening tests: retry storm (bounded, spaced, terminates), backoff growth, cancel mid-run, two racing workers leave one ordered event log | Implemented (M8) | `tests/security/test_hardening.py` |
+| Threat model, 7 runbooks, scorecard generated from results, mutation log (38 mutations, all caught) | Implemented (M8) | `docs/architecture/threat-model.md`, `docs/runbooks/`, `docs/implementation/scorecard.md`; runbook steps not exercised on a deployed system |
 | Live external tests (example.com, scanme.nmap.org, Juice Shop) | Not started (M9; needs explicit authorisation) | |
 | Docker/compose, OPA, Postgres | Not available locally | see reconnaissance.md |

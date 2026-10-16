@@ -1,0 +1,55 @@
+{
+  "version": "1.0.0",
+  "note": "Engineering gate, not legal advice. Anything in 'review' needs a recorded acceptance; anything unknown or in 'deny' blocks the gate. A named legal reviewer must confirm before external redistribution.",
+  "allow": [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "PSF-2.0",
+    "Python-2.0",
+    "0BSD",
+    "Unlicense",
+    "CC0-1.0",
+    "BlueOak-1.0.0",
+    "Zlib",
+    "PostgreSQL"
+  ],
+  "review": [
+    "MPL-2.0",
+    "LGPL-2.1-only",
+    "LGPL-2.1-or-later",
+    "LGPL-3.0-only",
+    "LGPL-3.0-or-later",
+    "EPL-2.0",
+    "CC-BY-4.0"
+  ],
+  "deny": [
+    "AGPL-3.0-only",
+    "AGPL-3.0-or-later",
+    "GPL-2.0-only",
+    "GPL-2.0-or-later",
+    "GPL-3.0-only",
+    "GPL-3.0-or-later",
+    "SSPL-1.0",
+    "BUSL-1.1",
+    "UNKNOWN"
+  ],
+  "acceptances": {
+    "psycopg": "LGPL-3.0-only. Imported unmodified as a separate, replaceable Python package (dynamic use); the platform's own code stays under its own licence. Obligations for redistribution (notice, ability to replace the library) must be met in packaging (M8 runbook). Legal review pending.",
+    "psycopg-binary": "LGPL-3.0-only. Same position as psycopg; ships libpq inside the wheel, so its notices travel with the wheel. Legal review pending.",
+    "pathspec": "MPL-2.0 (file-level copyleft). Development tool dependency of linters; not shipped in the runtime image.",
+    "@axe-core/playwright": "MPL-2.0. Test-only accessibility tooling; not shipped.",
+    "axe-core": "MPL-2.0. Test-only accessibility tooling; not shipped.",
+    "lightningcss": "MPL-2.0. Build-time CSS tooling pulled by the bundler; not shipped in the runtime image (only its output is).",
+    "pgserver": "Licence metadata is missing in the package, so it is UNKNOWN to this gate. Development/test harness only (embedded PostgreSQL for tests); never shipped. Verify its upstream licence before any redistribution of the dev environment.",
+    "certifi": "MPL-2.0 (file-level copyleft). Pulled only by the test HTTP client (httpx); not shipped in the runtime image.",
+    "colorama": "Licence metadata is absent in the installed package, so it is UNKNOWN to this gate. Terminal-colour helper pulled by dev tooling only; not shipped. Upstream licence is believed to be BSD-3-Clause (not verified here).",
+    "tzdata": "Licence metadata unreadable (not installed on this platform). Pulled only on Windows (psycopg marker sys_platform == 'win32'), which is not a supported deployment platform; excluded from the runtime closure. Upstream licence is believed to be Apache-2.0 (not verified here). Re-check if Windows is ever supported."
+  },
+  "acceptance_prefixes": {
+    "lightningcss-": "MPL-2.0 platform binaries of lightningcss: same position as lightningcss (build-time only)."
+  }
+}

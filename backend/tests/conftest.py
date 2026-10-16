@@ -125,3 +125,26 @@ def sl(app_engine: Engine, worker_engine: Engine, tmp_path: Any) -> Any:
     from tests.slice import Slice
 
     return Slice(app_engine, worker_engine, tmp_path / "evidence")
+
+
+@pytest.fixture()
+def sl_iso(
+    pg_server: Any, app_engine: Engine, worker_engine: Engine, tmp_path: Any
+) -> Iterator[Any]:
+    """A slice on its OWN freshly migrated database.
+
+    Fixture evidence is byte-identical between runs, so tests that reason about which blobs are
+    shared (retention) must not see other tests' runs. Same cluster, same roles and passwords.
+    """
+    from tests.slice import Slice
+
+    name = f"iso_{uuid.uuid4().hex[:10]}"
+    owner = make_db(pg_server, name)
+    migrate(owner, "head")
+    app = create_engine(app_engine.url.set(database=name), future=True)
+    worker = create_engine(worker_engine.url.set(database=name), future=True)
+    try:
+        yield Slice(app, worker, tmp_path / "evidence")
+    finally:
+        for e in (app, worker, owner):
+            e.dispose()

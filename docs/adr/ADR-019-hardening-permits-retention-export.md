@@ -1,0 +1,17 @@
+# ADR-019: Hardening: permit renewal, soft-purge retention, export controls, supply-chain gate (M8)
+
+**Status:** Accepted (M8)
+
+## Decision
+1. **Permit renewal is a re-authorisation, not an extension.** Permits stay 15 minutes. When a run is still dispatching and its permit is within 5 minutes of expiry, the worker asks `ScopeService.renew_permit`, which re-runs the **entire launch policy** (manifest approved, signature, hash, expiry, inventory drift, connector health) and issues a *successor* permit (new row, new id). Caps: 8 renewals, 2 hours per run, never beyond the manifest's expiry. A **revoked or lapsed permit is never renewed** (a new human-initiated launch is required). Policy denials reject the task (`PERMIT_RENEWAL_DENIED:<code>`); cap-only denials let the still-valid permit run out. A trigger lets a run be re-pointed only to a strictly newer, unrevoked permit of the same run, tenant, project, manifest and a subset of task types. Revoking a run's permit revokes all its permits. Superseded permits are not revoked (that would race an in-flight dispatch); they lapse within the margin.
+2. **Retention is dry-run first and soft.** Eligibility: finished run + manifest retention elapsed + no legal hold; a blob shared with anything still retained is kept. `GET /retention/plan` changes nothing; `POST /retention/execute` must quote the hash of the reviewed plan (409 if anything changed). Execution **moves** blobs to `.quarantine/` (the platform never deletes), and records append-only `retention_actions` rows; evidence rows stay immutable and "purged" is derived from the log. Legal holds block purge. Raw uploads (imports) follow the same rules. Permission `retention:manage` (project admin); reading the action log needs `audit:read`.
+3. **Report export is controlled.** Every view and export is audited (denials too, on their own connection so the 403 cannot roll the record back; a regression found by a test). Downloading a report that is not approved needs the approve permission; every HTML copy carries a visible watermark (who, tenant, when, approval state, report hash) and a DRAFT notice when unapproved; downloads get `Content-Disposition` and headers naming the exporter. The stored report and its hash are unchanged.
+4. **Supply-chain gate.** `tools/sbom.py` builds a CycloneDX SBOM from `uv.lock`, `package-lock.json` and installed metadata, and applies `licence-policy.json`: allow / review (needs a recorded acceptance with rationale) / deny. Unknown or denied licences fail the gate and cannot be accepted if they ship at runtime. The committed SBOM must match the lockfiles (drift test).
+5. **Scorecard from results.** `tools/scorecard.py` assembles the scorecard only from JUnit/Playwright/vitest result files and the recorded mutation log, and lists what is *not* measured.
+
+## Known limitations
+- Retention is API-only (no UI), has no scheduler, and quarantine removal is a manual act.
+- Permit renewal only runs while a run is dispatching; it has been tested with a simulated clock, not a multi-hour run.
+- The SBOM is not Syft/ScanCode; native libraries in wheels are not inventoried; psycopg (LGPL-3.0) awaits legal review; three packages have missing licence metadata and are accepted as dev-only/not-installed with the reason recorded.
+- The watermark is visible text, not forensic marking.
+- No runbook step was exercised on a deployed system.

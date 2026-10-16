@@ -315,7 +315,7 @@ function ReportTab({ runId }: { runId: string }) {
   })
   const load = async () => setHtml(await apiText(`/reports/${first!.report_id}?format=html`))
   const download = async (fmt: 'json' | 'html') => {
-    const text = await apiText(`/reports/${first!.report_id}?format=${fmt}`, fmt === 'json' ? 'application/json' : 'text/html')
+    const text = await apiText(`/reports/${first!.report_id}?format=${fmt}&download=1`, fmt === 'json' ? 'application/json' : 'text/html')
     const url = URL.createObjectURL(new Blob([text], { type: fmt === 'json' ? 'application/json' : 'text/html' }))
     const a = document.createElement('a'); a.href = url; a.download = `${first!.report_id}.${fmt}`; a.click(); URL.revokeObjectURL(url)
   }
