@@ -137,7 +137,8 @@ flowchart LR
 | Tool gateway, `net_guard` (SSRF/rebinding/redirects) | ✅ | Zero-dispatch asserted for every rejected case |
 | Durable worker (leases, fencing, bounded retries, backoff) | ✅ | Crash, repeated crash, late worker, retry storm tests |
 | Evidence ingest (redact, hash, write-once) | ✅ | Secrets never reach disk, DB or report |
-| Policy evaluation (JSON packs, pinned and hashed; OPA/Rego, [ADR-031](docs/adr/ADR-031-opa-policy-engine.md)) | 🟡 | Python and OPA engines held equivalent by tests; Rego domain rules and framework mappings are proposals awaiting review |
+| Policy evaluation (JSON packs, pinned and hashed; OPA/Rego, [ADR-031](docs/adr/ADR-031-opa-policy-engine.md)) | 🟡 | Python and OPA engines held equivalent by tests; Rego domain rules are proposals awaiting review |
+| Framework mappings and Control Matrix ([ADR-032](docs/adr/ADR-032-framework-mappings.md)) | 🟡 | NIST CSF 2.0, CIS v8.1, 800-53 Rev. 5, ISO 27001, ATT&CK; each mapping is a proposal until a policy owner approves it |
 | Passive URL smoke adapter | 🟡 | Proven against a **local server only** |
 | Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; real tool versions unverified. API upload only (no UI) |
 | Risk rubric, scenarios, recommendations, Agent 7 | 🟡 | Rubric weights and the architecture catalog are **samples** awaiting policy-owner approval, labelled in reports and the console; see the [sign-off register](docs/implementation/signoffs.md) |

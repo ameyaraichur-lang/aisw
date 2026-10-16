@@ -156,10 +156,35 @@ export interface FindingRow {
   project_name: string
   authoritative: boolean
 }
+export type MappingStatus = 'APPROVED' | 'NEEDS_REVIEW' | 'REJECTED'
+export interface FrameworkMapping {
+  key: string
+  framework: string
+  version: string
+  control_id: string
+  title: string
+  status: MappingStatus
+  reviewed_by: string | null
+  reviewed_at: string | null
+  reason: string | null
+}
+export interface ControlMatrix {
+  policy_version: string
+  pack_framework: { name: string; version: string }
+  run_id: string | null
+  final: boolean
+  catalog_version: string
+  notice: string
+  frameworks: { framework: string; version: string; name: string }[]
+  controls: { control_id: string; rules: { rule_id: string; title: string; severity: string }[]; outcome: string | null; mappings: FrameworkMapping[] }[]
+  summary: Record<MappingStatus, number>
+  can_review: boolean
+}
 export interface FindingDetail {
   finding: Finding
   assurance_verdict: string
   authoritative: boolean
+  framework_mappings: FrameworkMapping[]
   evidence: {
     evidence_ref: string
     content_hash: string

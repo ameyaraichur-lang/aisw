@@ -90,6 +90,13 @@ export const RECOMMENDATION_STATUS_DISPLAY: Record<string, Display> = {
   IMPLEMENTED_PENDING_VALIDATION: { icon: '◐', label: 'Implemented, pending validation', tone: 'info' },
 }
 
+// Framework-mapping review state (ADR-032): a proposal until the policy owner decides.
+export const MAPPING_DISPLAY: Record<string, Display> = {
+  APPROVED: { icon: '✓', label: 'Approved', tone: 'ok' },
+  NEEDS_REVIEW: { icon: '?', label: 'Needs policy-owner review', tone: 'warn' },
+  REJECTED: { icon: '✕', label: 'Rejected', tone: 'bad' },
+}
+
 export const TERMINAL_RUN_STATES = new Set(['CLOSED', 'FAILED', 'CANCELLED', 'EXPIRED', 'PARTIAL', 'REPORT_READY'])
 
 export function display(map: Record<string, Display>, key: string): Display {

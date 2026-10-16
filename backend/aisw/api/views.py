@@ -12,6 +12,7 @@ from sqlalchemy import Engine, text
 
 from aisw.api.assessments import TERMINAL_RUN, _run_or_404
 from aisw.api.container import Container
+from aisw.api.controls import effective, latest_reviews
 from aisw.api.deps import get_actor, get_engine
 from aisw.core.auth import list_dev_users
 from aisw.core.config import Environment
@@ -19,7 +20,7 @@ from aisw.core.db import tenant_connection
 from aisw.core.rbac import ROLE_PERMISSIONS, ActorContext, Permission, authorize
 from aisw.orchestrator.analysis import current_assurance
 from aisw.orchestrator.stream import stream_events
-from aisw.policy import signoffs
+from aisw.policy import mappings, signoffs
 from aisw.policy.results import finding_id as make_finding_id
 
 router = APIRouter(prefix="/api/v1")
@@ -296,6 +297,7 @@ def finding_detail(
             )
             if finding_id in b["finding_ids"] and v == "ACCEPT"
         ]
+        reviews = latest_reviews(conn, mappings.builtin())
     risk = (
         {"rubric_version": risk_row[0], "tier": risk_row[1], "provisional_tier": risk_row[2],
          "basis": risk_row[3], "factors": risk_row[4], "missing_evidence": risk_row[5],
@@ -307,12 +309,17 @@ def finding_detail(
     business_risk = risk["tier"] if risk and risk["assurance_verdict"] == "ACCEPT" else None
     pack = c.packs.get(run["policy_version"])
     matched = None
+    framework_mappings: list[dict[str, Any]] = []
     if pack is not None:
         for o in obs:
             if make_finding_id(pack, o[1], o[0]) == finding_id:
                 matched = o
+        for m in body["control_mappings"]:
+            if m["framework"] == pack.framework.name:
+                framework_mappings += effective(mappings.builtin(), reviews, m["control_id"])
     return {
         "finding": body, "assurance_verdict": verdict, "authoritative": verdict == "ACCEPT",
+        "framework_mappings": framework_mappings,
         "evidence": [
             {"evidence_ref": e[0], "content_hash": e[1], "source": e[2], "tool_version": e[3],
              "collected_at": e[4].isoformat(), "redacted": e[5], "media_type": e[6], "size_bytes": e[7],

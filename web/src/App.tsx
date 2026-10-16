@@ -5,8 +5,9 @@ import { useSession } from './auth/useSession'
 import { Assessments } from './pages/Assessments'
 import { Approvals } from './pages/Approvals'
 import { CommandCenter } from './pages/CommandCenter'
-import { ControlCoverage, FindingDetail, Findings } from './pages/Findings'
+import { FindingDetail, Findings } from './pages/Findings'
 import { Integrations } from './pages/Integrations'
+import { ControlMatrix } from './pages/Controls'
 import { Login } from './pages/Login'
 import { Architecture } from './pages/Architecture'
 import { AuditPage, NotImplemented, ReportsPage } from './pages/Misc'
@@ -32,7 +33,7 @@ export default function App() {
         <Route path="approvals" element={<RequirePermission need={['manifest:approve']} title="Pending approvals"><Approvals /></RequirePermission>} />
         <Route path="findings" element={<RequirePermission need={['finding:read']} title="Findings & Exposure"><Findings /></RequirePermission>} />
         <Route path="findings/:runId/:findingId" element={<FindingDetail />} />
-        <Route path="controls" element={<ControlCoverage />} />
+        <Route path="controls" element={<ControlMatrix />} />
         <Route path="reports" element={<RequirePermission need={['report:read']} title="Reports & Evidence"><ReportsPage /></RequirePermission>} />
         <Route path="audit" element={<RequirePermission need={['audit:read']} title="Policy, Users & Audit"><AuditPage /></RequirePermission>} />
         <Route path="assets" element={<NotImplemented title="Asset Explorer" milestone="planned" why="Asset reconciliation runs in the backend (Agent 1), but the asset and relationship explorer UI has not been built yet." />} />

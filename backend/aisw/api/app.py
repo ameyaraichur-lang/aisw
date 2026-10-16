@@ -10,7 +10,17 @@ from sqlalchemy import Engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from aisw import __version__
-from aisw.api import analysis, assessments, auth, imports, projects, retention, scope, views
+from aisw.api import (
+    analysis,
+    assessments,
+    auth,
+    controls,
+    imports,
+    projects,
+    retention,
+    scope,
+    views,
+)
 from aisw.api.container import Container, build_container
 from aisw.authz.service import ScopeDenied
 from aisw.authz.signing import SigningError
@@ -117,4 +127,5 @@ def create_app(
     app.include_router(imports.router)
     app.include_router(analysis.router)
     app.include_router(retention.router)
+    app.include_router(controls.router)
     return app

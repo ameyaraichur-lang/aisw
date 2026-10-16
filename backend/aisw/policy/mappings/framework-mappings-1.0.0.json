@@ -1,0 +1,1277 @@
+{
+  "catalog_id": "framework-mappings",
+  "version": "1.0.0",
+  "notice": "Proposed mappings from pack controls to external frameworks. A mapping is a proposal until a policy owner approves it; an approved mapping is still not a statement of compliance.",
+  "frameworks": [
+    {
+      "framework": "NIST-CSF",
+      "version": "2.0",
+      "name": "NIST Cybersecurity Framework 2.0",
+      "id_pattern": "^(GV|ID|PR|DE|RS|RC)\\.[A-Z]{2}-\\d{2}$"
+    },
+    {
+      "framework": "CIS-Controls",
+      "version": "8.1",
+      "name": "CIS Critical Security Controls v8.1",
+      "id_pattern": "^\\d{1,2}\\.\\d{1,2}$"
+    },
+    {
+      "framework": "NIST-SP-800-53",
+      "version": "Rev.5",
+      "name": "NIST SP 800-53 Rev. 5",
+      "id_pattern": "^[A-Z]{2}-\\d{1,2}(\\(\\d{1,2}\\))?$"
+    },
+    {
+      "framework": "ISO-IEC-27001",
+      "version": "2022",
+      "name": "ISO/IEC 27001:2022 Annex A",
+      "id_pattern": "^A\\.[5-8]\\.\\d{1,2}$"
+    },
+    {
+      "framework": "MITRE-ATTACK",
+      "version": "Enterprise v17",
+      "name": "MITRE ATT&CK Enterprise (techniques the control helps mitigate)",
+      "id_pattern": "^T\\d{4}(\\.\\d{3})?$"
+    }
+  ],
+  "controls": {
+    "NIST-CSF": {
+      "ID.AM-01": "Inventories of hardware managed by the organization are maintained",
+      "ID.AM-05": "Assets are prioritized based on classification, criticality, resources and impact on the mission",
+      "ID.RA-01": "Vulnerabilities in assets are identified, validated and recorded",
+      "PR.AA-01": "Identities and credentials for authorized users, services and hardware are managed",
+      "PR.AA-03": "Users, services and hardware are authenticated",
+      "PR.AA-05": "Access permissions are managed and incorporate least privilege and separation of duties",
+      "PR.DS-01": "The confidentiality, integrity and availability of data-at-rest are protected",
+      "PR.DS-02": "The confidentiality, integrity and availability of data-in-transit are protected",
+      "PR.DS-11": "Backups of data are created, protected, maintained and tested",
+      "PR.IR-01": "Networks and environments are protected from unauthorized logical access and usage",
+      "PR.PS-01": "Configuration management practices are established and applied",
+      "PR.PS-02": "Software is maintained, replaced and removed commensurate with risk",
+      "PR.PS-04": "Log records are generated and made available for continuous monitoring"
+    },
+    "CIS-Controls": {
+      "1.1": "Establish and maintain a detailed enterprise asset inventory",
+      "11.2": "Perform automated backups",
+      "2.2": "Ensure authorized software is currently supported",
+      "3.10": "Encrypt sensitive data in transit",
+      "3.11": "Encrypt sensitive data at rest",
+      "3.3": "Configure data access control lists",
+      "4.1": "Establish and maintain a secure configuration process",
+      "4.4": "Implement and manage a firewall on servers",
+      "4.5": "Implement and manage a firewall on end-user devices",
+      "4.8": "Uninstall or disable unnecessary services on enterprise assets and software",
+      "5.2": "Use unique passwords",
+      "5.3": "Disable dormant accounts",
+      "5.4": "Restrict administrator privileges to dedicated administrator accounts",
+      "6.5": "Require MFA for administrative access",
+      "6.8": "Define and maintain role-based access control",
+      "7.5": "Perform automated vulnerability scans of internal enterprise assets",
+      "7.7": "Remediate detected vulnerabilities",
+      "8.10": "Retain audit logs",
+      "8.2": "Collect audit logs"
+    },
+    "NIST-SP-800-53": {
+      "AC-14": "Permitted actions without identification or authentication",
+      "AC-17": "Remote access",
+      "AC-2(3)": "Account management: disable accounts",
+      "AC-3": "Access enforcement",
+      "AC-6": "Least privilege",
+      "AC-6(1)": "Least privilege: authorize access to security functions",
+      "AC-6(2)": "Least privilege: non-privileged access for nonsecurity functions",
+      "AU-11": "Audit record retention",
+      "AU-12": "Audit record generation",
+      "AU-2": "Event logging",
+      "CM-6": "Configuration settings",
+      "CM-7": "Least functionality",
+      "CM-8": "System component inventory",
+      "CP-9": "System backup",
+      "IA-2": "Identification and authentication (organizational users)",
+      "IA-2(1)": "Identification and authentication: multi-factor authentication to privileged accounts",
+      "IA-5(1)": "Authenticator management: password-based authentication",
+      "RA-2": "Security categorization",
+      "RA-5": "Vulnerability monitoring and scanning",
+      "RA-5(2)": "Vulnerability monitoring and scanning: update vulnerabilities to be scanned",
+      "SA-22": "Unsupported system components",
+      "SC-13": "Cryptographic protection",
+      "SC-17": "Public key infrastructure certificates",
+      "SC-28": "Protection of information at rest",
+      "SC-7": "Boundary protection",
+      "SC-7(12)": "Boundary protection: host-based protection",
+      "SC-7(5)": "Boundary protection: deny by default, allow by exception",
+      "SC-8": "Transmission confidentiality and integrity",
+      "SI-2": "Flaw remediation"
+    },
+    "ISO-IEC-27001": {
+      "A.5.12": "Classification of information",
+      "A.5.17": "Authentication information",
+      "A.5.18": "Access rights",
+      "A.5.9": "Inventory of information and other associated assets",
+      "A.8.13": "Information backup",
+      "A.8.15": "Logging",
+      "A.8.2": "Privileged access rights",
+      "A.8.20": "Networks security",
+      "A.8.24": "Use of cryptography",
+      "A.8.3": "Information access restriction",
+      "A.8.5": "Secure authentication",
+      "A.8.8": "Management of technical vulnerabilities",
+      "A.8.9": "Configuration management"
+    },
+    "MITRE-ATTACK": {
+      "T1021": "Remote Services",
+      "T1021.004": "Remote Services: SSH",
+      "T1040": "Network Sniffing",
+      "T1068": "Exploitation for Privilege Escalation",
+      "T1070": "Indicator Removal",
+      "T1078": "Valid Accounts",
+      "T1078.004": "Valid Accounts: Cloud Accounts",
+      "T1110": "Brute Force",
+      "T1133": "External Remote Services",
+      "T1190": "Exploit Public-Facing Application",
+      "T1210": "Exploitation of Remote Services",
+      "T1485": "Data Destruction",
+      "T1530": "Data from Cloud Storage",
+      "T1552.007": "Unsecured Credentials: Container API",
+      "T1557": "Adversary-in-the-Middle",
+      "T1562.008": "Impair Defenses: Disable or Modify Cloud Logs",
+      "T1609": "Container Administration Command"
+    }
+  },
+  "mappings": [
+    {
+      "pack_control": "CB-NET-1",
+      "framework": "NIST-CSF",
+      "control_id": "PR.IR-01"
+    },
+    {
+      "pack_control": "CB-NET-1",
+      "framework": "CIS-Controls",
+      "control_id": "4.4"
+    },
+    {
+      "pack_control": "CB-NET-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-7"
+    },
+    {
+      "pack_control": "CB-NET-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AC-17"
+    },
+    {
+      "pack_control": "CB-NET-1",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.20"
+    },
+    {
+      "pack_control": "CB-NET-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1133"
+    },
+    {
+      "pack_control": "CB-NET-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1021"
+    },
+    {
+      "pack_control": "CB-NET-2",
+      "framework": "NIST-CSF",
+      "control_id": "PR.IR-01"
+    },
+    {
+      "pack_control": "CB-NET-2",
+      "framework": "CIS-Controls",
+      "control_id": "4.4"
+    },
+    {
+      "pack_control": "CB-NET-2",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-7"
+    },
+    {
+      "pack_control": "CB-NET-2",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.20"
+    },
+    {
+      "pack_control": "CB-NET-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1190"
+    },
+    {
+      "pack_control": "CB-NET-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1210"
+    },
+    {
+      "pack_control": "CB-NET-3",
+      "framework": "NIST-CSF",
+      "control_id": "PR.IR-01"
+    },
+    {
+      "pack_control": "CB-NET-3",
+      "framework": "CIS-Controls",
+      "control_id": "4.4"
+    },
+    {
+      "pack_control": "CB-NET-3",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-7(5)"
+    },
+    {
+      "pack_control": "CB-NET-3",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.20"
+    },
+    {
+      "pack_control": "CB-NET-3",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1210"
+    },
+    {
+      "pack_control": "CB-STO-1",
+      "framework": "NIST-CSF",
+      "control_id": "PR.DS-01"
+    },
+    {
+      "pack_control": "CB-STO-1",
+      "framework": "NIST-CSF",
+      "control_id": "PR.AA-05"
+    },
+    {
+      "pack_control": "CB-STO-1",
+      "framework": "CIS-Controls",
+      "control_id": "3.3"
+    },
+    {
+      "pack_control": "CB-STO-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AC-3"
+    },
+    {
+      "pack_control": "CB-STO-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-7"
+    },
+    {
+      "pack_control": "CB-STO-1",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.3"
+    },
+    {
+      "pack_control": "CB-STO-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1530"
+    },
+    {
+      "pack_control": "CB-STO-2",
+      "framework": "NIST-CSF",
+      "control_id": "PR.DS-01"
+    },
+    {
+      "pack_control": "CB-STO-2",
+      "framework": "CIS-Controls",
+      "control_id": "3.11"
+    },
+    {
+      "pack_control": "CB-STO-2",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-28"
+    },
+    {
+      "pack_control": "CB-STO-2",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.24"
+    },
+    {
+      "pack_control": "CB-STO-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1530"
+    },
+    {
+      "pack_control": "CB-STO-3",
+      "framework": "NIST-CSF",
+      "control_id": "PR.DS-11"
+    },
+    {
+      "pack_control": "CB-STO-3",
+      "framework": "CIS-Controls",
+      "control_id": "11.2"
+    },
+    {
+      "pack_control": "CB-STO-3",
+      "framework": "NIST-SP-800-53",
+      "control_id": "CP-9"
+    },
+    {
+      "pack_control": "CB-STO-3",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.13"
+    },
+    {
+      "pack_control": "CB-STO-3",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1485"
+    },
+    {
+      "pack_control": "CB-STO-4",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-04"
+    },
+    {
+      "pack_control": "CB-STO-4",
+      "framework": "CIS-Controls",
+      "control_id": "8.2"
+    },
+    {
+      "pack_control": "CB-STO-4",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AU-2"
+    },
+    {
+      "pack_control": "CB-STO-4",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.15"
+    },
+    {
+      "pack_control": "CB-STO-4",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1530"
+    },
+    {
+      "pack_control": "CB-LOG-1",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-04"
+    },
+    {
+      "pack_control": "CB-LOG-1",
+      "framework": "CIS-Controls",
+      "control_id": "8.2"
+    },
+    {
+      "pack_control": "CB-LOG-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AU-2"
+    },
+    {
+      "pack_control": "CB-LOG-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AU-12"
+    },
+    {
+      "pack_control": "CB-LOG-1",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.15"
+    },
+    {
+      "pack_control": "CB-LOG-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1562.008"
+    },
+    {
+      "pack_control": "CB-LOG-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1070"
+    },
+    {
+      "pack_control": "CB-LOG-2",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-04"
+    },
+    {
+      "pack_control": "CB-LOG-2",
+      "framework": "CIS-Controls",
+      "control_id": "8.10"
+    },
+    {
+      "pack_control": "CB-LOG-2",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AU-11"
+    },
+    {
+      "pack_control": "CB-LOG-2",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.15"
+    },
+    {
+      "pack_control": "CB-LOG-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1070"
+    },
+    {
+      "pack_control": "CB-ENC-1",
+      "framework": "NIST-CSF",
+      "control_id": "PR.DS-02"
+    },
+    {
+      "pack_control": "CB-ENC-1",
+      "framework": "CIS-Controls",
+      "control_id": "3.10"
+    },
+    {
+      "pack_control": "CB-ENC-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-8"
+    },
+    {
+      "pack_control": "CB-ENC-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-13"
+    },
+    {
+      "pack_control": "CB-ENC-1",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.24"
+    },
+    {
+      "pack_control": "CB-ENC-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1557"
+    },
+    {
+      "pack_control": "CB-ENC-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1040"
+    },
+    {
+      "pack_control": "CB-IAM-1",
+      "framework": "NIST-CSF",
+      "control_id": "PR.AA-03"
+    },
+    {
+      "pack_control": "CB-IAM-1",
+      "framework": "CIS-Controls",
+      "control_id": "6.5"
+    },
+    {
+      "pack_control": "CB-IAM-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "IA-2(1)"
+    },
+    {
+      "pack_control": "CB-IAM-1",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.5"
+    },
+    {
+      "pack_control": "CB-IAM-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1078"
+    },
+    {
+      "pack_control": "CB-IAM-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1110"
+    },
+    {
+      "pack_control": "CB-IAM-2",
+      "framework": "NIST-CSF",
+      "control_id": "PR.AA-01"
+    },
+    {
+      "pack_control": "CB-IAM-2",
+      "framework": "CIS-Controls",
+      "control_id": "5.2"
+    },
+    {
+      "pack_control": "CB-IAM-2",
+      "framework": "NIST-SP-800-53",
+      "control_id": "IA-5(1)"
+    },
+    {
+      "pack_control": "CB-IAM-2",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.5.17"
+    },
+    {
+      "pack_control": "CB-IAM-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1078.004"
+    },
+    {
+      "pack_control": "CB-IAM-3",
+      "framework": "NIST-CSF",
+      "control_id": "PR.AA-01"
+    },
+    {
+      "pack_control": "CB-IAM-3",
+      "framework": "CIS-Controls",
+      "control_id": "5.3"
+    },
+    {
+      "pack_control": "CB-IAM-3",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AC-2(3)"
+    },
+    {
+      "pack_control": "CB-IAM-3",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.5.18"
+    },
+    {
+      "pack_control": "CB-IAM-3",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1078"
+    },
+    {
+      "pack_control": "CB-LIF-1",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-02"
+    },
+    {
+      "pack_control": "CB-LIF-1",
+      "framework": "CIS-Controls",
+      "control_id": "2.2"
+    },
+    {
+      "pack_control": "CB-LIF-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SA-22"
+    },
+    {
+      "pack_control": "CB-LIF-1",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.8"
+    },
+    {
+      "pack_control": "CB-LIF-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1068"
+    },
+    {
+      "pack_control": "CB-LIF-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1190"
+    },
+    {
+      "pack_control": "CB-HRD-1",
+      "framework": "NIST-CSF",
+      "control_id": "PR.AA-05"
+    },
+    {
+      "pack_control": "CB-HRD-1",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-01"
+    },
+    {
+      "pack_control": "CB-HRD-1",
+      "framework": "CIS-Controls",
+      "control_id": "5.4"
+    },
+    {
+      "pack_control": "CB-HRD-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AC-6(2)"
+    },
+    {
+      "pack_control": "CB-HRD-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "CM-6"
+    },
+    {
+      "pack_control": "CB-HRD-1",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.2"
+    },
+    {
+      "pack_control": "CB-HRD-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1021.004"
+    },
+    {
+      "pack_control": "CB-HRD-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1110"
+    },
+    {
+      "pack_control": "CB-HRD-2",
+      "framework": "NIST-CSF",
+      "control_id": "PR.AA-03"
+    },
+    {
+      "pack_control": "CB-HRD-2",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-01"
+    },
+    {
+      "pack_control": "CB-HRD-2",
+      "framework": "CIS-Controls",
+      "control_id": "4.1"
+    },
+    {
+      "pack_control": "CB-HRD-2",
+      "framework": "NIST-SP-800-53",
+      "control_id": "IA-2"
+    },
+    {
+      "pack_control": "CB-HRD-2",
+      "framework": "NIST-SP-800-53",
+      "control_id": "CM-6"
+    },
+    {
+      "pack_control": "CB-HRD-2",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.5"
+    },
+    {
+      "pack_control": "CB-HRD-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1021.004"
+    },
+    {
+      "pack_control": "CB-HRD-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1110"
+    },
+    {
+      "pack_control": "CB-HRD-3",
+      "framework": "NIST-CSF",
+      "control_id": "PR.IR-01"
+    },
+    {
+      "pack_control": "CB-HRD-3",
+      "framework": "CIS-Controls",
+      "control_id": "4.5"
+    },
+    {
+      "pack_control": "CB-HRD-3",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-7(12)"
+    },
+    {
+      "pack_control": "CB-HRD-3",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.20"
+    },
+    {
+      "pack_control": "CB-HRD-3",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1021"
+    },
+    {
+      "pack_control": "CB-K8S-1",
+      "framework": "NIST-CSF",
+      "control_id": "PR.AA-05"
+    },
+    {
+      "pack_control": "CB-K8S-1",
+      "framework": "CIS-Controls",
+      "control_id": "6.8"
+    },
+    {
+      "pack_control": "CB-K8S-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AC-6"
+    },
+    {
+      "pack_control": "CB-K8S-1",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.2"
+    },
+    {
+      "pack_control": "CB-K8S-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1609"
+    },
+    {
+      "pack_control": "CB-K8S-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1552.007"
+    },
+    {
+      "pack_control": "CB-K8S-2",
+      "framework": "NIST-CSF",
+      "control_id": "PR.AA-05"
+    },
+    {
+      "pack_control": "CB-K8S-2",
+      "framework": "NIST-CSF",
+      "control_id": "PR.AA-03"
+    },
+    {
+      "pack_control": "CB-K8S-2",
+      "framework": "CIS-Controls",
+      "control_id": "6.8"
+    },
+    {
+      "pack_control": "CB-K8S-2",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AC-14"
+    },
+    {
+      "pack_control": "CB-K8S-2",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AC-6"
+    },
+    {
+      "pack_control": "CB-K8S-2",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.3"
+    },
+    {
+      "pack_control": "CB-K8S-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1552.007"
+    },
+    {
+      "pack_control": "CB-K8S-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1609"
+    },
+    {
+      "pack_control": "CB-K8S-3",
+      "framework": "NIST-CSF",
+      "control_id": "PR.AA-05"
+    },
+    {
+      "pack_control": "CB-K8S-3",
+      "framework": "CIS-Controls",
+      "control_id": "6.8"
+    },
+    {
+      "pack_control": "CB-K8S-3",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AC-6(1)"
+    },
+    {
+      "pack_control": "CB-K8S-3",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.2"
+    },
+    {
+      "pack_control": "CB-K8S-3",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1609"
+    },
+    {
+      "pack_control": "FB-1",
+      "framework": "NIST-CSF",
+      "control_id": "PR.AA-05"
+    },
+    {
+      "pack_control": "FB-1",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-01"
+    },
+    {
+      "pack_control": "FB-1",
+      "framework": "CIS-Controls",
+      "control_id": "5.4"
+    },
+    {
+      "pack_control": "FB-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AC-6(2)"
+    },
+    {
+      "pack_control": "FB-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "CM-6"
+    },
+    {
+      "pack_control": "FB-1",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.2"
+    },
+    {
+      "pack_control": "FB-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1021.004"
+    },
+    {
+      "pack_control": "FB-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1110"
+    },
+    {
+      "pack_control": "FB-2",
+      "framework": "NIST-CSF",
+      "control_id": "PR.AA-01"
+    },
+    {
+      "pack_control": "FB-2",
+      "framework": "CIS-Controls",
+      "control_id": "5.2"
+    },
+    {
+      "pack_control": "FB-2",
+      "framework": "NIST-SP-800-53",
+      "control_id": "IA-5(1)"
+    },
+    {
+      "pack_control": "FB-2",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.5.17"
+    },
+    {
+      "pack_control": "FB-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1110"
+    },
+    {
+      "pack_control": "FB-3",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-04"
+    },
+    {
+      "pack_control": "FB-3",
+      "framework": "CIS-Controls",
+      "control_id": "8.2"
+    },
+    {
+      "pack_control": "FB-3",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AU-2"
+    },
+    {
+      "pack_control": "FB-3",
+      "framework": "NIST-SP-800-53",
+      "control_id": "AU-12"
+    },
+    {
+      "pack_control": "FB-3",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.15"
+    },
+    {
+      "pack_control": "FB-3",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1070"
+    },
+    {
+      "pack_control": "IB-1",
+      "framework": "NIST-CSF",
+      "control_id": "ID.AM-01"
+    },
+    {
+      "pack_control": "IB-1",
+      "framework": "CIS-Controls",
+      "control_id": "1.1"
+    },
+    {
+      "pack_control": "IB-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "CM-8"
+    },
+    {
+      "pack_control": "IB-1",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.5.9"
+    },
+    {
+      "pack_control": "IB-2",
+      "framework": "NIST-CSF",
+      "control_id": "ID.AM-05"
+    },
+    {
+      "pack_control": "IB-2",
+      "framework": "NIST-SP-800-53",
+      "control_id": "RA-2"
+    },
+    {
+      "pack_control": "IB-2",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.5.12"
+    },
+    {
+      "pack_control": "IB-3",
+      "framework": "NIST-CSF",
+      "control_id": "ID.AM-01"
+    },
+    {
+      "pack_control": "IB-3",
+      "framework": "CIS-Controls",
+      "control_id": "1.1"
+    },
+    {
+      "pack_control": "IB-3",
+      "framework": "NIST-SP-800-53",
+      "control_id": "CM-8"
+    },
+    {
+      "pack_control": "IB-3",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.5.9"
+    },
+    {
+      "pack_control": "IB-4",
+      "framework": "NIST-CSF",
+      "control_id": "ID.RA-01"
+    },
+    {
+      "pack_control": "IB-4",
+      "framework": "CIS-Controls",
+      "control_id": "7.7"
+    },
+    {
+      "pack_control": "IB-4",
+      "framework": "NIST-SP-800-53",
+      "control_id": "RA-5"
+    },
+    {
+      "pack_control": "IB-4",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SI-2"
+    },
+    {
+      "pack_control": "IB-4",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.8"
+    },
+    {
+      "pack_control": "IB-4",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1190"
+    },
+    {
+      "pack_control": "IB-4",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1210"
+    },
+    {
+      "pack_control": "IB-5",
+      "framework": "NIST-CSF",
+      "control_id": "ID.RA-01"
+    },
+    {
+      "pack_control": "IB-5",
+      "framework": "CIS-Controls",
+      "control_id": "7.7"
+    },
+    {
+      "pack_control": "IB-5",
+      "framework": "NIST-SP-800-53",
+      "control_id": "RA-5"
+    },
+    {
+      "pack_control": "IB-5",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SI-2"
+    },
+    {
+      "pack_control": "IB-5",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.8"
+    },
+    {
+      "pack_control": "IB-5",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1190"
+    },
+    {
+      "pack_control": "IB-5",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1210"
+    },
+    {
+      "pack_control": "IB-6",
+      "framework": "NIST-CSF",
+      "control_id": "ID.RA-01"
+    },
+    {
+      "pack_control": "IB-6",
+      "framework": "CIS-Controls",
+      "control_id": "7.5"
+    },
+    {
+      "pack_control": "IB-6",
+      "framework": "NIST-SP-800-53",
+      "control_id": "RA-5(2)"
+    },
+    {
+      "pack_control": "IB-6",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.8"
+    },
+    {
+      "pack_control": "IB-7",
+      "framework": "NIST-CSF",
+      "control_id": "PR.IR-01"
+    },
+    {
+      "pack_control": "IB-7",
+      "framework": "CIS-Controls",
+      "control_id": "4.8"
+    },
+    {
+      "pack_control": "IB-7",
+      "framework": "NIST-SP-800-53",
+      "control_id": "CM-7"
+    },
+    {
+      "pack_control": "IB-7",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.20"
+    },
+    {
+      "pack_control": "IB-7",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1021"
+    },
+    {
+      "pack_control": "IB-7",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1040"
+    },
+    {
+      "pack_control": "IB-8",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-01"
+    },
+    {
+      "pack_control": "IB-8",
+      "framework": "CIS-Controls",
+      "control_id": "4.1"
+    },
+    {
+      "pack_control": "IB-8",
+      "framework": "NIST-SP-800-53",
+      "control_id": "CM-6"
+    },
+    {
+      "pack_control": "IB-8",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.9"
+    },
+    {
+      "pack_control": "IB-9",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-01"
+    },
+    {
+      "pack_control": "IB-9",
+      "framework": "CIS-Controls",
+      "control_id": "4.1"
+    },
+    {
+      "pack_control": "IB-9",
+      "framework": "NIST-SP-800-53",
+      "control_id": "CM-6"
+    },
+    {
+      "pack_control": "IB-9",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.9"
+    },
+    {
+      "pack_control": "IB-10",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-01"
+    },
+    {
+      "pack_control": "IB-10",
+      "framework": "CIS-Controls",
+      "control_id": "4.1"
+    },
+    {
+      "pack_control": "IB-10",
+      "framework": "NIST-SP-800-53",
+      "control_id": "CM-6"
+    },
+    {
+      "pack_control": "IB-10",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.9"
+    },
+    {
+      "pack_control": "IB-11",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-01"
+    },
+    {
+      "pack_control": "IB-11",
+      "framework": "CIS-Controls",
+      "control_id": "4.1"
+    },
+    {
+      "pack_control": "IB-11",
+      "framework": "NIST-SP-800-53",
+      "control_id": "CM-6"
+    },
+    {
+      "pack_control": "IB-11",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.9"
+    },
+    {
+      "pack_control": "IB-12",
+      "framework": "NIST-CSF",
+      "control_id": "ID.RA-01"
+    },
+    {
+      "pack_control": "IB-12",
+      "framework": "NIST-SP-800-53",
+      "control_id": "RA-5"
+    },
+    {
+      "pack_control": "IB-12",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.8"
+    },
+    {
+      "pack_control": "IB-12",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1190"
+    },
+    {
+      "pack_control": "IB-13",
+      "framework": "NIST-CSF",
+      "control_id": "ID.RA-01"
+    },
+    {
+      "pack_control": "IB-13",
+      "framework": "NIST-SP-800-53",
+      "control_id": "RA-5"
+    },
+    {
+      "pack_control": "IB-13",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.8"
+    },
+    {
+      "pack_control": "IB-13",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1190"
+    },
+    {
+      "pack_control": "US-1",
+      "framework": "NIST-CSF",
+      "control_id": "PR.DS-02"
+    },
+    {
+      "pack_control": "US-1",
+      "framework": "CIS-Controls",
+      "control_id": "3.10"
+    },
+    {
+      "pack_control": "US-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-8"
+    },
+    {
+      "pack_control": "US-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-17"
+    },
+    {
+      "pack_control": "US-1",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.24"
+    },
+    {
+      "pack_control": "US-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1557"
+    },
+    {
+      "pack_control": "US-2",
+      "framework": "NIST-CSF",
+      "control_id": "PR.DS-02"
+    },
+    {
+      "pack_control": "US-2",
+      "framework": "CIS-Controls",
+      "control_id": "3.10"
+    },
+    {
+      "pack_control": "US-2",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-8"
+    },
+    {
+      "pack_control": "US-2",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-13"
+    },
+    {
+      "pack_control": "US-2",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.24"
+    },
+    {
+      "pack_control": "US-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1557"
+    },
+    {
+      "pack_control": "US-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1040"
+    },
+    {
+      "pack_control": "US-3",
+      "framework": "NIST-CSF",
+      "control_id": "PR.DS-02"
+    },
+    {
+      "pack_control": "US-3",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-17"
+    },
+    {
+      "pack_control": "US-3",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.24"
+    },
+    {
+      "pack_control": "US-5",
+      "framework": "NIST-CSF",
+      "control_id": "PR.DS-02"
+    },
+    {
+      "pack_control": "US-5",
+      "framework": "CIS-Controls",
+      "control_id": "3.10"
+    },
+    {
+      "pack_control": "US-5",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-8"
+    },
+    {
+      "pack_control": "US-5",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.24"
+    },
+    {
+      "pack_control": "US-5",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1557"
+    },
+    {
+      "pack_control": "US-6",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-01"
+    },
+    {
+      "pack_control": "US-6",
+      "framework": "CIS-Controls",
+      "control_id": "4.1"
+    },
+    {
+      "pack_control": "US-6",
+      "framework": "NIST-SP-800-53",
+      "control_id": "CM-6"
+    },
+    {
+      "pack_control": "US-6",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.9"
+    },
+    {
+      "pack_control": "US-7",
+      "framework": "NIST-CSF",
+      "control_id": "PR.IR-01"
+    },
+    {
+      "pack_control": "US-7",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SC-7"
+    },
+    {
+      "pack_control": "US-7",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.20"
+    }
+  ]
+}

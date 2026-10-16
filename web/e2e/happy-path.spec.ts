@@ -74,7 +74,8 @@ test('operator drafts, approver approves, operator launches, reviewer closes: fu
   await expect(page.getByText('Secrets were redacted before storage').or(page.getByText('No redaction needed'))).toBeVisible()
   await expect(page.locator('dl').filter({ hasText: 'Observed' }).getByText('"yes"')).toBeVisible()
   await expect(page.locator('dl').filter({ hasText: 'Expected' }).getByText('"no"')).toBeVisible()
-  await expect(page.getByText('Needs policy-owner review')).toBeVisible() // external mapping is not trusted
+  await expect(page.getByText('Pack control FB-1')).toBeVisible()
+  await expect(page.getByText('Needs policy-owner review').first()).toBeVisible() // external mapping is not trusted
   await expect(page.getByText(/with AI disabled none exists/)).toBeVisible()
   await page.goBack()
 
