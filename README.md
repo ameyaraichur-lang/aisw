@@ -140,6 +140,7 @@ flowchart LR
 | Policy evaluation (JSON packs, pinned and hashed; OPA/Rego, [ADR-031](docs/adr/ADR-031-opa-policy-engine.md)) | 🟡 | Python and OPA engines held equivalent by tests; Rego domain rules are proposals awaiting review |
 | Framework mappings and Control Matrix ([ADR-032](docs/adr/ADR-032-framework-mappings.md)) | 🟡 | NIST CSF 2.0, CIS v8.1, 800-53 Rev. 5, ISO 27001, ATT&CK; each mapping is a proposal until a policy owner approves it |
 | Finding review and exceptions ([ADR-033](docs/adr/ADR-033-finding-review-and-exceptions.md)) | ✅ | Confirm, reject, reopen, request exception; a second person approves; an expired exception reports the FAIL again |
+| Asset Explorer | ✅ | Reconciled assets with sourced ownership, latest posture per rule and accepted findings; relationships are not modelled, so none is shown |
 | Passive URL smoke adapter | 🟡 | Proven against a **local server only** |
 | Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; real tool versions unverified. API upload only (no UI) |
 | More importers ([ADR-034](docs/adr/ADR-034-config-inventory-vulnerability-imports.md)): firewall, kubescape, AD/LDAP, AWS IAM, NetBox, ServiceNow, Nessus, Tenable, Qualys, Trivy | 🟡 | Feed the Rego pack and `image-baseline`; **synthetic** fixtures, real tool versions unverified |
@@ -290,7 +291,7 @@ Configuration is fail-closed (`backend/aisw/core/config.py`): read-only mode, sc
 
 1. **M9 live validation**, only with your explicit authorisation per target: (a) passive smoke of `example.com`, (b) one bounded Nmap run on `scanme.nmap.org` after re-checking its terms, (c) ZAP baseline then active against your own Juice Shop. Each step needs an approved manifest and produces an evidence package.
 2. **Before any real use:** register a real IdP client, provision a real KMS key and run the drill, load the egress rules on the hosts, a first install from `deploy/README.md`, a real CI run, approval of the risk rubric and architecture catalog by the policy owner, legal review of licences.
-3. **Optional:** Astra token budget, routing and replay (pending plan §4); asset explorer UI; import upload UI; retention UI. The full list of pending work is in [`docs/implementation/pending-plan.md`](docs/implementation/pending-plan.md).
+3. **Optional:** Astra token budget, routing and replay (pending plan §4); import upload UI; retention UI. The full list of pending work is in [`docs/implementation/pending-plan.md`](docs/implementation/pending-plan.md).
 
 ---
 *AISW produces assessment reports from recorded evidence. A report is not a certification and does not prove an estate is secure.*

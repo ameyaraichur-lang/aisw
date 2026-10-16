@@ -445,3 +445,31 @@ export interface Page<T> {
   items: T[]
   total: number
 }
+export interface AssetRow {
+  project_id: string
+  project_name: string
+  asset_id: string
+  asset_type: string
+  native_ids: Record<string, unknown>
+  attrs: Record<string, unknown>
+  environment: string | null
+  owner: string | null
+  owner_source: string | null
+  criticality: string | null
+  criticality_source: string | null
+  technology: string | null
+  match_confidence: 'HIGH' | 'MEDIUM' | 'LOW'
+  first_seen: string
+  last_seen: string
+  last_run_id: string
+}
+export interface AssetList extends Page<AssetRow> {
+  types: { asset_type: string; count: number; owner_unknown: number; low_confidence: number }[]
+}
+export interface AssetDetail extends AssetRow {
+  posture: { rule_id: string; outcome: string; observed: unknown; expected: unknown; observed_at: string; run_id: string; source: string }[]
+  runs: { run_id: string; segment: string; status: string; reason: string | null; at: string }[]
+  findings: { run_id: string; finding_id: string; severity: string; lifecycle: string; title: string }[]
+  findings_visible: boolean
+  relationships: null
+}

@@ -13,6 +13,7 @@ from aisw import __version__
 from aisw.api import (
     analysis,
     assessments,
+    assets,
     auth,
     controls,
     exceptions,
@@ -130,4 +131,5 @@ def create_app(
     app.include_router(retention.router)
     app.include_router(controls.router)
     app.include_router(exceptions.router)
+    app.include_router(assets.router)
     return app

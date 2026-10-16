@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { api } from './client'
 import type {
-  AgentsResponse, AiValidations, AuditItem, Recommendation, Scenario, AuthMode, ControlMatrix, ControlRow, ExceptionList, CoverageResponse, Connector, FindingDetail, FindingRow,
+  AgentsResponse, AiValidations, AssetDetail, AssetList, AuditItem, Recommendation, Scenario, AuthMode, ControlMatrix, ControlRow, ExceptionList, CoverageResponse, Connector, FindingDetail, FindingRow,
   InventoryEntry, ManifestSummary, Me, Overview, Page, PolicyPackInfo, Project, ReportBody,
   ReportList, RunListItem, RunStatus, TaskView,
 } from './types'
@@ -51,6 +51,10 @@ export const useAllFindings = (p: { verdict: string; severity: string[]; limit: 
   useQuery({ queryKey: ['findings', p], queryFn: () => api<Page<FindingRow>>(`/findings${qs(p)}`), placeholderData: keepPreviousData })
 export const useFinding = (runId: string, findingId: string) =>
   useQuery({ queryKey: ['run', runId, 'finding', findingId], queryFn: () => api<FindingDetail>(`/assessments/${runId}/findings/${findingId}`) })
+export const useAssets = (p: { project_id?: string; asset_type?: string; q?: string; confidence?: string; owner?: string; limit: number; offset: number }) =>
+  useQuery({ queryKey: ['assets', p], queryFn: () => api<AssetList>(`/assets${qs(p)}`), placeholderData: keepPreviousData })
+export const useAsset = (projectId: string, assetId: string) =>
+  useQuery({ queryKey: ['asset', projectId, assetId], queryFn: () => api<AssetDetail>(`/assets/${encodeURIComponent(projectId)}/${encodeURIComponent(assetId)}`) })
 export const useReports = (runId: string) =>
   useQuery({ queryKey: ['run', runId, 'reports'], queryFn: () => api<ReportList[]>(`/assessments/${runId}/reports`), retry: false })
 export const useReportBody = (reportId: string | undefined) =>

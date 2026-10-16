@@ -4,6 +4,7 @@ import { Shell } from './components/Shell'
 import { useSession } from './auth/useSession'
 import { Assessments } from './pages/Assessments'
 import { Approvals } from './pages/Approvals'
+import { AssetDetailPage, Assets } from './pages/Assets'
 import { CommandCenter } from './pages/CommandCenter'
 import { FindingDetail, Findings } from './pages/Findings'
 import { Integrations } from './pages/Integrations'
@@ -38,7 +39,8 @@ export default function App() {
         <Route path="exceptions" element={<RequirePermission need={['finding:read']} title="Exceptions"><Exceptions /></RequirePermission>} />
         <Route path="reports" element={<RequirePermission need={['report:read']} title="Reports & Evidence"><ReportsPage /></RequirePermission>} />
         <Route path="audit" element={<RequirePermission need={['audit:read']} title="Policy, Users & Audit"><AuditPage /></RequirePermission>} />
-        <Route path="assets" element={<NotImplemented title="Asset Explorer" milestone="planned" why="Asset reconciliation runs in the backend (Agent 1), but the asset and relationship explorer UI has not been built yet." />} />
+        <Route path="assets" element={<Assets />} />
+        <Route path="assets/:projectId/:assetId" element={<AssetDetailPage />} />
         <Route path="architecture" element={<RequirePermission need={['finding:read']} title="Architecture & Modernization"><Architecture /></RequirePermission>} />
         <Route path="*" element={<NotImplemented title="Page not found" milestone="n/a" why="This route does not exist." />} />
       </Route>
