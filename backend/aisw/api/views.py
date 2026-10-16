@@ -35,9 +35,10 @@ def _c(request: Request) -> Container:
 @router.get("/auth/mode")
 def auth_mode(request: Request) -> dict[str, Any]:
     s = request.app.state.settings
+    sso = getattr(request.app.state, "oidc", None) is not None
     if s.dev_auth_stub and s.env in {Environment.DEV, Environment.TEST}:
-        return {"mode": "dev_stub", "users": list_dev_users()}
-    return {"mode": "none", "users": []}
+        return {"mode": "dev_stub", "users": list_dev_users(), "sso": sso}
+    return {"mode": "oidc" if sso else "none", "users": [], "sso": sso}
 
 
 @router.get("/me")

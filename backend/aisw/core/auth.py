@@ -1,4 +1,4 @@
-"""Identity resolution. OIDC (Keycloak) lands later; until then only the dev stub exists.
+"""Dev-stub identity resolution. Real sign-in is OIDC through the BFF (ADR-026, aisw.api.auth).
 
 The stub is refused unless settings.dev_auth_stub is on AND env is dev/test (config validation
 also forbids it in prod). With no valid identity the answer is 401: fail closed.

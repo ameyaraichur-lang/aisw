@@ -1,4 +1,5 @@
-"""End-to-end test server: embedded PostgreSQL + API + in-process worker, dev identity stub.
+"""End-to-end test server: embedded PostgreSQL + API + in-process worker, dev identity stub,
+and a loopback mock OIDC IdP so single sign-on through the BFF is exercised too (ADR-026).
 
 Runs ONLY for Playwright (never part of the product). Extra control routes under /__e2e let tests
 pause the worker to observe in-flight state; they do not exist in the real application.
@@ -11,6 +12,7 @@ import json
 import os
 import secrets
 import signal
+import sys
 import tempfile
 import threading
 import time
@@ -105,7 +107,16 @@ def main() -> None:
     signer = LocalKeySigner.generate("e2e-key")
     # AISW_E2E_ENV_FILE (e.g. ../.env.astra) runs this server against a live model, by hand only.
     env_file = os.environ.get("AISW_E2E_ENV_FILE")
-    settings = Settings(_env_file=env_file, env="dev", dev_auth_stub=True)  # type: ignore[call-arg]
+    sys.path.insert(0, str(BACKEND))
+    from tests.oidc_idp import MockIdp  # noqa: PLC0415 - test-only module, needs the path above
+
+    web = os.environ.get("AISW_E2E_WEB", "http://127.0.0.1:5199")
+    idp = MockIdp([f"{web}/api/v1/auth/callback"]).start()
+    settings = Settings(  # type: ignore[call-arg]
+        _env_file=env_file, env="dev", dev_auth_stub=True, oidc_issuer=idp.issuer,
+        oidc_client_id=idp.client_id, oidc_client_secret=idp.client_secret,
+        oidc_redirect_uri=f"{web}/api/v1/auth/callback", session_secret=secrets.token_urlsafe(32),
+    )  # fmt: skip
     container = build_container(
         settings, app_engine, signer=signer, keyring=KeyRing.from_signer(signer),
         evidence=EvidenceStore(work / "evidence"), resolver=lambda h, p: ["93.184.216.34"],
@@ -180,6 +191,7 @@ def main() -> None:
         )  # returns on SIGTERM/SIGINT
     finally:  # never leave an embedded Postgres behind (the machine allows few shared-memory segments)
         stop.set()
+        idp.close()
         for eng in (app_engine, worker_engine, owner, admin):
             eng.dispose()
         server.cleanup()

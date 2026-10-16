@@ -10,8 +10,9 @@ export interface Me {
   permissions: string[]
 }
 export interface AuthMode {
-  mode: 'dev_stub' | 'none'
+  mode: 'dev_stub' | 'oidc' | 'none'
   users: { name: string; tenant_id: string; roles: string[] }[]
+  sso?: boolean
 }
 export interface Project {
   project_id: string

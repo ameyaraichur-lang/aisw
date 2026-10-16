@@ -9,13 +9,14 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import Engine
 
 from aisw import __version__
-from aisw.api import analysis, assessments, imports, projects, retention, scope, views
+from aisw.api import analysis, assessments, auth, imports, projects, retention, scope, views
 from aisw.api.container import Container, build_container
 from aisw.authz.service import ScopeDenied
 from aisw.core.auth import AuthError
 from aisw.core.config import Settings, get_settings
 from aisw.core.db import make_engine
 from aisw.core.idempotency import IdempotencyConflict
+from aisw.core.oidc import OidcProvider
 from aisw.core.rbac import Forbidden
 
 
@@ -23,6 +24,7 @@ def create_app(
     settings: Settings | None = None,
     engine: Engine | None = None,
     container: Container | None = None,
+    oidc: OidcProvider | None = None,
 ) -> FastAPI:
     cfg = settings or get_settings()
     if engine is None and cfg.database_url is not None:
@@ -33,6 +35,7 @@ def create_app(
     if container is None and engine is not None:
         container = build_container(cfg, engine)
     app.state.container = container
+    app.state.oidc = oidc or (OidcProvider(cfg) if cfg.oidc_enabled else None)
 
     @app.middleware("http")
     async def correlation_id(request: Request, call_next):  # type: ignore[no-untyped-def]
@@ -88,6 +91,7 @@ def create_app(
             "database_configured": engine is not None,
         }
 
+    app.include_router(auth.router)
     app.include_router(projects.router)
     app.include_router(scope.router)
     app.include_router(assessments.router)

@@ -1069,6 +1069,26 @@
      }
     }
    ],
+   "name": "pyjwt",
+   "properties": [
+    {
+     "name": "aisw:licence-status",
+     "value": "allow"
+    }
+   ],
+   "purl": "pkg:pypi/pyjwt@2.15.1",
+   "scope": "required",
+   "type": "library",
+   "version": "2.15.1"
+  },
+  {
+   "licenses": [
+    {
+     "license": {
+      "id": "MIT"
+     }
+    }
+   ],
    "name": "pyparsing",
    "properties": [
     {
@@ -4348,7 +4368,7 @@
    }
   ]
  },
- "serialNumber": "urn:uuid:d05ed21c-ea98-57b3-8e29-b345299d0523",
+ "serialNumber": "urn:uuid:0a1b8676-a5a8-5dd1-956d-f8f677dc093c",
  "specVersion": "1.5",
  "version": 1
 }

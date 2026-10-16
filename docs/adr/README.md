@@ -25,5 +25,6 @@
 - [ADR-023: Model-call routing: usage provenance, run budgets, failover, record/replay](ADR-023-model-call-routing.md)
 - [ADR-024: AI review of Agent 0, Agent 4 owner questions, Agent 8 executive summary](ADR-024-ai-for-agents-0-4-8.md)
 - [ADR-025: Labelled-set evaluation of the AI reviewer and narrator; explicit Astra proxy](ADR-025-labelled-evaluation-and-proxy.md)
+- [ADR-026: Generic OIDC sign-in through the BFF](ADR-026-oidc-sign-in-through-the-bff.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

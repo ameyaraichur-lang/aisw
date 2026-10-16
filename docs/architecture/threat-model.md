@@ -16,7 +16,7 @@ Scope manifests and execution permits (authority to touch anything) · evidence 
 ## Threats and controls
 | # | Boundary | Threat | Control (test) | Residual / open |
 |---|---|---|---|---|
-| T1 | 1 | Spoofed identity | Dev stub refused outside dev/test (`test_config_fail_closed`, `test_api_authz`) | **No production sign-in exists** (OIDC planned). Not deployable to production. |
+| T1 | 1 | Spoofed identity | Dev stub refused outside dev/test (`test_config_fail_closed`, `test_api_authz`); OIDC via the BFF with asymmetric-only token verification, PKCE, nonce, signed HttpOnly session, CSRF and revocable logout (ADR-026, `test_oidc`, `test_oidc_flow`) | Proven against a loopback mock IdP only; the customer IdP's claims and logout are not yet verified. Session roles are a sign-in snapshot until expiry. |
 | T2 | 1 | Privilege escalation by role | Server-side RBAC on every route, UI hiding is courtesy (`test_api_authz`, `e2e/permissions.spec.ts`) | Roles are coarse; no per-project roles |
 | T3 | 1,2 | Cross-tenant read/write | Forced RLS on every tenant table incl. analysis and retention tables, fail-closed with no tenant set (`test_tenant_isolation_db`, `test_analysis_security`, `test_retention`) | Same database for all tenants; a DB superuser bypasses RLS by design |
 | T4 | 1 | Approver approves own request / replay | Separation of duties, idempotency keys (`test_api_authz`, race test) | |

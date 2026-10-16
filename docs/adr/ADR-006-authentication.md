@@ -1,6 +1,6 @@
 # ADR-006: Authentication
 
-**Status:** Accepted (M0, approved with development plan)
+**Status:** Accepted (M0, approved with development plan); amended by [ADR-026](ADR-026-oidc-sign-in-through-the-bff.md): generic OIDC, not Keycloak-specific
 
 ## Decision
 Keycloak OIDC in deployments. Dev/test only: a local identity stub with seeded users/roles, gated by AISW_ENV in {dev,test}; config validation rejects it when env=prod.

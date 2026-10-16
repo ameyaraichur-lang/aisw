@@ -21,7 +21,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Projects API (create/list/get, audit verify) | Implemented (M1) | first endpoints exercising the foundation |
 | Execution-permit table | Implemented structurally only (M1) | no issuance logic or behavioural tests until Agent 0 (M2) |
 | Domain data tables (assets, findings, coverage, evidence, runs) | Planned (M3) | contracts exist; persistence deferred per plan |
-| OIDC / Keycloak authentication | Planned | dev stub only; refused unless env in dev/test and flag on |
+| OIDC authentication: generic OIDC through the BFF (code + PKCE, signed HttpOnly session cookie, CSRF, revocable logout, bearer JWTs for API clients), ADR-026 | Implemented, mock IdP only | `tests/unit/test_oidc.py`, `tests/integration/test_oidc_flow.py`, `web/e2e/sso.spec.ts`; no real IdP tenant connected yet. Dev stub still refused outside dev/test |
 | Manifest signing/key custody | Planned (M2) | contract fields exist, no signer yet |
 | `net_guard` URL canonicalisation + SSRF/egress vetting (A/AAAA at preflight and dispatch, redirects, rebinding, IPv4-mapped/6to4/NAT64) | Implemented (M2) | `tests/security/test_net_guard.py` (98 cases, fake resolver; no real DNS/network touched) |
 | Agent 0 scope gate (resolve, policy caps, wildcard/exclusion rules, approvals, hash of resolved manifest) | Implemented (M2) | `tests/security/test_agent0_gate.py` (43 cases) |
@@ -54,7 +54,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Coverage, findings, evidence explorer, controls, report preview/download/approve | Implemented (M4) | partial/failed/denied/empty states covered |
 | Accessibility: axe WCAG 2.2 AA on 24 screens (0 violations), keyboard, reduced motion, non-colour status | Implemented (M4) | automated checks only; no manual screen-reader pass |
 | Review actions on findings, exceptions, asset graph | Planned | shown as planned, nothing simulated |
-| Production sign-in (OIDC via BFF cookie) | Planned | dev stub only |
+| Production sign-in (OIDC via BFF cookie) | Implemented (ADR-026) | login page offers SSO; proven against the loopback mock IdP only |
 | Silent-stall detection for an open-but-dead stream | Planned | documented limitation (ADR-015) |
 | CI job for e2e | Unverified | written, never run on a runner |
 | PASSIVE_HTTP_SMOKE adapter: pinned-address connect, TLS verify-before-send + certificate metadata, one GET/HEAD per hop, per-hop redirect vetting, header allow-list, no body, evidence of DNS/TLS/HTTP/chain/tool version | Implemented (M5), **tested against a local server only** | `tests/security/test_url_smoke_adapter.py` (42), `test_url_smoke_pipeline.py` (47); no public host contacted |

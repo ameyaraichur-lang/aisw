@@ -10,6 +10,7 @@ than at runtime.
 from __future__ import annotations
 
 import ipaddress
+import json
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
@@ -17,6 +18,8 @@ from urllib.parse import urlparse
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from aisw.core.rbac import Role
 
 
 class Environment(StrEnum):
@@ -102,6 +105,23 @@ def astra_proxy_problem(proxy: str) -> str | None:
     return None
 
 
+def _loopback_http(url: str) -> bool:
+    u = urlparse(url)
+    return u.scheme == "http" and (u.hostname or "") in {"127.0.0.1", "localhost", "::1"}
+
+
+def oidc_url_problem(name: str, url: str, env: Environment) -> str | None:
+    """IdP and callback URLs are https; plain http is accepted only on loopback outside prod."""
+    u = urlparse(url)
+    if u.username is not None or u.password is not None:
+        return f"{name} must not carry credentials"
+    if u.query or u.fragment or not u.hostname:
+        return f"{name} must be an absolute URL without query or fragment"
+    if u.scheme == "https" or (env is not Environment.PROD and _loopback_http(url)):
+        return None
+    return f"{name} must use https (http is allowed only on loopback outside prod)"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AISW_", extra="forbid", frozen=True)
 
@@ -114,6 +134,20 @@ class Settings(BaseSettings):
 
     # Dev-only identity stub (ADR-006). Must never be active outside dev/test.
     dev_auth_stub: bool = False
+    # OIDC sign-in through the BFF (ADR-026); any standards-compliant IdP, nothing IdP-specific.
+    oidc_issuer: str | None = None
+    oidc_client_id: str | None = None
+    oidc_client_secret: SecretStr | None = None  # confidential client; from the secret provider
+    oidc_redirect_uri: str | None = None  # https://<console>/api/v1/auth/callback
+    oidc_audience: str | None = None  # bearer API tokens; defaults to the client id
+    oidc_scopes: str = Field(default="openid profile email", pattern=r"^openid( [\w:.\-/]+)*$")
+    oidc_roles_claim: str = Field(default="roles", pattern=r"^[\w.:\-/]{1,64}$")
+    oidc_tenant_claim: str = Field(default="tenant", pattern=r"^[\w.:\-/]{1,64}$")
+    # JSON object mapping IdP role/group values to AISW roles; unset means the names are AISW's.
+    oidc_role_map: str | None = None
+    oidc_session_minutes: int = Field(default=480, ge=5, le=1440)
+    # Signs session cookies (>= 32 characters); from the secret provider, never committed.
+    session_secret: SecretStr | None = None
 
     # AI is disabled until an approved model is recorded (ADR-009; remote Astra per ADR-020).
     ai_enabled: bool = False
@@ -175,6 +209,41 @@ class Settings(BaseSettings):
     enable_itsm_ticket_creation: bool = False
     log_redaction_enabled: bool = True
 
+    @property
+    def oidc_enabled(self) -> bool:
+        return self.oidc_issuer is not None
+
+    @property
+    def oidc_roles(self) -> dict[str, str]:
+        """IdP value -> AISW role value. Validated at startup."""
+        if self.oidc_role_map is None:
+            return {}
+        raw = json.loads(self.oidc_role_map)
+        return {str(k): str(v) for k, v in raw.items()}
+
+    def _check_oidc(self) -> None:
+        if not (self.oidc_client_id and self.oidc_redirect_uri):
+            raise ValueError("oidc_issuer requires oidc_client_id and oidc_redirect_uri")
+        secret = self.session_secret.get_secret_value() if self.session_secret else ""
+        if len(secret) < 32:
+            raise ValueError("oidc requires session_secret of at least 32 characters")
+        for name, url in (("oidc_issuer", self.oidc_issuer or ""),
+                          ("oidc_redirect_uri", self.oidc_redirect_uri)):  # fmt: skip
+            if problem := oidc_url_problem(name, url, self.env):
+                raise ValueError(problem)
+        if not urlparse(self.oidc_redirect_uri).path.endswith("/api/v1/auth/callback"):
+            raise ValueError("oidc_redirect_uri must end with /api/v1/auth/callback")
+        if self.oidc_role_map is not None:
+            try:
+                raw = json.loads(self.oidc_role_map)
+            except ValueError:
+                raise ValueError("oidc_role_map must be a JSON object") from None
+            valid = {r.value for r in Role}
+            if not isinstance(raw, dict) or not all(
+                isinstance(k, str) and v in valid for k, v in raw.items()
+            ):
+                raise ValueError("oidc_role_map must map strings to AISW role names")
+
     @model_validator(mode="after")
     def _enforce_mvp_safety(self) -> Settings:
         if self.allow_production_remediation:
@@ -191,6 +260,8 @@ class Settings(BaseSettings):
             problem := astra_endpoint_problem(self.astra_endpoint)
         ):
             raise ValueError(problem)
+        if self.oidc_issuer is not None:
+            self._check_oidc()
         if self.astra_proxy is not None:
             if problem := astra_proxy_problem(self.astra_proxy):
                 raise ValueError(problem)

@@ -29,7 +29,10 @@ ANALYSIS = {
 HARDENING = {"retention_holds", "retention_actions"}
 AI_VALIDATION = {"ai_validations"}
 REVISIONS = {"ai_validation_resolutions"}
-TABLES = FOUNDATION | PIPELINE | IMPORTS | ANALYSIS | HARDENING | AI_VALIDATION | REVISIONS
+SESSIONS = {"auth_session_revocations"}
+TABLES = (
+    FOUNDATION | PIPELINE | IMPORTS | ANALYSIS | HARDENING | AI_VALIDATION | REVISIONS | SESSIONS
+)
 
 
 def _tables(engine) -> set[str]:  # type: ignore[no-untyped-def]
@@ -44,6 +47,8 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     eng = make_db(pg_server, f"mig_{uuid.uuid4().hex[:8]}")
     migrate(eng, "head")
     assert _tables(eng) == TABLES
+    migrate(eng, "0010", down=True)  # 0011 (session revocations) is independently reversible
+    assert _tables(eng) == TABLES - SESSIONS
     migrate(eng, "0009", down=True)  # 0010 (generation agents) is independently reversible
     with eng.connect() as c:
         checks = {
@@ -56,23 +61,23 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     migrate(eng, "head")
     migrate(eng, "0009", down=True)
     migrate(eng, "0008", down=True)  # 0009 (model-call usage) is independently reversible
-    assert _tables(eng) == TABLES
+    assert _tables(eng) == TABLES - SESSIONS
     with eng.connect() as c:
         assert not c.execute(
             text("SELECT 1 FROM information_schema.columns WHERE table_name='llm_calls' "
                  "AND column_name IN ('input_tokens', 'latency_ms', 'replayed')")
         ).first()  # fmt: skip
     migrate(eng, "0007", down=True)  # 0008 (review revisions) is independently reversible
-    assert _tables(eng) == TABLES - REVISIONS
+    assert _tables(eng) == TABLES - SESSIONS - REVISIONS
     with eng.connect() as c:
         assert not c.execute(
             text("SELECT 1 FROM information_schema.columns WHERE table_name='reports' "
                  "AND column_name='revision'")
         ).first()  # fmt: skip
     migrate(eng, "0006", down=True)  # 0007 (agent validation) is independently reversible
-    assert _tables(eng) == TABLES - REVISIONS - AI_VALIDATION
+    assert _tables(eng) == TABLES - SESSIONS - REVISIONS - AI_VALIDATION
     migrate(eng, "0005", down=True)  # 0006 (hardening) is independently reversible
-    assert _tables(eng) == TABLES - REVISIONS - AI_VALIDATION - HARDENING
+    assert _tables(eng) == TABLES - SESSIONS - REVISIONS - AI_VALIDATION - HARDENING
     with eng.connect() as c:
         assert not c.execute(
             text("SELECT 1 FROM pg_trigger WHERE tgname='assessment_runs_permit_swap'")

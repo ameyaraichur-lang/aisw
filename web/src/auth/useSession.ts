@@ -6,6 +6,8 @@ export interface Session {
   me: Me | null
   mode: AuthMode | null
   login: (name: string) => void
+  /** Leaves the page for the IdP; the BFF brings the browser back to the current path. */
+  loginSso: () => void
   logout: () => void
   /** UI convenience only: the server re-authorises every request. */
   can: (permission: string) => boolean

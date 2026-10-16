@@ -27,7 +27,7 @@ Two plans describe this product, and they disagree:
 
 | # | Item | Why it is open | Done when |
 |---|---|---|---|
-| P0-1 | Production sign-in (OIDC via BFF cookie, Keycloak or the customer IdP) | Only the dev identity picker exists; the app refuses it outside dev/test, so it **cannot be deployed** (T1, ADR-006) | OIDC login, role mapping, session expiry, logout; RBAC tests run against real tokens |
+| P0-1 | Production sign-in (OIDC via BFF cookie, Keycloak or the customer IdP) | **Built (ADR-026)**: generic OIDC, role map, session expiry, revocable logout, RBAC tests on real tokens, all against a loopback mock IdP. **Pending:** register a client at the customer IdP and confirm its claim names, group mapping and logout (owner: platform admin; next step: IdP client registration) | Sign-in, role mapping and logout verified against the real IdP tenant using `docs/runbooks/sign-in.md` |
 | P0-2 | Signing-key custody and rotation (OpenBao Transit or HSM) | Ed25519 key is a local file; no rotation or revocation procedure tested (T20) | Key in KMS, rotation drill passes, old manifests still verify via key ring |
 | P0-3 | Egress enforcement at host or network level | Application-layer checks only (T6, T12); now also needed for the Astra host | Firewall rules allow only approved targets and the Astra host; a test from the host proves denial |
 | P0-4 | Deployment: Dockerfiles/compose or native service units, Postgres, worker process | `deploy/` is absent; `python -m aisw.orchestrator` was never run as a live process | Clean-machine install from the runbook; API, worker and UI up; doctor/health checks green |
