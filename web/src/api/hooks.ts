@@ -4,7 +4,7 @@ import type {
   AgentsResponse, AiValidations, AssetDetail, AssetList, AssuranceOverview, AuditItem, Disagreement, ModelCallLedger, TriggerPolicyView, Recommendation, Scenario, AuthMode, ControlMatrix, ControlRow, ExceptionList, CoverageResponse, Connector, FindingDetail, FindingRow,
   InventoryEntry, ManifestSummary, Me, Overview, Page, PolicyPackInfo, Project, ReportBody,
   ReportList, Roadmap, RunListItem, RunStatus, TaskView, ItsmTarget, OutboxRow, RenderedTicket,
-  AnswerKeyInfo, Scorecard, TrendRow, CoverageLedgerView,
+  AnswerKeyInfo, Scorecard, TrendRow, CoverageLedgerView, ImportFile,
 } from './types'
 
 const qs = (o: Record<string, string | number | string[] | undefined | null>): string => {
@@ -25,6 +25,8 @@ export const useProjects = () => useQuery({ queryKey: ['projects'], queryFn: () 
 export const useInventory = (projectId: string | undefined) =>
   useQuery({ queryKey: ['inventory', projectId], queryFn: () => api<InventoryEntry[]>(`/inventory${qs({ project_id: projectId })}`), enabled: !!projectId })
 export const useConnectors = () => useQuery({ queryKey: ['connectors'], queryFn: () => api<Connector[]>('/connectors') })
+export const useImports = (projectId: string | undefined) =>
+  useQuery({ queryKey: ['imports', projectId], queryFn: () => api<ImportFile[]>(`/imports${qs({ project_id: projectId })}`), enabled: !!projectId })
 export const usePolicyPacks = () => useQuery({ queryKey: ['policy-packs'], queryFn: () => api<PolicyPackInfo[]>('/policy-packs') })
 export const useManifests = (p: { project_id?: string; status?: string }) =>
   useQuery({ queryKey: ['manifests', p], queryFn: () => api<ManifestSummary[]>(`/scope-manifests${qs(p)}`) })

@@ -148,7 +148,7 @@ flowchart LR
 | Asset Explorer | ✅ | Reconciled assets with sourced ownership, latest posture per rule and accepted findings; relationships are not modelled, so none is shown |
 | Coverage Ledger | ✅ | Tenant-wide, from each project's latest finished run: gaps grouped by kind with the assets named, inventory the run did not target, and projects never assessed |
 | Passive URL smoke adapter | 🟡 | Proven against a **local server only** |
-| Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; real tool versions unverified. API upload only (no UI) |
+| Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; real tool versions unverified. Files are uploaded on the launch review step or through the API |
 | More importers ([ADR-034](docs/adr/ADR-034-config-inventory-vulnerability-imports.md)): firewall, kubescape, AD/LDAP, AWS IAM, NetBox, ServiceNow, Nessus, Tenable, Qualys, Trivy | 🟡 | Feed the Rego pack and `image-baseline`; **synthetic** fixtures, real tool versions unverified |
 | Risk rubric, scenarios, recommendations, Agent 7 | 🟡 | Rubric weights and the architecture catalog are **samples** awaiting policy-owner approval, labelled in reports and the console; see the [sign-off register](docs/implementation/signoffs.md) |
 | LLM gateway (disabled by default, loopback only, no tools, grounding validator) | 🟡 | Tested with a **scripted stub only**; no model has ever run |
@@ -173,7 +173,7 @@ flowchart LR
 | A real language model run on real evidence | ⛔ | Astra has run on synthetic fixtures only; real evidence needs the data-handling approval (ADR-020). No local model has been run |
 | CI proof ([ADR-030](docs/adr/ADR-030-ci-on-github-actions.md)) | ❓ | GitHub Actions workflow (SHA-pinned, read-only) lints clean with actionlint and zizmor, but has **never run on a runner** |
 | Asset/relationship explorer UI, graph reasoning, attack paths | ⛔ | Reconciliation runs in the backend; no explorer UI |
-| Import upload UI; task dependency ordering between imports | ⛔ | Import the CMDB first through the API |
+| Import upload UI; task dependency ordering between imports | ✅ | Inventory imports run first in the same run (migration 0019) |
 | Retention UI/scheduler | ⛔ | |
 | Real customer environment (CMDB, cloud account, on-prem zones) | ⛔ | Everything is fixtures; customer integration is a separate authorised phase |
 | Object-lock evidence storage, multi-node soak testing | ⛔ | |
@@ -297,7 +297,7 @@ Configuration is fail-closed (`backend/aisw/core/config.py`): read-only mode, sc
 
 1. **M9 live validation**, only with your explicit authorisation per target: (a) passive smoke of `example.com`, (b) one bounded Nmap run on `scanme.nmap.org` after re-checking its terms, (c) ZAP baseline then active against your own Juice Shop. Each step needs an approved manifest and produces an evidence package.
 2. **Before any real use:** register a real IdP client, provision a real KMS key and run the drill, load the egress rules on the hosts, a first install from `deploy/README.md`, a real CI run, approval of the risk rubric and architecture catalog by the policy owner, legal review of licences.
-3. **Optional:** Astra token budget, routing and replay (pending plan §4); import upload UI; retention UI. The full list of pending work is in [`docs/implementation/pending-plan.md`](docs/implementation/pending-plan.md).
+3. **Optional:** Astra token budget, routing and replay (pending plan §4); retention UI. The full list of pending work is in [`docs/implementation/pending-plan.md`](docs/implementation/pending-plan.md).
 
 ---
 *AISW produces assessment reports from recorded evidence. A report is not a certification and does not prove an estate is secure.*

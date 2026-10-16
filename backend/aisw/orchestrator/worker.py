@@ -144,9 +144,11 @@ class Worker:
                 row = (
                     conn.execute(
                         text(
-                            "SELECT * FROM run_tasks WHERE (status='QUEUED' AND available_at <= :n) "
-                            "OR (status='RUNNING' AND locked_until < :n) "
-                            "ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1"
+                            "SELECT * FROM run_tasks t WHERE ((status='QUEUED' AND available_at <= :n "
+                            "AND NOT EXISTS (SELECT 1 FROM run_tasks d WHERE d.run_id=t.run_id "
+                            "AND t.depends_on ? d.task_id::text AND d.status IN ('QUEUED','RUNNING'))) "
+                            "OR (status='RUNNING' AND locked_until < :n)) "
+                            "ORDER BY created_at FOR UPDATE OF t SKIP LOCKED LIMIT 1"
                         ),
                         {"n": now},
                     )
@@ -337,6 +339,18 @@ class Worker:
             )  # fmt: skip
             expected = set(task["expected_assets"])
             warnings.extend(batch.warnings)
+            if task["depends_on"]:  # an inventory that did not finish leaves hosts unresolved
+                warnings.extend(
+                    f"INVENTORY_DEPENDENCY_{r[1]}:{r[0]}"
+                    for r in conn.execute(
+                        text(
+                            "SELECT task_id::text, status FROM run_tasks WHERE run_id=:r "
+                            "AND task_id::text IN (SELECT jsonb_array_elements_text(CAST(:d AS jsonb))) "
+                            "AND status NOT IN ('SUCCEEDED','PARTIAL') ORDER BY task_id"
+                        ),
+                        {"r": run_id, "d": json.dumps(task["depends_on"])},
+                    )
+                )
             known = [
                 KnownAsset(r[0], r[1], r[2])
                 for r in conn.execute(

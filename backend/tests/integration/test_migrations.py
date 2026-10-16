@@ -74,6 +74,13 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     sod = text("SELECT 1 FROM pg_proc WHERE proname='aisw_recommendation_sod'")
     with eng.connect() as c:
         assert c.execute(sod).first()
+    deps = text("SELECT count(*) FROM information_schema.columns "
+                "WHERE table_name='run_tasks' AND column_name='depends_on'")  # fmt: skip
+    with eng.connect() as c:
+        assert c.execute(deps).scalar() == 1
+    migrate(eng, "0018", down=True)  # 0019 (task dependencies) is reversible
+    with eng.connect() as c:
+        assert c.execute(deps).scalar() == 0
     migrate(eng, "0017", down=True)  # 0018 (recommendation separation of duties) is reversible
     with eng.connect() as c:
         assert not c.execute(sod).first()

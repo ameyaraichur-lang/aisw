@@ -12,6 +12,7 @@ from aisw.contracts.manifest import ExecutionPermit, ScopeManifest
 from aisw.gateway.registry import AdapterRegistry
 from aisw.orchestrator.events import append_event
 
+INVENTORY_DOMAIN = "inventory"
 TERMINAL_TASK = ("SUCCEEDED", "PARTIAL", "FAILED", "REJECTED", "SKIPPED", "CANCELLED", "TIMED_OUT",
                  "NEEDS_REVIEW")  # fmt: skip
 
@@ -54,42 +55,50 @@ def create_run(
         payload={"result": "ALLOW", "blockers": [], "warnings": []},
     )  # fmt: skip
     task_ids: list[str] = []
-    for target in body.targets:
-        for adapter_id in body.allowed_adapters:
-            cap = registry.capability(adapter_id)
-            if cap is None or target.kind not in cap.target_kinds:
-                continue
-            expected = (
-                conn.execute(
-                    text(
-                        "SELECT expected_assets FROM inventory_entries WHERE project_id=:p "
-                        "AND kind=:k AND selector=:s"
-                    ),
-                    {"p": body.project_id, "k": target.kind, "s": target.selector},
-                ).scalar()
-                or []
-            )
-            task_id = str(
-                conn.execute(
-                    text(
-                        "INSERT INTO run_tasks (tenant_id, run_id, task_type, adapter_id, profile, "
-                        "target_kind, target_selector, params, expected_assets, available_at) "
-                        "VALUES (:t, :r, :ty, :a, :pr, :k, :s, CAST(:params AS jsonb), "
-                        "CAST(:exp AS jsonb), :n) RETURNING task_id"
-                    ),
-                    {
-                        "t": tenant, "r": run_id, "ty": adapter_id, "a": adapter_id,
-                        "pr": body.profiles[adapter_id].profile_id, "k": target.kind,
-                        "s": target.selector,
-                        "params": json.dumps(adapter_params.get(adapter_id, {})),
-                        "exp": json.dumps(expected), "n": now,
-                    },
-                ).scalar_one()
-            )  # fmt: skip
-            task_ids.append(task_id)
-            append_event(
-                conn, tenant_id=tenant, run_id=run_id, event_type="task.queued", now=now,
-                payload={"task_id": task_id, "agent_id": adapter_id, "domain": sorted(cap.domains),
-                         "dependencies": []},
-            )  # fmt: skip
+    plan = [
+        (target, adapter_id, cap)
+        for target in body.targets
+        for adapter_id in body.allowed_adapters
+        if (cap := registry.capability(adapter_id)) is not None and target.kind in cap.target_kinds
+    ]
+    # Inventory imports run first: other imports resolve hosts against the assets they create.
+    plan.sort(key=lambda item: INVENTORY_DOMAIN not in item[2].domains)
+    inventory: list[str] = []
+    for target, adapter_id, cap in plan:
+        depends = [] if INVENTORY_DOMAIN in cap.domains else list(inventory)
+        expected = (
+            conn.execute(
+                text(
+                    "SELECT expected_assets FROM inventory_entries WHERE project_id=:p "
+                    "AND kind=:k AND selector=:s"
+                ),
+                {"p": body.project_id, "k": target.kind, "s": target.selector},
+            ).scalar()
+            or []
+        )
+        task_id = str(
+            conn.execute(
+                text(
+                    "INSERT INTO run_tasks (tenant_id, run_id, task_type, adapter_id, profile, "
+                    "target_kind, target_selector, params, expected_assets, available_at, "
+                    "depends_on) VALUES (:t, :r, :ty, :a, :pr, :k, :s, CAST(:params AS jsonb), "
+                    "CAST(:exp AS jsonb), :n, CAST(:dep AS jsonb)) RETURNING task_id"
+                ),
+                {
+                    "t": tenant, "r": run_id, "ty": adapter_id, "a": adapter_id,
+                    "pr": body.profiles[adapter_id].profile_id, "k": target.kind,
+                    "s": target.selector,
+                    "params": json.dumps(adapter_params.get(adapter_id, {})),
+                    "exp": json.dumps(expected), "n": now, "dep": json.dumps(depends),
+                },
+            ).scalar_one()
+        )  # fmt: skip
+        task_ids.append(task_id)
+        if INVENTORY_DOMAIN in cap.domains:
+            inventory.append(task_id)
+        append_event(
+            conn, tenant_id=tenant, run_id=run_id, event_type="task.queued", now=now,
+            payload={"task_id": task_id, "agent_id": adapter_id, "domain": sorted(cap.domains),
+                     "dependencies": depends},
+        )  # fmt: skip
     return task_ids

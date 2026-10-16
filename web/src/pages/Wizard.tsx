@@ -2,11 +2,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, ApiError, newIdempotencyKey } from '../api/client'
-import { useConnectors, useInventory, useManifests, usePolicyPacks, useProjects } from '../api/hooks'
-import type { Connector, GateResult, InventoryEntry, ManifestSummary, PolicyPackInfo } from '../api/types'
+import { useConnectors, useImports, useInventory, useManifests, usePolicyPacks, useProjects } from '../api/hooks'
+import type { Connector, GateResult, ImportFile, InventoryEntry, ManifestSummary, PolicyPackInfo } from '../api/types'
 import { useSession } from '../auth/useSession'
 import { Badge, Banner, ConfirmDialog, DataState, ErrorView, PageHeader, ShortHash } from '../components/ui'
 import { fmtTime } from '../lib/format'
+
+const MAX_IMPORT_BYTES = 5_000_000
 
 const STEPS = ['Project', 'Scope', 'Adapters & profiles', 'Guardrails', 'Preflight', 'Review & launch'] as const
 
@@ -88,7 +90,7 @@ export function Wizard() {
         {step === 2 && <AdapterStep form={{ ...form, policy }} set={set} usable={usable} loading={connectors.isPending} packs={packs.data ?? []} />}
         {step === 3 && <GuardrailStep form={form} set={set} hasUrl={targets.some((t) => t.kind === 'url')} />}
         {step === 4 && <PreflightStep form={{ ...form, policy }} targets={targets} manifestId={manifestId} setManifestId={setManifestId} connectors={connectors.data ?? []} onReady={() => setStep(5)} />}
-        {step === 5 && manifestId && <ReviewStep manifestId={manifestId} can={can('assessment:launch')} />}
+        {step === 5 && manifestId && <ReviewStep manifestId={manifestId} can={can('assessment:launch')} canUpload={can('import:create')} />}
         {step === 5 && !manifestId && <Banner tone="warn" title="No manifest selected">Run preflight first.</Banner>}
         {valid[step] ? <p className="field-error" role="alert">{valid[step]}</p> : null}
       </section>
@@ -273,12 +275,17 @@ function PreflightStep({ form, targets, manifestId, setManifestId, connectors, o
   )
 }
 
-function ReviewStep({ manifestId, can }: { manifestId: string; can: boolean }) {
+function ReviewStep({ manifestId, can, canUpload }: { manifestId: string; can: boolean; canUpload: boolean }) {
   const nav = useNavigate()
   const qc = useQueryClient()
   const list = useManifests({})
+  const connectors = useConnectors()
   const m: ManifestSummary | undefined = list.data?.find((x) => x.manifest_id === manifestId)
   const [fixtureSet, setFixtureSet] = useState('baseline-ok')
+  const [files, setFiles] = useState<Record<string, string>>({})
+  const importers = (connectors.data ?? []).filter((c) => c.kind === 'import' && m?.adapters.includes(c.adapter_id))
+  const missing = importers.filter((c) => !files[c.adapter_id])
+  const inventoryFirst = importers.some((c) => c.domains.includes('inventory')) && importers.some((c) => !c.domains.includes('inventory'))
   const [confirm, setConfirm] = useState(false)
   const keyRef = useRef<{ sig: string; key: string }>({ sig: '', key: newIdempotencyKey() })
   const launch = useMutation({
@@ -286,7 +293,10 @@ function ReviewStep({ manifestId, can }: { manifestId: string; can: boolean }) {
       const body = {
         project_id: m!.project_id, scope_manifest_id: m!.manifest_id, scope_manifest_hash: m!.canonical_hash,
         assessment_profile: 'baseline-readonly-v1',
-        adapter_params: m!.adapters.includes('fixture') ? { fixture: { fixture_set: fixtureSet } } : {},
+        adapter_params: {
+          ...(m!.adapters.includes('fixture') ? { fixture: { fixture_set: fixtureSet } } : {}),
+          ...Object.fromEntries(importers.map((c) => [c.adapter_id, { import_id: files[c.adapter_id] }])),
+        },
       }
       const sig = JSON.stringify(body)
       if (keyRef.current.sig !== sig) keyRef.current = { sig, key: keyRef.current.sig ? newIdempotencyKey() : keyRef.current.key }
@@ -328,6 +338,13 @@ function ReviewStep({ manifestId, can }: { manifestId: string; can: boolean }) {
                 </select>
               </div>
             ) : null}
+            {importers.length ? (
+              <section aria-labelledby="import-files" style={{ marginTop: '1rem' }}>
+                <h3 id="import-files">Import files</h3>
+                <p className="hint">Import adapters read a file you upload; they never contact a host. Records outside the signed scope are dropped and counted.{inventoryFirst ? ' Inventory imports run first in this run, so scanner hosts resolve onto the inventory\'s assets.' : ''}</p>
+                {importers.map((c) => <ImportPicker key={c.adapter_id} projectId={m.project_id} connector={c} value={files[c.adapter_id] ?? ''} canUpload={canUpload} onChange={(id) => setFiles((f) => ({ ...f, [c.adapter_id]: id }))} />)}
+              </section>
+            ) : null}
             {!approved ? (
               <Banner tone="warn" title="This scope cannot start yet">
                 A different user with the approver role must approve it (see <em>Pending approvals</em>). Then refresh this page.{' '}
@@ -336,7 +353,8 @@ function ReviewStep({ manifestId, can }: { manifestId: string; can: boolean }) {
             ) : null}
             {err ? <Banner tone="bad" role="alert" title="Start refused">{err.reasonCodes.join(', ') || err.message}. No tool was run.</Banner> : null}
             {!can ? <p className="muted">Your role cannot launch assessments.</p> : null}
-            <p><button type="button" className="btn btn--primary" disabled={!approved || !can || launch.isPending} onClick={() => setConfirm(true)}>Start Assessment</button></p>
+            <p><button type="button" className="btn btn--primary" disabled={!approved || !can || launch.isPending || missing.length > 0} onClick={() => setConfirm(true)}>Start Assessment</button></p>
+            {missing.length ? <p className="muted" data-testid="imports-missing">Choose a file for {missing.map((c) => c.adapter_id).join(', ')} before starting.</p> : null}
             <ConfirmDialog open={confirm} title="Start this assessment?" confirmLabel="Start Assessment" busy={launch.isPending} onConfirm={() => launch.mutate()} onCancel={() => setConfirm(false)}>
               <p>This will run <strong>{m.adapters.join(', ')}</strong> against <strong>{m.targets.join(', ')}</strong> using the signed manifest <ShortHash value={m.canonical_hash} />. The server re-checks the scope before every tool call.</p>
             </ConfirmDialog>
@@ -344,5 +362,57 @@ function ReviewStep({ manifestId, can }: { manifestId: string; can: boolean }) {
         )
       }}
     </DataState>
+  )
+}
+
+function ImportPicker({ projectId, connector, value, canUpload, onChange }: { projectId: string; connector: Connector; value: string; canUpload: boolean; onChange: (id: string) => void }) {
+  const qc = useQueryClient()
+  const list = useImports(projectId)
+  const [kind, setKind] = useState(connector.import_kinds[0] ?? '')
+  const [problem, setProblem] = useState<string | null>(null)
+  const [uploaded, setUploaded] = useState<{ filename: string; redacted: boolean; content_hash: string } | null>(null)
+  const id = `imp-${connector.adapter_id}`
+  const usable = (list.data ?? []).filter((f: ImportFile) => connector.import_kinds.includes(f.kind))
+  const upload = useMutation({
+    mutationFn: async (file: File) => {
+      if (file.size === 0 || file.size > MAX_IMPORT_BYTES) throw new Error('The file must be between 1 byte and 5 MB.')
+      const content = await file.text()
+      return api<ImportFile>('/imports', { method: 'POST', body: { project_id: projectId, kind, filename: file.name, content } })
+    },
+    onSuccess: (r) => {
+      setProblem(null)
+      setUploaded({ filename: r.filename, redacted: r.redacted, content_hash: r.content_hash })
+      void qc.invalidateQueries({ queryKey: ['imports', projectId] })
+      onChange(r.import_id)
+    },
+    onError: (e) => setProblem(e instanceof ApiError ? `${e.message} (${e.reasonCodes.join(', ') || e.status})` : (e as Error).message),
+  })
+  return (
+    <fieldset className="panel" data-testid={`import-${connector.adapter_id}`}>
+      <legend><code>{connector.adapter_id}</code> reads {connector.import_kinds.join(' or ')}</legend>
+      {connector.formats.length ? <p className="hint">Understands: {connector.formats.join('; ')}</p> : null}
+      <label htmlFor={`${id}-pick`}>Uploaded file</label>
+      <select id={`${id}-pick`} value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{list.isPending ? 'Loading uploads…' : usable.length ? 'Choose an uploaded file' : 'No matching uploads yet'}</option>
+        {usable.map((f) => <option key={f.import_id} value={f.import_id}>{f.filename} ({f.kind}, {f.size_bytes} bytes, {f.uploaded_by}, {fmtTime(f.uploaded_at)})</option>)}
+      </select>
+      {canUpload ? (
+        <div className="row" style={{ marginTop: '.5rem' }}>
+          {connector.import_kinds.length > 1 ? (
+            <>
+              <label htmlFor={`${id}-kind`}>File kind</label>
+              <select id={`${id}-kind`} value={kind} onChange={(e) => setKind(e.target.value)}>
+                {connector.import_kinds.map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </>
+          ) : null}
+          <label htmlFor={`${id}-file`}>Upload a new file</label>
+          <input id={`${id}-file`} type="file" disabled={upload.isPending} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = '' }} />
+        </div>
+      ) : <p className="muted">Your role cannot upload files; choose an existing upload.</p>}
+      {upload.isPending ? <p role="status" className="muted">Uploading…</p> : null}
+      {uploaded ? <p role="status" className="hint">Uploaded <code>{uploaded.filename}</code> as <ShortHash value={uploaded.content_hash} />.{uploaded.redacted ? ' Secrets found in the file were redacted before it was stored.' : ''}</p> : null}
+      {problem ? <p className="field-error" role="alert">Upload refused: {problem}</p> : null}
+    </fieldset>
   )
 }

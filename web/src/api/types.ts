@@ -36,6 +36,19 @@ export interface Connector {
   target_kinds: string[]
   profiles: { profile_id: string; profile_class: 'READ_ONLY' | 'ACTIVE' }[]
   read_only: boolean
+  kind: 'live' | 'import'
+  import_kinds: string[]
+  formats: string[]
+}
+export interface ImportFile {
+  import_id: string
+  kind: string
+  filename: string
+  content_hash: string
+  size_bytes: number
+  redacted: boolean
+  uploaded_by: string
+  uploaded_at: string
 }
 export interface PolicyPackInfo {
   key: string

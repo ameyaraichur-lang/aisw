@@ -79,8 +79,8 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Agent 1: CMDB reconciliation (unknown stays unknown, duplicates flagged not merged, conflicts untrusted, stale named) + identity resolver; confidence only from authoritative inventory | Implemented (M6) | `tests/unit/test_discovery.py`; multi-source pipeline test |
 | Registry hardening (registration refusals, health, capability metadata, contract test for every adapter) | Implemented (M6) | `tests/contract/test_adapter_contract.py` |
 | Policy pack `import-baseline:1.0.0` (13 controls) + `disjoint` operator; per-adapter coverage ledgers; gap warnings in ledger | Implemented (M6) | |
-| Task dependency ordering between imports | Planned | import the CMDB first |
-| Upload / import-parameter UI | Planned | API only; wizard cannot supply import ids |
+| Task dependency ordering between imports | Implemented: inventory tasks first, `depends_on` gate in the worker claim, failed-dependency warning (migration 0019) | `tests/security/test_import_pipeline.py`, `web/e2e/imports.spec.ts` |
+| Upload / import-parameter UI | Implemented: per-adapter file picker and upload on the launch review step | `web/e2e/imports.spec.ts` |
 | Retention: dry-run plan, hash-pinned execute, legal holds, shared-blob protection, soft purge to quarantine, append-only log (evidence and raw uploads) | Implemented (M8), API only | `tests/security/test_retention.py` (9); no scheduler, no UI, manual final deletion |
 | Live Nmap / Greenbone / ZAP / Wazuh / Prowler execution | Not planned for MVP imports; live Nmap only in M9 with authorisation | |
 | Migration 0005: risk assessments, scenarios, recommendations, narratives, append-only `llm_calls`, ticket outbox (forced RLS, least-privilege grants, CHECKs against fabricated tiers/unreviewed acceptance) | Implemented (M7) | `tests/security/test_analysis_security.py` (17), `test_migrations.py` (reversible) |

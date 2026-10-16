@@ -15,7 +15,7 @@
 ## Known limitations
 - **Raw uploads keep the operator's original file** (redacted for secret patterns only), including records outside the scope. No API returns them; adapters read them; retention/purge is not enforced yet (M8). Pre-filter exports where possible.
 - Formats follow the documented structures but were built against **synthetic** fixtures; behaviour on real Prowler/Greenbone/Wazuh/OpenSCAP/Nmap/ZAP versions is **unverified**. The Wazuh input is a documented-structure combination of its agents and SCA API responses, not a native single export.
-- **No task dependency ordering**: scanner imports resolve against assets that already exist, so import the CMDB first (separate run).
-- **No upload or import-parameter UI**: the wizard cannot supply `import_id`s yet; imports are driven through the API.
+- ~~No task dependency ordering~~ **Resolved (migration 0019):** inventory imports (CMDB, NetBox, ServiceNow) are queued first and every other task in the run lists them in `depends_on`; the worker does not claim a task while a dependency is queued or running. If an inventory task fails, the dependent tasks still collect evidence and carry `INVENTORY_DEPENDENCY_<STATUS>:<task>`, and no scanned host is promoted to a known asset.
+- ~~No upload or import-parameter UI~~ **Resolved:** the launch review step shows one picker per import adapter (choose an earlier upload or upload a new file of an accepted kind); launch stays disabled until every import adapter has a file. Upload rejections (size, binary content, kind) are shown with their reason code.
 - Asset-group membership is advisory (point 3); a group scope cannot prove a host is "in" the approved estate beyond the inventory's expected list.
 - No live Nmap/ZAP/Greenbone execution exists (those are M9/never in the MVP).
