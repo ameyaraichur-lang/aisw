@@ -29,7 +29,7 @@ export function Shell() {
         <ul>
           {NAV.filter((i) => !i.need || can(i.need)).map((i) => (
             <li key={i.to}>
-              <NavLink to={i.to} end={i.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
+              <NavLink to={i.to} end={i.to === '/' || NAV.some((o) => o.to.startsWith(`${i.to}/`))} className={({ isActive }) => (isActive ? 'active' : '')}>
                 {i.label}{i.planned ? <span className="muted"> ({i.planned})</span> : null}
               </NavLink>
             </li>

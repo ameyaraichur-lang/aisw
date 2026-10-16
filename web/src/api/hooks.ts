@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { api } from './client'
 import type {
-  AgentsResponse, AiValidations, AssetDetail, AssetList, AuditItem, Recommendation, Scenario, AuthMode, ControlMatrix, ControlRow, ExceptionList, CoverageResponse, Connector, FindingDetail, FindingRow,
+  AgentsResponse, AiValidations, AssetDetail, AssetList, AssuranceOverview, AuditItem, Disagreement, ModelCallLedger, TriggerPolicyView, Recommendation, Scenario, AuthMode, ControlMatrix, ControlRow, ExceptionList, CoverageResponse, Connector, FindingDetail, FindingRow,
   InventoryEntry, ManifestSummary, Me, Overview, Page, PolicyPackInfo, Project, ReportBody,
   ReportList, Roadmap, RunListItem, RunStatus, TaskView,
 } from './types'
@@ -65,6 +65,14 @@ export const useAudit = (p: { limit: number; offset: number; result?: string }) 
 export const useAgents = () => useQuery({ queryKey: ['agents'], queryFn: () => api<AgentsResponse>('/agents'), staleTime: 60_000 })
 export const useRunScenarios = (runId: string) =>
   useQuery({ queryKey: ['run', runId, 'scenarios'], queryFn: () => api<Scenario[]>(`/assessments/${runId}/scenarios`) })
+export const useAssuranceOverview = () =>
+  useQuery({ queryKey: ['assurance', 'overview'], queryFn: () => api<AssuranceOverview>('/assurance/overview') })
+export const useDisagreements = (p: { state: string; limit: number; offset: number }) =>
+  useQuery({ queryKey: ['assurance', 'disagreements', p], queryFn: () => api<Page<Disagreement>>(`/assurance/disagreements${qs(p)}`), placeholderData: keepPreviousData })
+export const useTriggerPolicy = (runId?: string) =>
+  useQuery({ queryKey: ['assurance', 'triggers', runId ?? ''], queryFn: () => api<TriggerPolicyView>(`/assurance/trigger-policy${qs({ run_id: runId })}`) })
+export const useModelCalls = (p: { run_id?: string; purpose?: string; status?: string; limit: number; offset: number }) =>
+  useQuery({ queryKey: ['model-calls', p], queryFn: () => api<ModelCallLedger>(`/model-calls${qs(p)}`), placeholderData: keepPreviousData, retry: false })
 export const useRoadmap = (runId: string) =>
   useQuery({ queryKey: ['run', runId, 'roadmap'], queryFn: () => api<Roadmap>(`/assessments/${runId}/roadmap`), enabled: !!runId })
 export const useRunRecommendations = (runId: string) =>

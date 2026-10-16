@@ -5,6 +5,7 @@ import { useSession } from './auth/useSession'
 import { Assessments } from './pages/Assessments'
 import { Approvals } from './pages/Approvals'
 import { AssetDetailPage, Assets } from './pages/Assets'
+import { AssuranceConsole, ModelCallsPage } from './pages/Assurance'
 import { CommandCenter } from './pages/CommandCenter'
 import { FindingDetail, Findings } from './pages/Findings'
 import { Integrations } from './pages/Integrations'
@@ -39,6 +40,8 @@ export default function App() {
         <Route path="controls" element={<ControlMatrix />} />
         <Route path="exceptions" element={<RequirePermission need={['finding:read']} title="Exceptions"><Exceptions /></RequirePermission>} />
         <Route path="reports" element={<RequirePermission need={['report:read']} title="Reports & Evidence"><ReportsPage /></RequirePermission>} />
+        <Route path="assurance" element={<RequirePermission need={['finding:read']} title="Assurance Console"><AssuranceConsole /></RequirePermission>} />
+        <Route path="audit/model-calls" element={<RequirePermission need={['audit:read']} title="Model-call ledger"><ModelCallsPage /></RequirePermission>} />
         <Route path="audit" element={<RequirePermission need={['audit:read']} title="Policy, Users & Audit"><AuditPage /></RequirePermission>} />
         <Route path="assets" element={<Assets />} />
         <Route path="assets/:projectId/:assetId" element={<AssetDetailPage />} />

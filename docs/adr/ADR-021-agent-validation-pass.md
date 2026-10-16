@@ -54,3 +54,5 @@ ADR-018 limits the model to explaining scenarios and recommendations. The WARDEN
 - Letting the reviewer downgrade severity or close findings: makes the model a decision maker; rejected.
 - Free-text review without issue codes: cannot be grounded or counted; rejected.
 - Reviewing inside the locked transaction: blocks the run row on network calls; rejected, as in ADR-018.
+
+> **Update (ADR-036):** which outcomes are reviewed is now decided by a versioned trigger policy rather than "every outcome up to the cap"; the cap still applies to what the policy selects.

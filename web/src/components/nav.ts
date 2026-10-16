@@ -10,7 +10,9 @@ export const NAV: Item[] = [
   { to: '/roadmap', label: 'Modernization Roadmap', need: 'finding:read' },
   { to: '/controls', label: 'Control Matrix' },
   { to: '/exceptions', label: 'Exceptions', need: 'finding:read' },
+  { to: '/assurance', label: 'Assurance Console', need: 'finding:read' },
   { to: '/reports', label: 'Reports & Evidence', need: 'report:read' },
   { to: '/audit', label: 'Policy, Users & Audit', need: 'audit:read' },
+  { to: '/audit/model-calls', label: 'Model-call ledger', need: 'audit:read' },
 ]
 

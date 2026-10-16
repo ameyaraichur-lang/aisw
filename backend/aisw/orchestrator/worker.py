@@ -40,6 +40,10 @@ from aisw.llm.client import DisabledModelClient, ModelClient
 from aisw.llm.gateway import LlmGateway, NarrativeResult
 from aisw.llm.routing import BudgetedClient, TokenBudget
 from aisw.llm.schema import NarrativeSubject
+from aisw.llm.triggers import DEFAULT_VERSION as DEFAULT_TRIGGER_VERSION
+from aisw.llm.triggers import Decision as TriggerDecision
+from aisw.llm.triggers import TriggerPolicy
+from aisw.llm.triggers import load as load_triggers
 from aisw.llm.validation import (
     ValidationGateway,
     ValidationPacket,
@@ -102,6 +106,8 @@ class Worker:
     # Agent validation pass (ADR-021): off unless the container turns it on from settings.
     ai_validation: bool = False
     run_token_budget: int = 0  # live tokens one run may spend on the model; 0 means no limit
+    avp_trigger_version: str = DEFAULT_TRIGGER_VERSION
+    avp_trigger_policy: TriggerPolicy | None = None  # an explicit policy wins over the version
     validation_model: ModelClient | None = None  # defaults to ``model``
     validation_batch: int = 12
     validation_max_items: int = 60
@@ -564,11 +570,12 @@ class Worker:
                 )  # fmt: skip
                 packets = (
                     analysis.validation_packets(
-                        conn, run, batch=self.validation_batch, max_items=self.validation_max_items
+                        conn, run, batch=self.validation_batch, max_items=self.validation_max_items,
+                        policy=self._triggers(), now=self.clock(),
                     )
                     if self.ai_validation
                     else []
-                )
+                )  # fmt: skip
                 if not pending and not packets:
                     self._set_state(conn, run, "ASSURANCE")
                     return True
@@ -593,10 +600,13 @@ class Worker:
             (s, gateway.narrate(s)) for s in pending
         ]
         validations: list[tuple[ValidationPacket, ValidationResult]] = []
+        late: list[TriggerDecision] = []
         if packets:
-            packets += analysis.narrative_packets(
-                results, batch=self.validation_batch, max_items=self.validation_max_items
-            )
+            more, late = analysis.narrative_packets(
+                results, batch=self.validation_batch, max_items=self.validation_max_items,
+                policy=self._triggers(),
+            )  # fmt: skip
+            packets += more
             reviewer = ValidationGateway(reviewer_model, timeout=self.model_timeout)
             with ThreadPoolExecutor(max_workers=self.validation_concurrency) as pool:
                 validations = list(zip(packets, pool.map(reviewer.validate, packets), strict=True))
@@ -607,8 +617,12 @@ class Worker:
             now = self.clock()
             analysis.store_narratives(conn, run, results, now)
             analysis.store_validations(conn, run, validations, now)
+            analysis.record_triggers(conn, run, self._triggers(), late, now)
             self._set_state(conn, run, "ASSURANCE")
         return True
+
+    def _triggers(self) -> TriggerPolicy:
+        return self.avp_trigger_policy or load_triggers(self.avp_trigger_version)
 
     def _after_dispatch(self, conn: Connection, run: dict[str, Any]) -> bool:
         tasks = conn.execute(

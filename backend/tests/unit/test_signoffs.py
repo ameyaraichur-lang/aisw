@@ -26,7 +26,7 @@ REPO = Path(__file__).resolve().parents[3]
 RUBRIC = "backend/aisw/policy/rubrics/risk-rubric-1.0.0.json"
 EXPECTED = {
     "risk-rubric-1.0.0": "P0-6", "architecture-catalog-1.0.0": "P0-6", "ai-evaluation-bar": "P0-6",
-    "config-baseline-1.0.0": "P0-6", "image-baseline-1.0.0": "P0-6",
+    "config-baseline-1.0.0": "P0-6", "image-baseline-1.0.0": "P0-6", "avp-triggers-1.0.0": "P0-6",
     "licence-review": "P0-7", "astra-data-approval": "A-1",
 }  # fmt: skip
 

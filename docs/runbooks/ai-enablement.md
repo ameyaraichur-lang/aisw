@@ -63,6 +63,7 @@ Read the results on the run's Analysis tab, from `GET /api/v1/assessments/{run_i
   - whether it was replayed.
 
   Read this from `GET /api/v1/assessments/{run_id}/model-calls`. It returns hashes and costs only, never prompts or replies. The report's `ai.usage` block carries the same totals.
+- **Trigger policy.** `AISW_AI_VALIDATION_TRIGGER_VERSION` (default `1.0.0`) selects `backend/aisw/llm/policy/triggers-<version>.yaml`, which decides which agent outcomes the reviewer checks and the order packets are sent in under a budget. Every decision, including skips, is stored in `ai_validation_triggers` and shown on the Assurance Console (ADR-036). The shipped policy is a sample awaiting policy-owner sign-off.
 - **Budget.** `AISW_AI_RUN_TOKEN_BUDGET` (default 200000; 0 means no limit) caps the live tokens one run may spend. Narration and validation share the budget, including calls made concurrently.
   - A call whose prompt would not fit is not made. It is recorded with the defect `MODEL_BUDGET_EXHAUSTED` and is not retried. That item keeps its deterministic result.
   - The report states how many calls were refused.

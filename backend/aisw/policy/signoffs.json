@@ -58,6 +58,17 @@
       "decision": null
     },
     {
+      "id": "avp-triggers-1.0.0",
+      "subject": "AI validation pass trigger policy: which agent outcomes the reviewer model checks, and in what budget order",
+      "plan_ref": "P0-6",
+      "artefact": "backend/aisw/llm/policy/triggers-1.0.0.yaml",
+      "owner": "Policy owner with the AI governance lead",
+      "status": "PENDING",
+      "label_while_pending": "Sample trigger policy: skipped outcomes are still checked by the deterministic validator, but the review scope has not been approved.",
+      "next_step": "Review the per-agent rules and the 20% scenario sample against measured call volume and cost on owner-supplied targets, then record the decision bound to the file hash.",
+      "decision": null
+    },
+    {
       "id": "licence-review",
       "subject": "Licence review: LGPL psycopg/psycopg-binary at runtime, MPL dev tools, three packages without licence metadata",
       "plan_ref": "P0-7",

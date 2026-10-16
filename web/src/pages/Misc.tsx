@@ -43,6 +43,7 @@ export function AuditPage() {
   return (
     <>
       <PageHeader title="Policy, Users & Audit" lead="Tamper-evident audit trail for your tenant." />
+      <p className="hint">Model usage has its own ledger: <Link to="/audit/model-calls">Model-call ledger</Link>.</p>
       {verify.data ? (verify.data.ok
         ? <Banner tone="ok" title="Audit chain verified">{verify.data.checked} event(s) hash-linked with no gaps or alterations.</Banner>
         : <Banner tone="bad" role="alert" title="Audit chain broken">Broken at event {verify.data.broken_at_seq}: {verify.data.reason}</Banner>) : null}

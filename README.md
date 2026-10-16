@@ -140,6 +140,7 @@ flowchart LR
 | Policy evaluation (JSON packs, pinned and hashed; OPA/Rego, [ADR-031](docs/adr/ADR-031-opa-policy-engine.md)) | 🟡 | Python and OPA engines held equivalent by tests; Rego domain rules are proposals awaiting review |
 | Framework mappings and Control Matrix ([ADR-032](docs/adr/ADR-032-framework-mappings.md)) | 🟡 | NIST CSF 2.0, CIS v8.1, 800-53 Rev. 5, ISO 27001, ATT&CK; each mapping is a proposal until a policy owner approves it |
 | Finding review and exceptions ([ADR-033](docs/adr/ADR-033-finding-review-and-exceptions.md)) | ✅ | Confirm, reject, reopen, request exception; a second person approves; an expired exception reports the FAIL again |
+| Assurance Console, AI validation trigger policy and model-call ledger ([ADR-036](docs/adr/ADR-036-avp-trigger-policy-and-assurance-console.md)) | 🟡 | Engine-vs-AI disagreement queue resolved by a human with a reason; the trigger policy is a sample awaiting policy-owner sign-off |
 | Modernization Roadmap and scenario chain view ([ADR-035](docs/adr/ADR-035-roadmap-waves-and-chain-view.md)) | ✅ | Waves follow the rubric tier only; work without a tier is left unscheduled rather than guessed |
 | Asset Explorer | ✅ | Reconciled assets with sourced ownership, latest posture per rule and accepted findings; relationships are not modelled, so none is shown |
 | Passive URL smoke adapter | 🟡 | Proven against a **local server only** |

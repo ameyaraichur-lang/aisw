@@ -15,6 +15,8 @@ import sqlalchemy.exc
 from sqlalchemy import text
 
 from aisw.core.db import tenant_connection
+from aisw.llm.triggers import AgentTriggers, Rule, TriggerPolicy
+from aisw.llm.triggers import load as load_triggers
 from aisw.llm.validation import DISSENT_DEFECT, SYSTEM_PROMPT
 from tests.evaluation.stub import OUTAGE, ScriptedModel
 from tests.integration.test_analysis_pipeline import EXPECTED, grounded, shape
@@ -44,10 +46,17 @@ def reviewer(decide: Decide) -> Callable[[str, str], str]:
     return step
 
 
-def ai_run(sl: Slice, step: Any) -> tuple[Any, str]:
+def review_everything() -> TriggerPolicy:
+    base = load_triggers()
+    always = AgentTriggers(rules=[Rule(always=True)], why="test: review every outcome")
+    return base.model_copy(update={"agents": dict.fromkeys(base.agents, always)})
+
+
+def ai_run(sl: Slice, step: Any, policy: TriggerPolicy | None = None) -> tuple[Any, str]:
     model = step if hasattr(step, "complete") else ScriptedModel(step)
     sl.enable_ai(model)
     sl.worker.ai_validation = True
+    sl.worker.avp_trigger_policy = policy
     sl.worker.validation_concurrency = 1
     _, _, run_id = sl.full_run(EXPECTED, ai_assist=True)
     sl.drain()
@@ -63,7 +72,7 @@ def plain(sl: Slice) -> dict[str, Any]:
 
 def test_validator_reviews_every_agent_and_concur_changes_nothing(sl: Slice) -> None:
     base = shape(plain(sl))
-    model, run_id = ai_run(sl, reviewer(lambda _t: "CONCUR"))
+    model, run_id = ai_run(sl, reviewer(lambda _t: "CONCUR"), review_everything())
     rep = sl.report(run_id)
     assert shape(rep) == base
     rows = sl.sql("SELECT target_ref, agent_id, verdict, effect FROM ai_validations WHERE run_id=:r",
@@ -86,6 +95,36 @@ def test_validator_reviews_every_agent_and_concur_changes_nothing(sl: Slice) -> 
     assert all(i["ai_generated"] and i["agent_name"] for i in body["items"])
     html = sl.call("GET", f"/api/v1/reports/rep-{run_id}?format=html", "carol").text
     assert "AI validation of agent outcomes" in html
+
+
+def test_the_trigger_policy_decides_what_is_reviewed_and_every_decision_is_kept(
+    sl: Slice,
+) -> None:
+    seen: list[str] = []
+
+    def concur(t: dict[str, Any]) -> str:
+        seen.append(t["target_ref"])
+        return "CONCUR"
+
+    _, run_id = ai_run(sl, reviewer(concur))
+    rows = sl.sql("SELECT agent_id, target_ref, triggered, rule, policy_version, policy_sha256 "
+                  "FROM ai_validation_triggers WHERE run_id=:r", r=run_id)  # fmt: skip
+    policy = load_triggers()
+    assert rows and {(r[4], r[5]) for r in rows} == {(policy.version, policy.sha256)}
+    triggered = {r[1] for r in rows if r[2]}
+    assert triggered == set(seen)  # the reviewer saw exactly what the policy selected
+    reviewed = {r[0] for r in sl.sql("SELECT target_ref FROM ai_validations WHERE run_id=:r",
+                                     r=run_id)}  # fmt: skip
+    assert reviewed == triggered
+    rules = {(r[0], r[1].split(":")[0], r[2], r[3]) for r in rows}
+    assert (0, "scope", True, "always") in rules
+    assert (1, "coverage", False, "no_rule_matched") in rules  # full coverage: nothing to explain
+    assert (2, "finding", True, "severity_at_least=HIGH") in rules
+    assert (2, "finding", False, "no_rule_matched") in rules  # the MEDIUM finding is skipped
+    assert (6, "recommendation", True, "always") in rules
+    assert any(a == 7 and hit for a, _, hit, _ in rules)  # AI-written text is always reviewed
+    skipped = [r for r in rows if not r[2]]
+    assert skipped and all(r[3] == "no_rule_matched" for r in skipped)
 
 
 def test_dissent_holds_a_finding_for_review(sl: Slice) -> None:

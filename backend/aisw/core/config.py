@@ -197,6 +197,8 @@ class Settings(BaseSettings):
     ai_validation_batch_size: int = Field(default=12, ge=1, le=50)
     ai_validation_max_items_per_agent: int = Field(default=60, ge=1, le=1000)
     ai_validation_concurrency: int = Field(default=4, ge=1, le=16)
+    # Which agent outcomes the AI validator reviews: aisw/llm/policy/triggers-<version>.yaml.
+    ai_validation_trigger_version: str = Field(default="1.0.0", pattern=r"^\d+\.\d+\.\d+$")
     # Model-call routing (ADR-023). Live tokens one run may spend; 0 means no limit.
     ai_run_token_budget: int = Field(default=200_000, ge=0, le=10_000_000)
     # record: store each reply under a hash of its request; replay: answer only from that store and

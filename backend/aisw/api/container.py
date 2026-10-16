@@ -113,6 +113,7 @@ class Container:
         kw.setdefault("validation_max_items", s.ai_validation_max_items_per_agent)
         kw.setdefault("validation_concurrency", s.ai_validation_concurrency)
         kw.setdefault("run_token_budget", s.ai_run_token_budget)
+        kw.setdefault("avp_trigger_version", s.ai_validation_trigger_version)
         if self.service is not None:
             kw.setdefault("renew_permit", self.service.renew_permit)
         return Worker(

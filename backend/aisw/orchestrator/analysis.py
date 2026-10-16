@@ -8,7 +8,7 @@ returned to the worker, which calls the gateway outside the run-row lock.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -29,6 +29,7 @@ from aisw.contracts.assurance import AssuranceResult
 from aisw.contracts.domain import CoverageLedger, Finding, Recommendation
 from aisw.contracts.enums import AssuranceVerdict
 from aisw.llm import packets as pk
+from aisw.llm import triggers
 from aisw.llm.gateway import NarrativeResult
 from aisw.llm.schema import NarrativeOutput, NarrativeSubject
 from aisw.llm.subject import (
@@ -38,6 +39,8 @@ from aisw.llm.subject import (
     scenario_subject,
     verification_subject,
 )
+from aisw.llm.triggers import Decision as TriggerDecision
+from aisw.llm.triggers import TriggerPolicy
 from aisw.llm.validation import (
     ValidationPacket,
     ValidationResult,
@@ -350,10 +353,32 @@ def verification_subjects(conn: Connection, run_id: str) -> list[NarrativeSubjec
 
 
 # ------------------------------------------------------------------ agent validation pass (ADR-021)
+_INSERT_TRIGGER = text(
+    "INSERT INTO ai_validation_triggers (tenant_id, run_id, agent_id, target_ref, triggered, rule, "
+    "policy_version, policy_sha256, decided_at) VALUES (:t, :r, :a, :ref, :hit, :rule, :v, :h, :n) "
+    "ON CONFLICT (run_id, target_ref) DO NOTHING"
+)
+
+
+def record_triggers(
+    conn: Connection, run: dict[str, Any], policy: TriggerPolicy,
+    decisions: Sequence[TriggerDecision], now: datetime,
+) -> None:  # fmt: skip
+    """Every decision, triggered or skipped, with the rule and the policy that made it."""
+    for d in decisions:
+        conn.execute(_INSERT_TRIGGER, {
+            "t": run["tenant_id"], "r": run["run_id"], "a": d.agent_id, "ref": d.target_ref[:300],
+            "hit": d.triggered, "rule": d.rule[:200], "v": policy.version, "h": policy.sha256,
+            "n": now,
+        })  # fmt: skip
+
+
 def validation_packets(
-    conn: Connection, run: dict[str, Any], *, batch: int, max_items: int
-) -> list[ValidationPacket]:
-    """Packets for Agents 0-6. Empty unless the run uses AI and has not been validated yet."""
+    conn: Connection, run: dict[str, Any], *, batch: int, max_items: int,
+    policy: TriggerPolicy | None = None, now: datetime | None = None,
+) -> list[ValidationPacket]:  # fmt: skip
+    """Packets for Agents 0-6 that the trigger policy selects, in policy priority order. Empty
+    unless the run uses AI and has not been validated yet."""
     run_id = run["run_id"]
     if run["ai_mode"] != "enabled":
         return []
@@ -370,9 +395,13 @@ def validation_packets(
         if (agent := agents.get(f.finding_id)) in {2, 3, 4}:
             by_agent.setdefault(agent, []).append(f)
     out: list[ValidationPacket] = []
+    pol = policy or triggers.load()
+    decisions: list[TriggerDecision] = []
 
     def add(agent_id: int, targets: list[ValidationTarget]) -> None:
-        out.extend(pk.chunk(agent_id, targets, batch=batch, max_items=max_items))
+        kept, why = triggers.select(pol, agent_id, targets)
+        decisions.extend(why)
+        out.extend(pk.chunk(agent_id, kept, batch=batch, max_items=max_items))
 
     add(0, [scope_target(conn, run)])
     add(1, pk.coverage_targets(ledgers))
@@ -385,7 +414,9 @@ def validation_packets(
         ),
     )
     add(6, pk.recommendation_targets(load_recommendations(conn, run_id).values(), findings))
-    return out
+    if now is not None:
+        record_triggers(conn, run, pol, decisions, now)
+    return [out[i] for i in triggers.order(pol, [p.agent_id for p in out])]
 
 
 def scope_target(conn: Connection, run: dict[str, Any]) -> ValidationTarget:
@@ -411,10 +442,13 @@ def scope_target(conn: Connection, run: dict[str, Any]) -> ValidationTarget:
 
 
 def narrative_packets(
-    results: list[tuple[NarrativeSubject, NarrativeResult]], *, batch: int, max_items: int
-) -> list[ValidationPacket]:
+    results: list[tuple[NarrativeSubject, NarrativeResult]], *, batch: int, max_items: int,
+    policy: TriggerPolicy | None = None,
+) -> tuple[list[ValidationPacket], list[TriggerDecision]]:  # fmt: skip
     """Narratives that passed deterministic grounding in this step: Agent 8 reviews its executive
-    summary; Agent 7 reviews every other AI-written text."""
+    summary; Agent 7 reviews every other AI-written text. Returns the trigger decisions too, to be
+    recorded with the results."""
+    pol = policy or triggers.load()
     items = [
         (f"nar-{s.purpose}-{s.subject_ref}", s, r.output)
         for s, r in results
@@ -422,10 +456,12 @@ def narrative_packets(
     ]
     executive = [i for i in items if i[1].purpose == "executive"]
     others = [i for i in items if i[1].purpose != "executive"]
+    k7, d7 = triggers.select(pol, 7, pk.narrative_targets(others))
+    k8, d8 = triggers.select(pol, 8, pk.narrative_targets(executive))
     return [
-        *pk.chunk(7, pk.narrative_targets(others), batch=batch, max_items=max_items),
-        *pk.chunk(8, pk.narrative_targets(executive), batch=batch, max_items=max_items),
-    ]
+        *pk.chunk(7, k7, batch=batch, max_items=max_items),
+        *pk.chunk(8, k8, batch=batch, max_items=max_items),
+    ], [*d7, *d8]
 
 
 # llm_calls shares one status vocabulary across narrative and validation calls.

@@ -445,6 +445,65 @@ export interface Page<T> {
   items: T[]
   total: number
 }
+export interface AssuranceOverview {
+  assurance: Record<string, Record<string, number>>
+  defects: { code: string; count: number }[]
+  ai_validation: Record<string, number>
+  open_dissent: number
+  triggers: { agent_id: number; agent_name: string; triggered: number; skipped: number }[]
+}
+export interface Disagreement {
+  run_id: string
+  project_name: string
+  agent_id: number
+  agent_name: string
+  target_ref: string
+  ai_verdict: string
+  effect: string
+  issues: { code: string; explanation: string }[]
+  human_questions: string[]
+  validator_confidence: string | null
+  model_id: string | null
+  prompt_version: string
+  created_at: string
+  engine_verdict: string | null
+  engine_defects: string[]
+  run_state: string
+  ai_generated: true
+  resolution: { decision: 'OVERRULE' | 'UPHOLD'; reason: string; decided_by: string; decided_at: string } | null
+  resolvable: boolean
+}
+export interface TriggerPolicyView {
+  version: string
+  status: string
+  sha256: string
+  signoff: string
+  priority: { agent_id: number; agent_name: string }[]
+  agents: { agent_id: number; agent_name: string; why: string; rules: string[] }[]
+  ai_validation_enabled: boolean
+  decisions: { agent_id: number; agent_name: string; target_ref: string; triggered: boolean; rule: string; policy_version: string }[]
+}
+export interface ModelCallRow {
+  run_id: string
+  project_name: string
+  purpose: string
+  subject_ref: string
+  model_id: string | null
+  prompt_version: string
+  status: string
+  attempts: number
+  defects: string[]
+  input_tokens: number | null
+  output_tokens: number | null
+  latency_ms: number | null
+  replayed: boolean
+  input_hash: string
+  output_hash: string | null
+  created_at: string
+}
+export interface ModelCallLedger extends Page<ModelCallRow> {
+  totals: { calls: number; input_tokens: number; output_tokens: number; latency_ms: number; replayed: number; unmetered: number; not_validated: number }
+}
 export interface RoadmapCard {
   recommendation_id: string
   title: string | null
