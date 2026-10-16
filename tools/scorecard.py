@@ -31,7 +31,7 @@ AREAS: list[tuple[str, tuple[str, ...]]] = [
 ]
 NOT_MEASURED = [
     "Any real scanner, real Prowler/Greenbone/Wazuh/OpenSCAP/Nmap/ZAP output or live URL (M9 needs your explicit authorisation)",
-    "Any real language model: quality, latency, licence review of weights",
+    "Real-model quality on real evidence (only the synthetic labelled set is measured, docs/implementation/evaluation.md); licence review of weights",
     "Production sign-in (OIDC), key custody/rotation (OpenBao), egress firewall enforcement",
     "Docker/compose deployment, OPA, object-lock evidence storage, multi-node worker soak",
     "CI workflow has never run on a CI runner",

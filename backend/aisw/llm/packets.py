@@ -201,6 +201,7 @@ def narrative_targets(
             "tier": subject.tier, "summary": output.summary,
             "claims": [c.model_dump(mode="json") for c in output.claims],
             "open_questions": output.open_questions,
+            "facts_are": "recorded weaknesses: each title states a requirement that was NOT met",
             "facts": [f.model_dump(mode="json") for f in subject.facts],
             "context": subject.context,
         }  # fmt: skip

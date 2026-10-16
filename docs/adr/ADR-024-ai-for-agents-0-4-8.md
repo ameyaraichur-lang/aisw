@@ -22,7 +22,7 @@ Before this ADR, the agent validation pass reviewed Agents 1–7, and only Agent
    - Its assurance parent is `ACCEPT` only if every finding it cites is accepted; otherwise it is `NEEDS_REVIEW` and is not shown.
    - Agent 8 reviews it in its own validation packet, and a `DISSENT` holds it.
    - The report states that the findings table is authoritative.
-4. **Switches.** `AISW_AI_VERIFICATION_QUESTIONS_ENABLED` and `AISW_AI_EXECUTIVE_SUMMARY_ENABLED` both default to on, and both still require AI assist on the run. Prompt versions are `narrative-1.2.0` and `agent-validation-1.1.0`.
+4. **Switches.** `AISW_AI_VERIFICATION_QUESTIONS_ENABLED` and `AISW_AI_EXECUTIVE_SUMMARY_ENABLED` both default to on, and both still require AI assist on the run. Prompt versions are `narrative-1.2.0` and `agent-validation-1.2.0`.
 5. **Replay alignment.** Recorded replies now store per-run UUIDs as the prompt's `<idN>` placeholders and restore them for the replaying run. Without this, a replayed `scope:{uuid}` verdict would name the recorded run's manifest.
 
 ## Consequences

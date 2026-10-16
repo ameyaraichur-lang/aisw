@@ -39,6 +39,10 @@ def verification_subject(f: Finding, observed: tuple[Any, Any] | None) -> Narrat
     """Agent 4: questions an owner can answer to confirm one exposure finding."""
     obs, exp = observed or (None, None)
     context = [f"Observed: {_short(obs)}", f"Expected: {_short(exp)}"] if observed else []
+    if ports := _ports(obs):
+        context.append("Observed open ports: " + ", ".join(f"port {p}" for p in ports))
+    if ports := _ports(exp):
+        context.append("Ports named in the requirement: " + ", ".join(f"port {p}" for p in ports))
     return NarrativeSubject(
         purpose="verification", subject_ref=f.finding_id, title=f.title, tier=None,
         facts=[_fact(f)], context=context,
@@ -68,6 +72,17 @@ def executive_subject(
         purpose="executive", subject_ref="executive", title="Executive summary", tier=None,
         facts=[_fact(f) for f in ranked[:EXECUTIVE_MAX_FACTS]], context=context,
     )  # fmt: skip
+
+
+def _ports(value: Any) -> list[int]:
+    """A list of port numbers, stated so the grounding check can see them (it reads "port N")."""
+    if (
+        isinstance(value, list)
+        and value
+        and all(isinstance(p, int) and not isinstance(p, bool) and 0 < p < 65536 for p in value)
+    ):
+        return sorted(set(value))[:20]
+    return []
 
 
 def _short(value: Any) -> str:

@@ -33,6 +33,7 @@ def _live_client(settings: Settings, primary: str, exclude: frozenset[str]) -> M
             settings.astra_api_key,
             api_version=settings.astra_api_version,
             max_output_tokens=settings.astra_max_output_tokens,
+            proxy=settings.astra_proxy,
         )  # fmt: skip
         for name in chain
     ]

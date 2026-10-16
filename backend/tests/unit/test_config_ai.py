@@ -142,3 +142,32 @@ def test_astra_settings_load_from_environment(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setenv("AISW_ASTRA_DATA_APPROVAL_REF", "DPA-2026-17")
     s = Settings()
     assert s.ai_enabled and s.model_provider is ModelProvider.ASTRA and s.model_id == "gpt-astra"
+
+
+# ---- explicit Astra proxy (ADR-025) ---------------------------------------------------------------
+@pytest.mark.parametrize(
+    "proxy",
+    ["http://proxy.corp.example:3128", "https://10.1.2.3:8443", "http://[2001:db8::5]:3128"],
+)
+def test_an_explicit_proxy_origin_is_accepted(proxy: str) -> None:
+    assert astra(astra_proxy=proxy).astra_proxy == proxy
+
+
+@pytest.mark.parametrize(
+    ("proxy", "why"),
+    [("socks5://proxy.corp.example:1080", "http or https"),
+     ("http://user:pw@proxy.corp.example:3128", "credentials"),  # aisw:allow-secret
+     ("http://proxy.corp.example", "name its port"),
+     ("http://proxy.corp.example:3128/path", "origin only"),
+     ("http://proxy.corp.example:99999", "invalid port"),
+     ("http://169.254.169.254:80", "link-local"),
+     ("http://0.0.0.0:3128", "unspecified")],
+)  # fmt: skip
+def test_a_proxy_that_could_become_generic_egress_is_refused(proxy: str, why: str) -> None:
+    with pytest.raises(ValidationError, match=why):
+        astra(astra_proxy=proxy)
+
+
+def test_a_proxy_is_only_for_the_astra_provider() -> None:
+    with pytest.raises(ValidationError, match="model_provider=astra only"):
+        Settings(astra_proxy="http://proxy.corp.example:3128")

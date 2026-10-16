@@ -9,6 +9,7 @@ than at runtime.
 
 from __future__ import annotations
 
+import ipaddress
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
@@ -73,6 +74,34 @@ def astra_endpoint_problem(endpoint: str) -> str | None:
     return None
 
 
+def astra_proxy_problem(proxy: str) -> str | None:
+    """Why an explicit Astra proxy is unacceptable, or None (ADR-025). Shared by settings and the
+    client. The proxy only tunnels (CONNECT): TLS and the Azure host check stay end to end."""
+    u = urlparse(proxy)
+    try:
+        port = u.port
+    except ValueError:
+        return "astra_proxy has an invalid port"
+    if u.scheme not in ("http", "https"):
+        return "astra_proxy must be an http or https proxy URL"
+    if u.username is not None or u.password is not None:
+        return "astra_proxy must not carry credentials"
+    if port is None:
+        return "astra_proxy must name its port"
+    if u.path not in ("", "/") or u.query or u.fragment or u.params:
+        return "astra_proxy must be the proxy origin only (no path, query or fragment)"
+    host = (u.hostname or "").lower()
+    if not host:
+        return "astra_proxy needs a host"
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return None
+    if ip.is_link_local or ip.is_multicast or ip.is_unspecified or ip.is_reserved:
+        return "astra_proxy must not be a link-local, multicast, reserved or unspecified address"
+    return None
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AISW_", extra="forbid", frozen=True)
 
@@ -124,6 +153,9 @@ class Settings(BaseSettings):
     # Comma-separated deployments tried in order when the primary fails transiently (ADR-023).
     astra_fallback_deployments: str | None = Field(default=None, pattern=r"^[\w.\-]+(,[\w.\-]+)*$")
     astra_failover_cooldown_seconds: int = Field(default=60, ge=1, le=3600)
+    # Explicit CONNECT proxy for Astra only (http://host:port). Proxy environment variables are
+    # still ignored; the egress allow-list must permit this proxy and nothing else (ADR-025).
+    astra_proxy: str | None = None
 
     @property
     def astra_fallbacks(self) -> list[str]:
@@ -159,6 +191,11 @@ class Settings(BaseSettings):
             problem := astra_endpoint_problem(self.astra_endpoint)
         ):
             raise ValueError(problem)
+        if self.astra_proxy is not None:
+            if problem := astra_proxy_problem(self.astra_proxy):
+                raise ValueError(problem)
+            if self.model_provider is not ModelProvider.ASTRA:
+                raise ValueError("astra_proxy applies to model_provider=astra only")
         if self.ai_replay_mode is not ReplayMode.OFF:
             if self.env is Environment.PROD:
                 raise ValueError("ai_replay_mode is for dev and test only")

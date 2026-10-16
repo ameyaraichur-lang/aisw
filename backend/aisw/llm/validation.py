@@ -27,7 +27,7 @@ from aisw.llm.gateway import _strip_descriptions, injection_flags_text
 from aisw.llm.routing import CallMeter
 from aisw.llm.validator import extract
 
-PROMPT_VERSION = "agent-validation-1.1.0"
+PROMPT_VERSION = "agent-validation-1.2.0"
 MAX_ATTEMPTS = 2
 DISSENT_DEFECT = "AI_VALIDATOR_DISSENT"
 
@@ -134,7 +134,8 @@ SYSTEM_PROMPT = (
     "weakness), DISSENT (contradicted or not supported by the facts) or INSUFFICIENT_EVIDENCE "
     "(cannot be judged from DATA). CONCERN and DISSENT need at least one issue. A finding's title "
     "states the requirement that was checked; outcome FAIL means the requirement was NOT met, so "
-    "every finding listed in a scenario or recommendation is a recorded weakness, "
+    "every finding listed in a scenario or recommendation, and every fact given for an AI-written "
+    "summary, is a recorded weakness (its title is a requirement that was not met), "
     "and observed_value is what was found where expected_value was required. Evidence is "
     "referenced by short ids such as E1; cite only those ids. Your verdict can "
     "only add caution: you cannot approve anything, change scope, mark anything as passing or "

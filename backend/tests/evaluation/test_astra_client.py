@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import io
 import json
+import socket
+import threading
 import urllib.error
 import urllib.request
 from email.message import Message
@@ -221,3 +223,68 @@ def test_factory_builds_astra_only_when_selected_and_fully_configured() -> None:
     )  # fmt: skip
     c = build_model_client(cfg)
     assert isinstance(c, AstraClient) and c.model_id == "gpt-astra"
+
+
+# ---- explicit proxy (ADR-025) ---------------------------------------------------------------------
+PROXY = "http://proxy.corp.example:3128"
+
+
+def test_an_explicit_proxy_is_the_only_proxy_used(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HTTPS_PROXY", "http://203.0.113.7:3128")
+    c = AstraClient(ENDPOINT, "gpt-astra", SecretStr(FAKE_KEY), api_version="v1", proxy=PROXY)
+    handlers = c._opener.handlers  # type: ignore[attr-defined]
+    (ph,) = [h for h in handlers if isinstance(h, urllib.request.ProxyHandler)]
+    assert getattr(ph, "proxies", None) == {"https": PROXY} and any(
+        isinstance(h, _NoRedirect) for h in handlers
+    )
+    assert "proxy.corp.example" in repr(c) and FAKE_KEY not in repr(c)
+
+
+@pytest.mark.parametrize("proxy", ["http://u:p@proxy.corp.example:3128", "http://proxy.corp.example",
+                                   "http://169.254.169.254:80"])  # fmt: skip
+def test_client_refuses_an_unsafe_proxy(proxy: str) -> None:
+    with pytest.raises(ValueError):
+        AstraClient(ENDPOINT, "gpt-astra", SecretStr(FAKE_KEY), api_version="v1", proxy=proxy)
+
+
+def test_the_proxy_only_sees_a_connect_to_the_azure_host_never_the_key() -> None:
+    """A loopback stand-in proxy records what it receives and refuses the tunnel."""
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(1)
+    port = srv.getsockname()[1]
+    seen = bytearray()
+
+    def serve() -> None:
+        conn, _ = srv.accept()
+        with conn:
+            conn.settimeout(5)
+            while b"\r\n\r\n" not in seen:
+                chunk = conn.recv(4096)
+                if not chunk:
+                    break
+                seen.extend(chunk)
+            conn.sendall(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n")
+
+    t = threading.Thread(target=serve, daemon=True)
+    t.start()
+    c = AstraClient(ENDPOINT, "gpt-astra", SecretStr(FAKE_KEY), api_version="v1",
+                    proxy=f"http://127.0.0.1:{port}")  # fmt: skip
+    with loopback_only() as attempts, pytest.raises(ModelUnavailable) as exc:
+        c.complete(system="secret system prompt", user="DATA: x", schema={}, timeout=5)
+    t.join(5)
+    srv.close()
+    assert exc.value.code == "MODEL_UNREACHABLE"
+    assert attempts == [("127.0.0.1", port)]  # the proxy and nothing else
+    head = bytes(seen).decode()
+    assert head.startswith("CONNECT warden-dev.openai.azure.com:443 HTTP/1.1\r\n")
+    assert FAKE_KEY not in head and "api-key" not in head.lower() and "secret system" not in head
+
+
+def test_factory_passes_the_explicit_proxy() -> None:
+    cfg = Settings(
+        ai_enabled=True, model_provider="astra", model_id="gpt-astra", astra_endpoint=ENDPOINT,
+        astra_api_key=FAKE_KEY, astra_data_approval_ref="DPA-2026-17", astra_proxy=PROXY,
+    )  # fmt: skip
+    c = build_model_client(cfg)
+    assert isinstance(c, AstraClient) and "proxy.corp.example:3128" in repr(c)

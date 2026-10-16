@@ -11,7 +11,7 @@ from urllib.parse import quote, urlparse
 
 from pydantic import SecretStr
 
-from aisw.core.config import astra_endpoint_problem
+from aisw.core.config import astra_endpoint_problem, astra_proxy_problem
 
 MAX_RESPONSE_BYTES = 256 * 1024
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
@@ -146,9 +146,11 @@ class OllamaClient:
 class AstraClient:
     """Astra (Azure OpenAI Responses API) client. Remote and opt-in only (ADR-020).
 
-    The endpoint must be an Azure OpenAI resource over https; redirects and proxies are refused,
-    the request never carries tools, responses are not stored service-side, and the API key is
-    only ever placed in the ``api-key`` header.
+    The endpoint must be an Azure OpenAI resource over https; redirects are refused and proxy
+    environment variables ignored. Only an explicit ``proxy`` is used, as a CONNECT tunnel, so TLS
+    to the Azure host is end to end and the proxy never sees the request or the key. The request
+    never carries tools, responses are not stored service-side, and the API key is only ever
+    placed in the ``api-key`` header.
     """
 
     def __init__(
@@ -160,8 +162,11 @@ class AstraClient:
         api_version: str,
         max_output_tokens: int = 2048,
         opener: urllib.request.OpenerDirector | None = None,
+        proxy: str | None = None,
     ) -> None:
         if problem := astra_endpoint_problem(endpoint):
+            raise ValueError(problem)
+        if proxy is not None and (problem := astra_proxy_problem(proxy)):
             raise ValueError(problem)
         if not api_key.get_secret_value().strip():
             raise ValueError("astra api key is empty")
@@ -171,12 +176,14 @@ class AstraClient:
         self._key = api_key
         self._max_output_tokens = max_output_tokens
         self.model_id = deployment
+        self._proxy = proxy
         self._opener = opener or urllib.request.build_opener(
-            _NoRedirect, urllib.request.ProxyHandler({})
+            _NoRedirect, urllib.request.ProxyHandler({"https": proxy} if proxy else {})
         )
 
     def __repr__(self) -> str:
-        return f"AstraClient(url={self._url!r}, deployment={self.model_id!r})"
+        via = f", proxy={self._proxy!r}" if self._proxy else ""
+        return f"AstraClient(url={self._url!r}, deployment={self.model_id!r}{via})"
 
     def complete(self, *, system: str, user: str, schema: dict[str, Any], timeout: float) -> str:
         return self.complete_with_usage(system=system, user=user, schema=schema, timeout=timeout)[0]

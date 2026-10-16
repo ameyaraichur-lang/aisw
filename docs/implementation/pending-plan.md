@@ -41,23 +41,18 @@ Done on 2026-10-16:
 - **Live connectivity.** `tools/astra_smoke.py` gets a validated narrative on its first attempt from gpt-6-astra, gpt-5.4 and gpt-4.1-mini on `dev-agentic`, API `2025-04-01-preview`.
 - **AI validation pass for Agents 1–7 (ADR-021).** Built, tested, and run live with `tools/astra_live_run.py` on the `baseline-ok` and `baseline-injection` fixtures.
 - **Data approval.** The dev approval ref is a placeholder for synthetic data only (`product-owner-2026-10-16-synthetic-data-only`).
+- **A-9 dissent resolution (ADR-022).** Overrule or uphold with a reason, assurance and report revisions, and the UI action.
+- **A-3 to A-6 model-call routing (ADR-023).** Usage and latency provenance, per-run token budget, failover with cooldown, and record/replay.
+- **A-2 and the generation agents (ADR-024).** Agent 0 scope review as a note, Agent 4 owner questions, and the Agent 8 executive summary with its own review.
+- **A-8 labelled evaluation and A-7 explicit proxy (ADR-025).** `tools/eval_labelled.py` on a synthetic set of 24+5 cases met the provisional bar on its third live run (recall 1.0, false dissent 0, 5/5 narratives); all runs are recorded in ADR-025. `AISW_ASTRA_PROXY` is a CONNECT-only, Astra-only proxy.
 
 | # | Item | Notes |
 |---|---|---|
 | A-1 | Data-handling approval for Astra (open item O3) covering real evidence | Synthetic data only until then |
-| A-2 | Validation pass for Agent 0 (manifest preflight) and Agent 8 (report narrative) | Deferred in ADR-021; A8 needs an executive narrative to exist first |
-| A-9 | Human resolution of held items | A reviewer can see the held items, but there is no "resolve AI dissent" action yet; resolution means re-running today |
-| A-3 | Usage and latency in provenance | Persist Responses API `usage` (input/output tokens) and latency on `llm_calls` (new migration) |
-| A-4 | Per-run token budget (rev 3 default 400k) with a priority order | Budget exhaustion must become `UNAVAILABLE`, never a partial narrative |
-| A-5 | Tier routing with one-hop failover (fast / reasoning / fallback deployments) | Provenance must record the deployment that actually answered, not the configured one |
-| A-6 | Record/replay cache (`AISW_LLM_MODE=auto|replay|off`) for offline demos and CI | Replay keyed by input hash; never used in production mode |
-| A-7 | Corporate proxy support | The client ignores proxy variables by design; if a proxy is mandatory, add an explicit, allow-listed proxy setting |
-| A-8 | Evaluation on real output | Measure rejection rate of the grounding validator on Astra output; tune prompts, not the validator |
 
 ## 5. Rev 3 scope not built (only if the WARDEN plan is adopted, see §2)
 
-- **Rest of the Astra validation pass:** A0/A8 coverage (A-2), a trigger policy file, and an Engine-vs-Astra disagreement queue with resolve actions (A-9). Agents 1–7, the effect rules and the issue-code allowlist are built (ADR-021).
-- **Generation agents:** A4 human-verification questions, A8 executive narrative (only scenario and recommendation narratives exist today).
+- **Rest of the Astra validation pass:** a trigger policy file and an Engine-vs-Astra disagreement queue page. Agents 0–8, the effect rules, the issue-code allowlist and dissent resolution are built (ADR-021, ADR-022, ADR-024).
 - **OPA + Rego bundles** for network, storage, logging/encryption, IAM, lifecycle, hardening and K8s RBAC, plus `opa test` in CI (ADR-003 seam exists).
 - **Framework mappings** (NIST CSF 2.0, CIS v8.1, 800-53r5, ATT&CK) with approval state, and a Control Matrix page.
 - **Exceptions with expiry** (an expired exception becomes FAIL), plus review actions on findings (confirm, reject, request exception).

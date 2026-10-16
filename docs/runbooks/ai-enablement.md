@@ -22,7 +22,7 @@ Redacted, whitelisted findings (titles, categories, severities, asset ids, evide
 1. A recorded **data-handling approval** for sending that projection to the Astra resource (synthetic data only until the approval covers real evidence).
 2. An Astra deployment name and the resource endpoint, which must be an `https` origin on `*.openai.azure.com`, `*.cognitiveservices.azure.com` or `*.services.ai.azure.com` (no path, port 443).
 3. The API key in your secret provider, injected as an environment variable. Never put it in `.env.example`, a commit, a ticket or a chat.
-4. Outbound https to that host. The client ignores `HTTPS_PROXY`/`HTTP_PROXY` and never follows redirects, so a proxy-only network cannot reach Astra.
+4. Outbound https to that host, either direct or through one explicit proxy (`AISW_ASTRA_PROXY=http://<proxy>:<port>`, ADR-025). The client ignores `HTTPS_PROXY`/`HTTP_PROXY` and never follows redirects. With a proxy, it opens a CONNECT tunnel to the Azure host, so TLS is end to end and the proxy never sees the key or the prompt. Proxy credentials, paths and link-local addresses are refused. Allow only that proxy in the egress rules.
 
 ### Enable
 ```bash
@@ -87,6 +87,18 @@ Both decisions are final and audited. Resolve every dissent before approving, be
 - **Scope review (Agent 0).** The reviewer reads the signed scope against what actually ran. A dissent on `scope:…` is a review note. It never holds the report, and overruling it records the decision without a new revision. Treat a `SCOPE_TOO_BROAD` or `SCOPE_INCONSISTENT` note as input to the next manifest, not to this report.
 - **Owner questions (Agent 4).** Accepted nmap, URL-smoke and ZAP findings (at most 10) carry one to three AI-written questions for the asset owner, listed under "Questions for asset owners (AI-written)". Nothing was tested to produce them. Turn them off with `AISW_AI_VERIFICATION_QUESTIONS_ENABLED=false`.
 - **Executive summary (Agent 8).** The summary is shown only if every finding it cites was accepted and the reviewer did not dissent. Otherwise it is held and the report has no summary. Turn it off with `AISW_AI_EXECUTIVE_SUMMARY_ENABLED=false`.
+
+### Measuring the reviewer and the narrator (ADR-025)
+Before relying on a deployment, and after any prompt or deployment change, run the labelled evaluation from `backend/`:
+```bash
+uv run python ../tools/eval_labelled.py --env-file ../.env.astra --timeout 120 \
+    --json ../docs/implementation/evaluation/labelled-1.0.0-<reviewer>.json --markdown ../docs/implementation/evaluation.md
+```
+The set is synthetic (`aisw/llm/eval_data/labelled-1.0.0.json`, 24 reviewer cases across Agents 0–8 and 5 narration subjects). Each case goes through the production gateways.
+- The exit code is 0 for `USABLE`, 1 for `NOT_USABLE` and 3 for `INCONCLUSIVE`.
+- The provisional bar is: recall of planted defects of at least 0.7, a false-dissent rate on clean cases of at most 0.1, and at most 10% unscored.
+- Results vary between runs. Run it more than once, and record every run, not only the best one.
+- When a case misses, read its `explanations` in the JSON. Fix the input or the prompt. Never loosen the grounding validator to make a number pass.
 
 ### Live check on synthetic data
 From `backend/`, with the key in a gitignored env file (here `../.env.astra`):

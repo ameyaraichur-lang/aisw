@@ -54,7 +54,27 @@ def test_verification_subject_carries_observed_and_expected_values_clipped() -> 
     assert (s.purpose, s.subject_ref, s.tier) == ("verification", "f1", None)
     assert s.context[0] == "Observed: [22, 445]"
     assert s.context[1].endswith("...[truncated]") and len(s.context[1]) < 250
+    assert s.context[2] == "Observed open ports: port 22, port 445"
     assert verification_subject(f, None).context == []
+    assert len(verification_subject(f, ("PermitRootLogin yes", "no")).context) == 2
+    assert len(verification_subject(f, ([True, 2], None)).context) == 2  # not a port list
+
+
+def test_observed_ports_are_groundable_and_others_are_not() -> None:
+    f = finding("f1", asset="host-2", category="network_exposure")
+    s = verification_subject(f, ([23, 443], [21, 23]))
+    assert s.context[3] == "Ports named in the requirement: port 21, port 23"
+    ok = output(
+        "f1",
+        "host-2",
+        [
+            "Is port 23 on host-2 meant to accept connections, given port 21 "
+            "is also named in the requirement?"
+        ],
+    )
+    assert validate_narrative(ok, s) == []
+    invented = output("f1", "host-2", ["Is port 3389 on host-2 meant to be reachable?"])
+    assert validate_narrative(invented, s) == ["UNGROUNDED_PORT:3389"]
 
 
 @pytest.mark.parametrize(
