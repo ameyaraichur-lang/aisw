@@ -14,6 +14,7 @@ from sqlalchemy import Engine, text
 
 from aisw.agents.architecture import builtin_catalog
 from aisw.agents.registry import AGENTS
+from aisw.agents.roadmap import build_roadmap
 from aisw.api.assessments import _run_or_404
 from aisw.api.container import Container
 from aisw.api.deps import correlation_id, get_actor, get_engine
@@ -73,8 +74,16 @@ def run_scenarios(
                  "WHERE run_id=:r ORDER BY scenario_id"), {"r": run_id},
         ).all()  # fmt: skip
         nar = _narratives(conn, run_id)
+        meta = {
+            fid: {"title": t, "severity": sev, "category": cat, "finding_verdict": fv}
+            for fid, t, sev, cat, fv in conn.execute(
+                text("SELECT finding_id, body->>'title', severity, body->>'category', "
+                     "assurance_verdict FROM findings WHERE run_id=:r"), {"r": run_id},
+            )
+        }  # fmt: skip
     return [
-        {**body, "assurance_verdict": v, "authoritative": v == "ACCEPT",
+        {**body, "chain": [{**c, **meta.get(c["finding_id"], {})} for c in body["chain"]],
+         "assurance_verdict": v, "authoritative": v == "ACCEPT",
          "narrative": nar.get(("scenario", sid)) if v == "ACCEPT" else None}
         for sid, body, v in rows
         if _visible(actor, v)
@@ -250,6 +259,30 @@ def run_recommendations(
         for rid, body, v, st, by, at, why in rows
         if _visible(actor, v)
     ]
+
+
+@router.get("/assessments/{run_id}/roadmap")
+def run_roadmap(
+    run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
+) -> dict[str, Any]:
+    authorize(actor, Permission.FINDING_READ)
+    with tenant_connection(engine, actor.tenant_id) as conn:
+        run = _run_or_404(conn, run_id)
+        rows = conn.execute(
+            text("SELECT body, assurance_verdict, status FROM recommendations WHERE run_id=:r"),
+            {"r": run_id},
+        ).all()  # fmt: skip
+        owners: dict[str, str | None] = {
+            a: o
+            for a, o in conn.execute(
+                text("SELECT asset_id, owner FROM assets WHERE project_id=:p"),
+                {"p": run["project_id"]},
+            )
+        }
+    recs = [{**body, "assurance_verdict": v, "status": st} for body, v, st in rows]
+    return {"run_id": run_id, **build_roadmap(recs, owners),
+            "catalog_signoff": signoffs.builtin().status_of(
+                f"architecture-catalog-{builtin_catalog().version}")}  # fmt: skip
 
 
 @router.get("/recommendations")

@@ -252,7 +252,7 @@ function Analysis({ runId }: { runId: string }) {
       <section aria-labelledby="sc-h">
         <h2 id="sc-h">Correlated scenarios</h2>
         <DataState q={sc} label="scenarios" isEmpty={(d) => d.length === 0} empty={<p className="muted">No scenario was built: it takes two or more recorded weaknesses on the same asset. Nothing is inferred beyond what was observed.</p>}>
-          {(d) => <>{d.map((x) => <ScenarioCard key={x.scenario_id} s={x} />)}</>}
+          {(d) => <>{d.map((x) => <ScenarioCard key={x.scenario_id} s={x} runId={runId} />)}</>}
         </DataState>
       </section>
       <section aria-labelledby="rc-h">

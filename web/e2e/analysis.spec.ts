@@ -30,7 +30,12 @@ test('risk is never invented, recommendations are drafts, and nothing is executa
 
   await page.goto(`/assessments/${runId}/analysis`)
   await expect(page.getByRole('heading', { name: 'Correlated scenarios' })).toBeVisible()
-  await expect(page.getByText('Evidence chain (observed only)')).toBeVisible()
+  const chain = page.getByTestId('scenario-chain').first()
+  await expect(chain.getByRole('link', { name: 'host-2' })).toBeVisible()
+  await expect(chain.getByRole('link', { name: 'Direct root login over SSH is disabled' })).toBeVisible()
+  await expect(chain.getByText('observed').first()).toBeVisible()
+  await expect(page.getByText('nothing in this chain is inferred', { exact: false }).first()).toBeVisible()
+  expect((await new AxeBuilder({ page }).withTags(TAGS).include('[data-testid="scenario-chain"]').analyze()).violations).toEqual([])
   await expect(page.getByText('Not rated').first()).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Draft recommendations' })).toBeVisible()
   await page.getByText('Details, validation and rollback').first().click()

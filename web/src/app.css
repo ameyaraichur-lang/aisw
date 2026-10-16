@@ -80,3 +80,16 @@ iframe.report { width: 100%; min-height: 28rem; border: 1px solid var(--border);
 .live { display: inline-flex; gap: .4rem; align-items: center; }
 .list-plain { list-style: none; padding: 0; margin: 0; }
 .list-plain li { padding: .3rem 0; border-top: 1px solid var(--border); }
+.chain { list-style: none; margin: 0 0 1rem; padding: 0; display: flex; flex-wrap: wrap; align-items: stretch; gap: 0; }
+.chain > li { display: flex; align-items: center; }
+.chain__node { border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel-2); padding: .5rem .7rem; max-width: 16rem; }
+.chain__node--asset { border-color: var(--accent); }
+.chain__edge { min-width: 5.5rem; text-align: center; font-size: .8rem; color: var(--text-muted); padding: 0 .3rem; }
+.chain__edge::before { content: ''; display: block; border-top: 2px solid var(--ok); margin: 0 0 .2rem; }
+.chain__edge--inferred::before { border-top-style: dashed; border-color: var(--warn); }
+.lanes { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); align-items: start; }
+.lane { border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); padding: .6rem; }
+.lane h3 { margin-top: 0; font-size: 1rem; }
+.lane > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.lane-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel-2); padding: .5rem .6rem; }
+.lane-card h4 { margin: 0 0 .3rem; font-size: .95rem; }

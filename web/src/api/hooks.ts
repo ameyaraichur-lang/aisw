@@ -3,7 +3,7 @@ import { api } from './client'
 import type {
   AgentsResponse, AiValidations, AssetDetail, AssetList, AuditItem, Recommendation, Scenario, AuthMode, ControlMatrix, ControlRow, ExceptionList, CoverageResponse, Connector, FindingDetail, FindingRow,
   InventoryEntry, ManifestSummary, Me, Overview, Page, PolicyPackInfo, Project, ReportBody,
-  ReportList, RunListItem, RunStatus, TaskView,
+  ReportList, Roadmap, RunListItem, RunStatus, TaskView,
 } from './types'
 
 const qs = (o: Record<string, string | number | string[] | undefined | null>): string => {
@@ -65,6 +65,8 @@ export const useAudit = (p: { limit: number; offset: number; result?: string }) 
 export const useAgents = () => useQuery({ queryKey: ['agents'], queryFn: () => api<AgentsResponse>('/agents'), staleTime: 60_000 })
 export const useRunScenarios = (runId: string) =>
   useQuery({ queryKey: ['run', runId, 'scenarios'], queryFn: () => api<Scenario[]>(`/assessments/${runId}/scenarios`) })
+export const useRoadmap = (runId: string) =>
+  useQuery({ queryKey: ['run', runId, 'roadmap'], queryFn: () => api<Roadmap>(`/assessments/${runId}/roadmap`), enabled: !!runId })
 export const useRunRecommendations = (runId: string) =>
   useQuery({ queryKey: ['run', runId, 'recommendations'], queryFn: () => api<Recommendation[]>(`/assessments/${runId}/recommendations`) })
 export const useAiValidations = (runId: string) =>

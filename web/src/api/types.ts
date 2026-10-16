@@ -278,7 +278,7 @@ export interface Scenario {
   asset_id: string
   title: string
   finding_ids: string[]
-  chain: { finding_id: string; evidence_ref: string; basis: string; note: string | null }[]
+  chain: { finding_id: string; evidence_ref: string; basis: string; note: string | null; title?: string; severity?: string; category?: string }[]
   tier: string | null
   basis: 'COMPLETE' | 'NEEDS_POLICY_REVIEW'
   confidence: string
@@ -444,6 +444,30 @@ export interface AuditItem {
 export interface Page<T> {
   items: T[]
   total: number
+}
+export interface RoadmapCard {
+  recommendation_id: string
+  title: string | null
+  status: Recommendation['status']
+  risk_tier: string | null
+  catalog_ref: string | null
+  current_state: string | null
+  target_pattern: string | null
+  affected_assets: string[]
+  effort: { value: string | null; is_estimate: boolean }
+  depends_on: string[]
+  reason: string
+}
+export interface Roadmap {
+  run_id: string
+  waves: { wave: number; label: string; items: RoadmapCard[] }[]
+  unrated: RoadmapCard[]
+  awaiting_validation: RoadmapCard[]
+  rejected: RoadmapCard[]
+  edges: { from: string; to: string; basis: string; assets: string[] }[]
+  not_authoritative: number
+  rules: string[]
+  catalog_signoff: string
 }
 export interface AssetRow {
   project_id: string
