@@ -31,7 +31,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     else if (me.isError) status = 'error'
     return {
       status, me: me.data ?? null, mode: mode.data ?? null, login, loginSso, logout,
-      can: (p) => !!me.data?.permissions.includes(p),
+      can: (p, projectId) => {
+        const d = me.data
+        if (!d) return false
+        if (d.permissions.includes(p)) return true
+        const extra = d.project_permissions ?? {}
+        return projectId ? !!extra[projectId]?.includes(p) : Object.values(extra).some((ps) => ps.includes(p))
+      },
     }
   }, [identity, me.data, me.error, me.isPending, me.isError, mode.data, mode.isPending, login, loginSso, logout])
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

@@ -1,12 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { api, ApiError, newIdempotencyKey } from '../api/client'
-import { useInventory, useProjects } from '../api/hooks'
+import { useInventory, useProjectRoles, useProjects } from '../api/hooks'
 import { Banner, DataState, PageHeader } from '../components/ui'
 import { useSession } from '../auth/useSession'
+import { fmtTime } from '../lib/format'
 
 export function Projects() {
-  const { can } = useSession()
+  const { can, me } = useSession()
   const projects = useProjects()
   const qc = useQueryClient()
   const [name, setName] = useState('')
@@ -36,13 +37,13 @@ export function Projects() {
         {(d) => (
           <div className="table-wrap">
             <table>
-              <caption>Projects in your tenant</caption>
+              <caption>{can('project:read') && !me?.permissions.includes('project:read') ? 'Projects you hold a role on' : 'Projects in your tenant'}</caption>
               <thead><tr><th scope="col">Name</th><th scope="col">Environment</th><th scope="col">Owner</th><th scope="col">Created by</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
               <tbody>
                 {d.map((p) => (
                   <tr key={p.project_id}>
                     <td>{p.name}</td><td>{p.environment}</td><td>{p.owner ?? <span className="muted">unknown</span>}</td><td>{p.created_by}</td>
-                    <td><button type="button" className="btn btn--small" aria-expanded={open === p.project_id} onClick={() => setOpen(open === p.project_id ? null : p.project_id)}>{open === p.project_id ? 'Hide inventory' : 'Inventory'}</button></td>
+                    <td><button type="button" className="btn btn--small" aria-expanded={open === p.project_id} onClick={() => setOpen(open === p.project_id ? null : p.project_id)}>{open === p.project_id ? 'Hide details' : 'Inventory and roles'}</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -51,6 +52,7 @@ export function Projects() {
         )}
       </DataState>
       {open ? <InventoryPanel projectId={open} /> : null}
+      {open ? <RolesPanel projectId={open} /> : null}
     </>
   )
 }
@@ -91,6 +93,69 @@ function InventoryPanel({ projectId }: { projectId: string }) {
           <div><button type="submit" className="btn" disabled={add.isPending || !selector}>Add entry</button></div>
         </form>
       ) : null}
+    </section>
+  )
+}
+
+const GRANTABLE: { role: string; label: string }[] = [
+  { role: 'assessment_operator', label: 'Assessment operator (drafts scope, launches, uploads imports)' },
+  { role: 'approver', label: 'Approver (approves scope, decides recommendations)' },
+  { role: 'reviewer', label: 'Reviewer (triages findings, approves reports)' },
+  { role: 'report_reader', label: 'Report reader (reads findings and reports)' },
+]
+
+function RolesPanel({ projectId }: { projectId: string }) {
+  const { me } = useSession()
+  const qc = useQueryClient()
+  const roles = useProjectRoles(projectId)
+  const [who, setWho] = useState('')
+  const [role, setRole] = useState(GRANTABLE[0].role)
+  const [reason, setReason] = useState('')
+  const manage = !!me?.permissions.includes('project:members') // tenant-wide only, never via a grant
+  const done = () => void qc.invalidateQueries({ queryKey: ['project-roles', projectId] })
+  const grant = useMutation({
+    mutationFn: () => api(`/projects/${projectId}/roles`, { method: 'POST', body: { actor_id: who.trim(), role, reason } }),
+    onSuccess: () => { setWho(''); setReason('') },
+    onSettled: done,
+  })
+  const revoke = useMutation({
+    mutationFn: (grantId: string) => api(`/projects/${projectId}/roles/${grantId}/revoke`, { method: 'POST' }),
+    onSettled: done,
+  })
+  const err = grant.error instanceof ApiError ? grant.error : null
+  return (
+    <section className="panel" aria-label="Project roles">
+      <h2>Project roles</h2>
+      <p className="hint">These roles apply to this project only, on top of anyone's tenant-wide roles. Tenant-wide duties (project admin, connector admin, auditor, policy owner) cannot be granted per project.</p>
+      <DataState q={roles} label="project roles" isEmpty={(d) => d.length === 0} empty={<p className="muted">No project-only roles.</p>}>
+        {(rows) => (
+          <table data-testid="project-roles"><caption>Project-only roles</caption>
+            <thead><tr><th scope="col">Person</th><th scope="col">Role</th><th scope="col">Reason</th><th scope="col">Granted</th>{manage ? <th scope="col"><span className="sr-only">Actions</span></th> : null}</tr></thead>
+            <tbody>
+              {rows.map((g) => (
+                <tr key={g.grant_id}>
+                  <td>{g.actor_id}</td><td>{g.role}</td><td>{g.reason}</td><td>{g.granted_by}, {fmtTime(g.granted_at)}</td>
+                  {manage ? <td><button type="button" className="btn btn--small" disabled={revoke.isPending} onClick={() => revoke.mutate(g.grant_id)}>Revoke</button></td> : null}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </DataState>
+      {manage ? (
+        <form className="row" style={{ marginTop: '1rem' }} aria-label="Grant a project role" onSubmit={(e: FormEvent) => { e.preventDefault(); grant.mutate() }}>
+          <label htmlFor="pr-who">Person (user id)</label>
+          <input id="pr-who" value={who} onChange={(e) => setWho(e.target.value)} />
+          <label htmlFor="pr-role">Role</label>
+          <select id="pr-role" value={role} onChange={(e) => setRole(e.target.value)}>
+            {GRANTABLE.map((g) => <option key={g.role} value={g.role}>{g.label}</option>)}
+          </select>
+          <label htmlFor="pr-why">Reason</label>
+          <input id="pr-why" value={reason} maxLength={1000} onChange={(e) => setReason(e.target.value)} />
+          <button type="submit" className="btn" disabled={!who.trim() || !reason.trim() || grant.isPending}>Grant role</button>
+        </form>
+      ) : null}
+      {err ? <p className="field-error" role="alert">Grant refused: {err.message}</p> : null}
     </section>
   )
 }

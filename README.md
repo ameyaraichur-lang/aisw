@@ -175,6 +175,7 @@ flowchart LR
 | Asset/relationship explorer UI, graph reasoning, attack paths | ⛔ | Reconciliation runs in the backend; no explorer UI |
 | Import upload UI; task dependency ordering between imports | ✅ | Inventory imports run first in the same run (migration 0019) |
 | Retention UI/scheduler | ✅ | Daily timer; auto soft purge needs the identical plan twice, a day apart |
+| Per-project roles | ✅ | Project grants add operator, approver, reviewer or report-reader rights on one project ([ADR-040](docs/adr/ADR-040-per-project-role-grants.md)) |
 | Real customer environment (CMDB, cloud account, on-prem zones) | ⛔ | Everything is fixtures; customer integration is a separate authorised phase |
 | Object-lock evidence storage, multi-node soak testing | ⛔ | |
 | Legal review of licences (LGPL `psycopg`) | ⛔ | Recorded PENDING in the [sign-off register](docs/implementation/signoffs.md) with owner and next step |

@@ -4,7 +4,7 @@ import type {
   AgentsResponse, AiValidations, AssetDetail, AssetList, AssuranceOverview, AuditItem, Disagreement, ModelCallLedger, TriggerPolicyView, Recommendation, Scenario, AuthMode, ControlMatrix, ControlRow, ExceptionList, CoverageResponse, Connector, FindingDetail, FindingRow,
   InventoryEntry, ManifestSummary, Me, Overview, Page, PolicyPackInfo, Project, ReportBody,
   ReportList, Roadmap, RunListItem, RunStatus, TaskView, ItsmTarget, OutboxRow, RenderedTicket,
-  AnswerKeyInfo, Scorecard, TrendRow, CoverageLedgerView, ImportFile, RetentionPlan, RetentionCheck, RetentionHold,
+  AnswerKeyInfo, Scorecard, TrendRow, CoverageLedgerView, ImportFile, ProjectRoleGrant, RetentionPlan, RetentionCheck, RetentionHold,
   RetentionAction,
 } from './types'
 
@@ -106,3 +106,5 @@ export const useRetentionChecks = () => useQuery({ queryKey: ['retention', 'chec
 export const useRetentionHolds = () => useQuery({ queryKey: ['retention', 'holds'], queryFn: () => api<RetentionHold[]>('/retention/holds') })
 export const useRetentionActions = (enabled: boolean) =>
   useQuery({ queryKey: ['retention', 'actions'], queryFn: () => api<RetentionAction[]>('/retention/actions'), enabled })
+export const useProjectRoles = (projectId: string | undefined) =>
+  useQuery({ queryKey: ['project-roles', projectId], queryFn: () => api<ProjectRoleGrant[]>(`/projects/${projectId}/roles`), enabled: !!projectId })

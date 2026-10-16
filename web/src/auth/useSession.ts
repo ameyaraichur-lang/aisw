@@ -9,8 +9,9 @@ export interface Session {
   /** Leaves the page for the IdP; the BFF brings the browser back to the current path. */
   loginSso: () => void
   logout: () => void
-  /** UI convenience only: the server re-authorises every request. */
-  can: (permission: string) => boolean
+  /** UI convenience only: the server re-authorises every request. With a project id: tenant-wide or
+   *  on that project; without: tenant-wide or on any project (for navigation). */
+  can: (permission: string, projectId?: string) => boolean
 }
 export const SessionContext = createContext<Session | null>(null)
 

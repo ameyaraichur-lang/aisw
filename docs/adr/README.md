@@ -39,5 +39,6 @@
 - [ADR-037: Ticket rendering for Jira and ServiceNow, and two-person delivery](ADR-037-itsm-ticket-rendering-and-delivery.md)
 - [ADR-038: PDF and DOCX report exports, control-gap matrix and architecture delta](ADR-038-report-exports-gap-matrix-and-delta.md)
 - [ADR-039: Maple Trust fixture estate, answer key, scorecard and Evaluation Lab](ADR-039-maple-trust-estate-and-evaluation-lab.md)
+- [ADR-040: Per-project role grants on top of tenant-wide roles](ADR-040-per-project-role-grants.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

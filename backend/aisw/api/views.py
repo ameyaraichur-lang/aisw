@@ -19,6 +19,7 @@ from aisw.api.exceptions import allowed_actions, current_exception, exception_js
 from aisw.core.auth import list_dev_users
 from aisw.core.config import Environment
 from aisw.core.db import tenant_connection
+from aisw.core.project_roles import project_of_run
 from aisw.core.rbac import ROLE_PERMISSIONS, ActorContext, Permission, authorize
 from aisw.orchestrator.analysis import current_assurance
 from aisw.orchestrator.stream import stream_events
@@ -49,8 +50,14 @@ def auth_mode(request: Request) -> dict[str, Any]:
 @router.get("/me")
 def me(actor: ActorContext = Depends(get_actor)) -> dict[str, Any]:
     perms = sorted({p.value for r in actor.roles for p in ROLE_PERMISSIONS[r]})
+    project_permissions = {
+        pid: sorted({p.value for r in roles for p in ROLE_PERMISSIONS[r]} - set(perms))
+        for pid, roles in actor.project_roles
+    }
     return {"tenant_id": actor.tenant_id, "actor_id": actor.actor_id,
-            "roles": sorted(r.value for r in actor.roles), "permissions": perms}  # fmt: skip
+            "roles": sorted(r.value for r in actor.roles), "permissions": perms,
+            "project_roles": {pid: sorted(r.value for r in roles) for pid, roles in actor.project_roles},
+            "project_permissions": {k: v for k, v in project_permissions.items() if v}}  # fmt: skip
 
 
 @router.get("/connectors")
@@ -104,6 +111,7 @@ def policy_packs(
 def list_inventory(
     project_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> list[dict[str, Any]]:
+    actor = actor.on(project_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         try:
@@ -129,6 +137,7 @@ def list_manifests(
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
 ) -> list[dict[str, Any]]:
+    actor = actor.on(project_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         rows = conn.execute(
@@ -167,6 +176,7 @@ def list_runs(
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
 ) -> dict[str, Any]:
+    actor = actor.on(project_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         rows = conn.execute(
@@ -198,6 +208,7 @@ def list_runs(
 def run_tasks(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> list[dict[str, Any]]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)
@@ -223,6 +234,7 @@ def run_tasks(
 def run_controls(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> list[dict[str, Any]]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         run = _run_or_404(conn, run_id)
@@ -249,6 +261,7 @@ def finding_detail(
     engine: Engine = Depends(get_engine),
     c: Container = Depends(_c),
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.FINDING_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         run = _run_or_404(conn, run_id)
@@ -525,6 +538,7 @@ def event_stream(
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
 ) -> StreamingResponse:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)

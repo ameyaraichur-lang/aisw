@@ -71,7 +71,7 @@ Done on 2026-10-16:
 | Retention | ~~UI and scheduler~~ (done: Evidence Retention page; daily dry-run check with opt-in, two-sighting auto soft purge, migration 0020); quarantine deletion is manual. **Pending:** sign-off on enabling auto-execute (owner: retention owner; next step: approve `AISW_RETENTION_AUTO_EXECUTE=true` and the confirmation window per tenant) |
 | Evidence | Object-lock/WORM storage; externally witnessed audit-chain anchor |
 | Events | ~~Silent-stall detection for an open but dead SSE stream (ADR-015)~~ (done: a client watchdog reopens the stream from the cursor after 30 s of silence) |
-| Authorisation | Per-project roles (roles are tenant-wide today) |
+| Authorisation | ~~Per-project roles~~ (done, ADR-040: additive project grants for operator, approver, reviewer and report reader, migration 0021); tenant-wide lists still need a tenant role |
 | URL probe | Real CA, IPv6-only, HTTP/2-only and proxy behaviour (tested on local PKI only) |
 | Supply chain | Syft/ScanCode SBOM instead of the lockfile-based one; gitleaks instead of the stopgap secret scanner |
 | Scale | Multi-node worker soak test; DoS sizing |

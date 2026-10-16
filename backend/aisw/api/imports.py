@@ -49,6 +49,7 @@ def upload_import(
     engine: Engine = Depends(get_engine),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = actor.on(body.project_id)
     authorize(actor, Permission.IMPORT_CREATE)
     if body.kind not in IMPORT_KINDS:
         raise HTTPException(status_code=422, detail="unknown import kind")
@@ -81,6 +82,7 @@ def upload_import(
 def list_imports(
     project_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> list[dict[str, Any]]:
+    actor = actor.on(project_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         rows = conn.execute(

@@ -281,6 +281,7 @@ function Analysis({ runId }: { runId: string }) {
 }
 
 function AiValidationPanel({ runId }: { runId: string }) {
+  const projectId = useRunStatus(runId).data?.project_id
   const q = useAiValidations(runId)
   const { can } = useSession()
   const qc = useQueryClient()
@@ -333,7 +334,7 @@ function AiValidationPanel({ runId }: { runId: string }) {
                         <td>
                           {i.resolution ? (
                             <span><Badge d={i.resolution.decision === 'OVERRULE' ? { icon: '↺', label: 'Overruled', tone: 'neutral' } : { icon: '✓', label: 'Upheld', tone: 'warn' }} /> by {i.resolution.decided_by}: {i.resolution.reason}</span>
-                          ) : i.verdict === 'DISSENT' && can('report:approve') ? (
+                          ) : i.verdict === 'DISSENT' && can('report:approve', projectId) ? (
                             <span className="row">
                               <button type="button" className="btn" onClick={() => open(i.target_ref, 'OVERRULE', i.effect === 'HOLD_FOR_REVIEW')}>Overrule</button>
                               <button type="button" className="btn" onClick={() => open(i.target_ref, 'UPHOLD', i.effect === 'HOLD_FOR_REVIEW')}>Uphold</button>
@@ -398,6 +399,7 @@ export function ControlsTable({ runId }: { runId: string }) {
 }
 
 function ReportTab({ runId }: { runId: string }) {
+  const projectId = useRunStatus(runId).data?.project_id
   const reports = useReports(runId)
   const { can } = useSession()
   const first = reports.data?.[0]
@@ -472,7 +474,7 @@ function ReportTab({ runId }: { runId: string }) {
         <button type="button" className="btn" onClick={() => void download('html')}>Download HTML</button>
         <button type="button" className="btn" onClick={() => void download('pdf')}>Download PDF</button>
         <button type="button" className="btn" onClick={() => void download('docx')}>Download Word (DOCX)</button>
-        {can('report:approve') && first.approval_state === 'PENDING' ? <button type="button" className="btn btn--primary" onClick={() => setConfirm(true)}>Approve report</button> : null}
+        {can('report:approve', projectId) && first.approval_state === 'PENDING' ? <button type="button" className="btn btn--primary" onClick={() => setConfirm(true)}>Approve report</button> : null}
       </div>
       {err ? <Banner tone="bad" role="alert" title={err.status === 403 ? 'You cannot approve this report' : 'Approval refused'}>{err.message}</Banner> : null}
       {dlError ? <Banner tone="warn" role="alert" title="Not downloaded">{dlError}</Banner> : null}

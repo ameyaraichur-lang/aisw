@@ -75,6 +75,7 @@ def coverage_ledger(
     engine: Engine = Depends(get_engine),
     c: Container = Depends(_c),
 ) -> dict[str, Any]:
+    actor = actor.on(project_id)
     authorize(actor, Permission.PROJECT_READ)
     now: datetime = c.clock()
     with tenant_connection(engine, actor.tenant_id) as conn:

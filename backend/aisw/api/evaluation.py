@@ -14,6 +14,7 @@ from sqlalchemy import Engine, text
 
 from aisw.api.deps import get_actor, get_engine
 from aisw.core.db import tenant_connection
+from aisw.core.project_roles import project_of_run
 from aisw.core.rbac import ActorContext, Permission, authorize
 from aisw.evaluation import answer_key
 from aisw.evaluation.scorecard import collect, run_scorecard, score
@@ -41,6 +42,7 @@ def answer_keys(actor: ActorContext = Depends(get_actor)) -> list[dict[str, Any]
 def scorecard(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.FINDING_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         card = run_scorecard(conn, run_id)
@@ -58,6 +60,7 @@ def trend(
     engine: Engine = Depends(get_engine),
 ) -> list[dict[str, Any]]:
     """Recent reported runs, newest first. Reproducibility compares runs within this window."""
+    actor = actor.on(project_id)
     authorize(actor, Permission.FINDING_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         runs = conn.execute(

@@ -8,7 +8,11 @@ export interface Me {
   actor_id: string
   roles: string[]
   permissions: string[]
+  /** Extra roles and permissions held on single projects (beyond the tenant-wide ones). */
+  project_roles: Record<string, string[]>
+  project_permissions: Record<string, string[]>
 }
+export interface ProjectRoleGrant { grant_id: string; actor_id: string; role: string; reason: string; granted_by: string; granted_at: string }
 export interface AuthMode {
   mode: 'dev_stub' | 'oidc' | 'none'
   users: { name: string; tenant_id: string; roles: string[] }[]
@@ -105,6 +109,7 @@ export interface RunListItem {
 }
 export interface RunStatus {
   run_id: string
+  project_id: string
   state: string
   last_phase: string | null
   reason: string | null

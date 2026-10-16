@@ -21,6 +21,7 @@ from aisw.api.deps import correlation_id, get_actor, get_engine
 from aisw.contracts.base import NonEmpty, StrictModel, canonical_hash
 from aisw.core.audit import append_audit
 from aisw.core.db import tenant_connection
+from aisw.core.project_roles import project_of_exception, project_of_run
 from aisw.core.rbac import ActorContext, Permission, authorize, require_separation_of_duties
 from aisw.core.redaction import redact_text
 from aisw.policy import exceptions as exc_rules
@@ -130,6 +131,7 @@ def review_finding(
     c: Container = Depends(_c),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.FINDING_TRIAGE)
     wants_expiry = body.action == "REQUEST_EXCEPTION"
     if wants_expiry != (body.expires_at is not None):
@@ -234,6 +236,7 @@ def list_exceptions(
     engine: Engine = Depends(get_engine),
     c: Container = Depends(_c),
 ) -> dict[str, Any]:
+    actor = actor.on(project_id)
     authorize(actor, Permission.FINDING_READ)
     now = c.clock()
     with tenant_connection(engine, actor.tenant_id) as conn:
@@ -292,6 +295,7 @@ def decide_exception(
     c: Container = Depends(_c),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = project_of_exception(engine, actor, exception_id)
     authorize(actor, Permission.EXCEPTION_APPROVE)
     reason = redact_text(body.reason)[:1000]
     status = "APPROVED" if body.decision == "APPROVE" else "REJECTED"
@@ -339,6 +343,7 @@ def revoke_exception(
     c: Container = Depends(_c),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = project_of_exception(engine, actor, exception_id)
     authorize(actor, Permission.EXCEPTION_APPROVE)
     reason = redact_text(body.reason)[:1000]
     now = c.clock()

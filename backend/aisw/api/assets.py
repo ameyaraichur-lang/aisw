@@ -50,6 +50,7 @@ def list_assets(
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
 ) -> dict[str, Any]:
+    actor = actor.on(project_id)
     authorize(actor, Permission.PROJECT_READ)
     like = f"%{q.replace('%', '').replace('_', '')}%" if q else None
     where = (
@@ -91,6 +92,7 @@ def asset_detail(
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
 ) -> dict[str, Any]:
+    actor = actor.on(project_id)
     authorize(actor, Permission.PROJECT_READ)
     can_read_findings = actor.can(Permission.FINDING_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:

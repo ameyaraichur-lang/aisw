@@ -9,11 +9,18 @@ from aisw.api.auth import session_actor
 from aisw.core.auth import AuthError, resolve_actor
 from aisw.core.config import Environment, Settings
 from aisw.core.oidc import OidcProvider
+from aisw.core.project_roles import with_project_roles
 from aisw.core.rbac import ActorContext
 from aisw.core.session import SESSION_COOKIE
 
 
 def get_actor(request: Request, authorization: str | None = Header(default=None)) -> ActorContext:
+    actor = _identity(request, authorization)
+    engine: Engine | None = request.app.state.engine
+    return actor if engine is None else with_project_roles(engine, actor)
+
+
+def _identity(request: Request, authorization: str | None) -> ActorContext:
     """A bearer header wins over a cookie: dev stub tokens, else an IdP-issued JWT (ADR-026)."""
     s: Settings = request.app.state.settings
     oidc: OidcProvider | None = getattr(request.app.state, "oidc", None)

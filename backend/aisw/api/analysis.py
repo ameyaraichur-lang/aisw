@@ -22,6 +22,7 @@ from aisw.contracts.base import NonEmpty, StrictModel, canonical_hash
 from aisw.core.audit import append_audit
 from aisw.core.config import ModelProvider
 from aisw.core.db import tenant_connection
+from aisw.core.project_roles import project_of_run
 from aisw.core.rbac import ActorContext, Forbidden, Permission, authorize
 from aisw.core.redaction import redact_obj, redact_text
 from aisw.orchestrator.analysis import usage_totals, validation_summary
@@ -66,6 +67,7 @@ def _visible(actor: ActorContext, verdict: str | None) -> bool:
 def run_scenarios(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> list[dict[str, Any]]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.FINDING_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)
@@ -108,6 +110,7 @@ def run_model_calls(
 ) -> dict[str, Any]:
     """The model-call ledger (ADR-023): who served each call, what it cost, and how it ended.
     Hashes only; prompts and replies are never returned."""
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.FINDING_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)
@@ -129,6 +132,7 @@ def run_ai_validations(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> dict[str, Any]:
     """The agent validation pass for a run (ADR-021). Model-written text, labelled as such."""
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.FINDING_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)
@@ -176,6 +180,7 @@ def resolve_dissent(
     """A human decides an AI dissent (ADR-022). OVERRULE re-runs assurance without it and issues a
     new report revision; UPHOLD records agreement and changes nothing. Nothing is ever ACCEPTed
     here directly: assurance decides again from the evidence."""
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.REPORT_APPROVE)
     reason = redact_text(body.reason)[:1000]
     with tenant_connection(engine, actor.tenant_id) as conn:
@@ -245,6 +250,7 @@ def resolve_dissent(
 def run_recommendations(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> list[dict[str, Any]]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.FINDING_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)
@@ -265,6 +271,7 @@ def run_recommendations(
 def run_roadmap(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.FINDING_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         run = _run_or_404(conn, run_id)
@@ -340,6 +347,7 @@ def decide(
     c: Container = Depends(_c),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.RECOMMENDATION_DECIDE)
     target = _TARGET_STATUS[body.decision]
     reason = redact_text(body.reason)[:1000]
@@ -424,6 +432,7 @@ def create_ticket_draft(
     c: Container = Depends(_c),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, body.run_id)
     authorize(actor, Permission.RECOMMENDATION_DECIDE)
     if not c.settings.enable_itsm_ticket_creation:
         raise HTTPException(

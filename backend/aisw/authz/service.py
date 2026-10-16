@@ -24,6 +24,7 @@ from aisw.contracts.manifest import ExecutionPermit, ScopeManifest, ScopeManifes
 from aisw.core.audit import append_audit
 from aisw.core.db import tenant_connection
 from aisw.core.idempotency import run_idempotent
+from aisw.core.project_roles import project_of_manifest, project_of_permit
 from aisw.core.rbac import ActorContext, Forbidden, Permission, authorize
 
 
@@ -140,6 +141,7 @@ class ScopeService:
         self, actor: ActorContext, project_id: str, body: ScopeManifestBody, *, cid: str
     ) -> tuple[ScopeManifest, GateOutcome]:
         """Resolve and validate the draft; persist only if nothing blocks it."""
+        actor = actor.on(project_id)
         authorize_or_audit = self._authorize(
             actor, Permission.MANIFEST_CREATE, "manifest.create", cid
         )
@@ -190,6 +192,7 @@ class ScopeService:
         return manifest, outcome
 
     def preflight(self, actor: ActorContext, manifest_id: str, *, cid: str) -> GateOutcome:
+        actor = project_of_manifest(self.engine, actor, manifest_id)
         self._authorize(actor, Permission.MANIFEST_CREATE, "manifest.preflight", cid)()
         denial: ScopeDenied | None = None
         with tenant_connection(self.engine, actor.tenant_id) as conn:
@@ -238,6 +241,7 @@ class ScopeService:
         acknowledge_active_adapters: frozenset[str] = frozenset(),
         cid: str,
     ) -> ScopeManifest:
+        actor = project_of_manifest(self.engine, actor, manifest_id)
         self._authorize(actor, Permission.MANIFEST_APPROVE, "manifest.approve", cid)()
         denial: ScopeDenied | None = None
         with tenant_connection(self.engine, actor.tenant_id) as conn:
@@ -301,6 +305,7 @@ class ScopeService:
         raise denial
 
     def revoke_manifest(self, actor: ActorContext, manifest_id: str, *, cid: str) -> None:
+        actor = project_of_manifest(self.engine, actor, manifest_id)
         self._authorize(actor, Permission.MANIFEST_APPROVE, "manifest.revoke", cid)()
         with tenant_connection(self.engine, actor.tenant_id) as conn:
             m = self._load(conn, manifest_id, lock=True)
@@ -328,6 +333,7 @@ class ScopeService:
         on_authorized: AuthorizedHook | None = None,
         request_extra: dict[str, Any] | None = None,
     ) -> LaunchAuthorization:
+        actor = actor.on(project_id)
         self._authorize(actor, Permission.ASSESSMENT_LAUNCH, "assessment.launch", cid)()
         request_body = {
             "project_id": project_id, "manifest_id": manifest_id,
@@ -508,6 +514,7 @@ class ScopeService:
             return new_id
 
     def revoke_permit(self, actor: ActorContext, permit_id: str, *, cid: str) -> None:
+        actor = project_of_permit(self.engine, actor, permit_id)
         self._authorize(actor, Permission.ASSESSMENT_CANCEL, "permit.revoke", cid)()
         with tenant_connection(self.engine, actor.tenant_id) as conn:
             n = conn.execute(

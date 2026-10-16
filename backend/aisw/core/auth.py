@@ -27,6 +27,7 @@ _SEEDED: dict[str, ActorContext] = {
     "dev-erin": ActorContext("tenant-a", "erin", frozenset({Role.AUDITOR})),
     "dev-paula": ActorContext("tenant-a", "paula", frozenset({Role.POLICY_OWNER})),
     "dev-dave": ActorContext("tenant-b", "dave", frozenset({Role.PROJECT_ADMIN})),
+    "dev-pete": ActorContext("tenant-a", "pete", frozenset()),  # project-scoped grants only
 }
 
 

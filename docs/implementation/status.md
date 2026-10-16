@@ -13,6 +13,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Strict contracts (envelope 1.1, manifest, permit, decision, domain entities, assurance, report) + exported JSON Schemas | Implemented (M1) | `tests/contract/` (53 tests), `schemas/` drift gate |
 | Tenant isolation via PostgreSQL RLS (forced, fail-closed when no tenant set) | Implemented (M1) | `tests/security/test_tenant_isolation_db.py`; real PG 16 via pgserver |
 | RBAC roles/permissions, separation of duties, dev identity stub (dev/test only) | Implemented (M1) | `tests/security/test_api_authz.py` |
+| Per-project role grants (ADR-040, migration 0021): additive, non-self, audited, revoke-once; Roles panel on Projects | Implemented | `tests/security/test_project_roles.py`, `web/e2e/project-roles.spec.ts`; tenant-wide lists still need a tenant role |
 | Hash-chained append-only audit (DB triggers + verifier) | Implemented (M1) | `tests/security/test_audit_chain.py` incl. tamper/gap detection |
 | Idempotent commands (same-txn key record, conflict on body change, race-safe) | Implemented (M1) | `tests/security/test_api_authz.py` incl. 6-thread race |
 | Scope-manifest immutability + approval invariants in DB | Implemented (M1) | `tests/security/test_manifest_db.py` |

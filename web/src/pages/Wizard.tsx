@@ -37,7 +37,6 @@ const INITIAL: Form = {
 export function Wizard() {
   const [params] = useSearchParams()
   const resume = params.get('manifest')
-  const { can } = useSession()
   const [step, setStep] = useState(resume ? 5 : 0)
   const [form, setForm] = useState<Form>(INITIAL)
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }))
@@ -90,7 +89,7 @@ export function Wizard() {
         {step === 2 && <AdapterStep form={{ ...form, policy }} set={set} usable={usable} loading={connectors.isPending} packs={packs.data ?? []} />}
         {step === 3 && <GuardrailStep form={form} set={set} hasUrl={targets.some((t) => t.kind === 'url')} />}
         {step === 4 && <PreflightStep form={{ ...form, policy }} targets={targets} manifestId={manifestId} setManifestId={setManifestId} connectors={connectors.data ?? []} onReady={() => setStep(5)} />}
-        {step === 5 && manifestId && <ReviewStep manifestId={manifestId} can={can('assessment:launch')} canUpload={can('import:create')} />}
+        {step === 5 && manifestId && <ReviewStep manifestId={manifestId} />}
         {step === 5 && !manifestId && <Banner tone="warn" title="No manifest selected">Run preflight first.</Banner>}
         {valid[step] ? <p className="field-error" role="alert">{valid[step]}</p> : null}
       </section>
@@ -275,12 +274,15 @@ function PreflightStep({ form, targets, manifestId, setManifestId, connectors, o
   )
 }
 
-function ReviewStep({ manifestId, can, canUpload }: { manifestId: string; can: boolean; canUpload: boolean }) {
+function ReviewStep({ manifestId }: { manifestId: string }) {
+  const session = useSession()
   const nav = useNavigate()
   const qc = useQueryClient()
   const list = useManifests({})
   const connectors = useConnectors()
   const m: ManifestSummary | undefined = list.data?.find((x) => x.manifest_id === manifestId)
+  const can = session.can('assessment:launch', m?.project_id)
+  const canUpload = session.can('import:create', m?.project_id)
   const [fixtureSet, setFixtureSet] = useState('baseline-ok')
   const [files, setFiles] = useState<Record<string, string>>({})
   const importers = (connectors.data ?? []).filter((c) => c.kind === 'import' && m?.adapters.includes(c.adapter_id))

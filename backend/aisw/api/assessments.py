@@ -17,6 +17,7 @@ from aisw.authz.service import ScopeDenied, ScopeService
 from aisw.contracts.base import NonEmpty, Sha256, Slug, StrictModel
 from aisw.core.audit import append_audit
 from aisw.core.db import tenant_connection
+from aisw.core.project_roles import project_of_report, project_of_run
 from aisw.core.rbac import ActorContext, Forbidden, Permission, authorize
 from aisw.orchestrator.events import append_event
 from aisw.orchestrator.runs import create_run
@@ -73,6 +74,7 @@ def launch(
     cid: str = Depends(correlation_id),
     idempotency_key: str | None = Header(default=None),
 ) -> dict[str, Any]:
+    actor = actor.on(body.project_id)
     try:
         authorize(actor, Permission.ASSESSMENT_LAUNCH)
     except Forbidden:
@@ -123,6 +125,7 @@ def launch(
 def status(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         run = _run_or_404(conn, run_id)
@@ -140,6 +143,7 @@ def status(
     counts = {s: n for s, n in tasks}
     return {
         "run_id": run_id,
+        "project_id": str(run["project_id"]),
         "state": run["state"],
         "last_phase": run["last_phase"],
         "reason": run["reason"],
@@ -163,6 +167,7 @@ def events(
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)
@@ -194,6 +199,7 @@ def cancel(
     c: Container = Depends(_container),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.ASSESSMENT_CANCEL)
     now = c.clock()
     with tenant_connection(engine, actor.tenant_id) as conn:
@@ -227,6 +233,7 @@ def cancel(
 def coverage(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         run = _run_or_404(conn, run_id)
@@ -262,6 +269,7 @@ def findings(
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.FINDING_READ)
     if not set(verdict) <= {"ACCEPT", "NEEDS_REVIEW", "REJECT"}:
         raise HTTPException(status_code=422, detail="unknown verdict filter")
@@ -289,6 +297,7 @@ def findings(
 def list_reports(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> list[dict[str, Any]]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.REPORT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)
@@ -318,6 +327,7 @@ def get_report(
     c: Container = Depends(_container),
     cid: str = Depends(correlation_id),
 ) -> Response:
+    actor = project_of_report(engine, actor, report_id)
     authorize(actor, Permission.REPORT_READ)  # checked again at download time
     now = c.clock()
     with tenant_connection(engine, actor.tenant_id) as conn:
@@ -387,6 +397,7 @@ def approve_report(
     c: Container = Depends(_container),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = project_of_report(engine, actor, report_id)
     authorize(actor, Permission.REPORT_APPROVE)
     now = c.clock()
     with tenant_connection(engine, actor.tenant_id) as conn:

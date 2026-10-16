@@ -20,6 +20,7 @@ from aisw.api.deps import correlation_id, get_actor, get_engine
 from aisw.contracts.base import canonical_hash
 from aisw.core.audit import append_audit
 from aisw.core.db import tenant_connection
+from aisw.core.project_roles import project_of_outbox
 from aisw.core.rbac import ActorContext, Permission, authorize
 from aisw.itsm import render as itsm
 from aisw.itsm.delivery import DeliveryError, client_from_settings
@@ -50,6 +51,7 @@ def render_draft(
     engine: Engine = Depends(get_engine),
     c: Container = Depends(_c),
 ) -> dict[str, Any]:
+    actor = project_of_outbox(engine, actor, outbox_id)
     authorize(actor, Permission.FINDING_READ)
     s = c.settings
     with tenant_connection(engine, actor.tenant_id) as conn:
@@ -88,6 +90,7 @@ def send_draft(
     c: Container = Depends(_c),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = project_of_outbox(engine, actor, outbox_id)
     authorize(actor, Permission.RECOMMENDATION_DECIDE)
     s = c.settings
     if not s.enable_itsm_ticket_delivery:
