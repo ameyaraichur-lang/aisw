@@ -83,6 +83,11 @@ Read the results on the run's Analysis tab, from `GET /api/v1/assessments/{run_i
 
 Both decisions are final and audited. Resolve every dissent before approving, because an approved report cannot be revised.
 
+### Agents 0, 4 and 8 (ADR-024)
+- **Scope review (Agent 0).** The reviewer reads the signed scope against what actually ran. A dissent on `scope:…` is a review note. It never holds the report, and overruling it records the decision without a new revision. Treat a `SCOPE_TOO_BROAD` or `SCOPE_INCONSISTENT` note as input to the next manifest, not to this report.
+- **Owner questions (Agent 4).** Accepted nmap, URL-smoke and ZAP findings (at most 10) carry one to three AI-written questions for the asset owner, listed under "Questions for asset owners (AI-written)". Nothing was tested to produce them. Turn them off with `AISW_AI_VERIFICATION_QUESTIONS_ENABLED=false`.
+- **Executive summary (Agent 8).** The summary is shown only if every finding it cites was accepted and the reviewer did not dissent. Otherwise it is held and the report has no summary. Turn it off with `AISW_AI_EXECUTIVE_SUMMARY_ENABLED=false`.
+
 ### Live check on synthetic data
 From `backend/`, with the key in a gitignored env file (here `../.env.astra`):
 ```bash

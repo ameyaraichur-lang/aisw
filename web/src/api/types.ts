@@ -311,6 +311,20 @@ export interface ReportList {
   revision: number
   supersedes: string | null
 }
+/** Agent 8 summary for leadership: AI-written, shown only when Independent Assurance accepted it. */
+export interface ExecutiveSummary {
+  summary: string
+  claims: { text: string; finding_ids: string[]; asset_ids: string[] }[]
+  model_id: string | null
+  prompt_version: string
+  ai_generated: true
+}
+/** Agent 4 questions for the asset owner about an accepted finding. AI-written; nothing was tested. */
+export interface VerificationQuestions {
+  questions: string[]
+  model_id: string | null
+  ai_generated: true
+}
 export interface ReportBody {
   title: string
   run_id: string
@@ -324,7 +338,8 @@ export interface ReportBody {
   policy_versions: string[]
   scope_manifest_hash: string
   generated_at: string
-  findings: (Finding & { risk?: RiskInfo })[]
+  findings: (Finding & { risk?: RiskInfo; verification_questions?: VerificationQuestions })[]
+  executive_summary?: ExecutiveSummary
   scenarios?: Scenario[]
   recommendations?: Recommendation[]
   ai?: { mode: string; narratives_total?: number; narratives_accepted?: number; not_shown?: number }

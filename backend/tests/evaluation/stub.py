@@ -38,8 +38,11 @@ def good_output(subject: NarrativeSubject, **overrides: Any) -> str:
                 "asset_ids": [f.asset_ids[0]],
             }
         ],
-        "open_questions": [],
-    }
+        "open_questions": (
+            [f"Is the exposure recorded for {f.asset_ids[0]} intended?"]
+            if subject.purpose == "verification" else []
+        ),
+    }  # fmt: skip
     body.update(overrides)
     return json.dumps(body)
 

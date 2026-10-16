@@ -20,6 +20,9 @@ from aisw.llm.validation import ValidationPacket, ValidationTarget
 MAX_VALUE_CHARS = 300
 
 FOCUS: dict[int, str] = {
+    0: "Scope and authorisation. Check that the approved scope is no broader than the tasks that "
+    "ran need, that every task's adapter and type is inside the manifest and the permit, that "
+    "only read-only profiles were used, and that the approval was separate from the author.",
     1: "Coverage and reconciliation. Check that the counts are internally consistent, that gaps "
     "(unknown, unsupported, failed sources) are explained by the stated reasons, and flag "
     "anomalies such as a successful source that discovered nothing.",
@@ -34,8 +37,12 @@ FOCUS: dict[int, str] = {
     "whether compensating controls are missing from the reasoning.",
     6: "Draft recommendations. Check traceability to the cited findings, feasibility against the "
     "stated current state, and that rollback and acceptance test are meaningful.",
-    7: "AI-written summaries. Check every claim against the facts given for it; flag claims that "
-    "are unsupported or overstated.",
+    7: "AI-written summaries and verification questions. Check every claim against the facts "
+    "given for it; flag claims that are unsupported or overstated, and questions that presume "
+    "an answer or that the owner could not answer.",
+    8: "The AI-written executive summary of the report. Check that it reflects the facts and the "
+    "coverage stated for the whole run without overstating or understating severity, and that "
+    "it does not hide incomplete coverage.",
 }
 
 
@@ -72,6 +79,28 @@ def chunk(
         )  # fmt: skip
         for n, i in enumerate(range(0, len(kept), batch), start=1)
     ]
+
+
+def scope_target(
+    manifest_id: str, manifest: Mapping[str, Any], *, author: str, approvers: Sequence[str],
+    permit: Mapping[str, Any] | None, tasks: Sequence[Mapping[str, Any]], expected_assets: int,
+) -> ValidationTarget:  # fmt: skip
+    """Agent 0: the authorised scope against what actually ran. Values are clipped like evidence."""
+    data = {
+        "manifest_targets": [_clip(t) for t in manifest.get("targets", [])],
+        "exclusions": [_clip(x) for x in manifest.get("exclusions", [])],
+        "domains": manifest.get("domains", []),
+        "allowed_adapters": manifest.get("allowed_adapters", []),
+        "profiles": _clip(manifest.get("profiles", {})),
+        "expires_at": manifest.get("expires_at"),
+        "expected_assets": expected_assets,
+        "approval_separate_from_author": bool(approvers) and author not in approvers,
+        "approver_count": len(approvers),
+        "permit_task_types": list((permit or {}).get("allowed_task_types", [])),
+        "tasks": [{"adapter_id": t["adapter_id"], "task_type": t["task_type"],
+                   "status": t["status"]} for t in tasks],
+    }  # fmt: skip
+    return ValidationTarget(target_ref=f"scope:{manifest_id}", kind="scope", data=data)
 
 
 def coverage_targets(ledgers: Iterable[CoverageLedger]) -> list[ValidationTarget]:
@@ -171,6 +200,7 @@ def narrative_targets(
             "about": f"{subject.purpose} {subject.subject_ref}: {subject.title}",
             "tier": subject.tier, "summary": output.summary,
             "claims": [c.model_dump(mode="json") for c in output.claims],
+            "open_questions": output.open_questions,
             "facts": [f.model_dump(mode="json") for f in subject.facts],
             "context": subject.context,
         }  # fmt: skip

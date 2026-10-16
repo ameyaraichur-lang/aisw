@@ -96,6 +96,8 @@ class Settings(BaseSettings):
     model_endpoint: str = "http://127.0.0.1:11434"  # local runtime only (Ollama default)
     ai_narrative_enabled: bool = True  # feature flags, effective only when ai_enabled
     ai_architecture_enabled: bool = True
+    ai_verification_questions_enabled: bool = True  # Agent 4 questions for owners (ADR-024)
+    ai_executive_summary_enabled: bool = True  # Agent 8 executive summary (ADR-024)
     model_timeout_seconds: int = Field(default=60, ge=1, le=600)
     # Agent validation pass (ADR-021): the model reviews Agents 1-7 and can only add caution.
     ai_validation_enabled: bool = True  # effective only when ai_enabled

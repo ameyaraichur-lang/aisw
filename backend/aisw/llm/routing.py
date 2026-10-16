@@ -110,19 +110,40 @@ ReplayMode = Literal["record", "replay"]
 _UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
 
 
+_PLACEHOLDER = re.compile(r"<id(\d+)>")
+
+
+def _numbering(user: str) -> dict[str, str]:
+    seen: dict[str, str] = {}
+    for m in _UUID.finditer(user):
+        seen.setdefault(m[0], f"<id{len(seen)}>")
+    return seen
+
+
 def replay_key(model_id: str | None, system: str, user: str, schema: dict[str, Any]) -> str:
     """Identifiers minted per run (UUIDs) are numbered by first appearance, so the same inputs
     replay across runs. A replayed reply is still grounded against the current run."""
-    seen: dict[str, str] = {}
-    user = _UUID.sub(lambda m: seen.setdefault(m[0], f"<id{len(seen)}>"), user)
+    seen = _numbering(user)
+    user = _UUID.sub(lambda m: seen[m[0]], user)
     blob = json.dumps({"m": model_id, "s": system, "u": user, "j": schema}, sort_keys=True)
     return hashlib.sha256(blob.encode()).hexdigest()
+
+
+def _to_placeholders(text: str, user: str) -> str:
+    seen = _numbering(user)
+    return _UUID.sub(lambda m: seen.get(m[0], m[0]), text)
+
+
+def _from_placeholders(text: str, user: str) -> str:
+    ids = list(_numbering(user))
+    return _PLACEHOLDER.sub(lambda m: ids[int(m[1])] if int(m[1]) < len(ids) else m[0], text)
 
 
 class RecordReplayClient:
     """``record`` stores each successful reply under a hash of the exact request; ``replay`` answers
     only from that store and never reaches a network (a miss is ``REPLAY_MISS``). Prompts are not
-    stored, only their hash and the reply."""
+    stored, only their hash and the reply; run identifiers in the reply are stored as the
+    prompt's placeholders and restored to the replaying run's identifiers."""
 
     def __init__(
         self, inner: ModelClient | None, directory: Path, mode: ReplayMode, *,
@@ -145,7 +166,7 @@ class RecordReplayClient:
         if self._mode == "replay":
             try:
                 doc = json.loads(path.read_text())
-                return str(doc["text"]), Usage(
+                return _from_placeholders(str(doc["text"]), user), Usage(
                     doc.get("model_id"), doc.get("input_tokens"), doc.get("output_tokens"),
                     replayed=True,
                 )  # fmt: skip
@@ -159,7 +180,7 @@ class RecordReplayClient:
         tmp = path.with_suffix(".tmp")
         fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w") as f:
-            json.dump({"model_id": usage.model_id, "text": text,
+            json.dump({"model_id": usage.model_id, "text": _to_placeholders(text, user),
                        "input_tokens": usage.input_tokens, "output_tokens": usage.output_tokens}, f)  # fmt: skip
         os.replace(tmp, path)
         return text, usage

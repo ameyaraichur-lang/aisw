@@ -39,15 +39,34 @@ PORT = int(os.environ.get("AISW_E2E_PORT", "8099"))
 
 class DissentingReviewer:
     """No weights, no network. Narration is unavailable (the deterministic text stands); review
-    concurs with everything except the first finding of each batch."""
+    concurs with everything except the first finding of each batch. ``concur=True`` narrates from
+    the first fact of each subject and concurs with everything, so AI-written sections appear."""
 
     model_id = "e2e-reviewer-0"
 
+    def __init__(self, *, concur: bool = False) -> None:
+        self.concur = concur
+
     def complete(self, *, system: str, user: str, schema: dict[str, Any], timeout: float) -> str:
         if not system.startswith(VALIDATION_PROMPT[:40]):
-            raise ModelUnavailable("MODEL_UNREACHABLE")
+            if not self.concur:
+                raise ModelUnavailable("MODEL_UNREACHABLE")
+            subject = json.loads(user.removeprefix("DATA:\n"))
+            f = subject["facts"][0]
+            asset = f["asset_ids"][0]
+            return json.dumps({
+                "summary": f"{len(subject['facts'])} recorded weaknesses relate to {asset}.",
+                "claims": [{"text": f"The assessment recorded: {f['title']}.",
+                            "finding_ids": [f["finding_id"]], "asset_ids": [asset]}],
+                "open_questions": [f"Is the exposure recorded for {asset} intended?"]
+                if subject["purpose"] == "verification" else [],
+            })  # fmt: skip
         targets = json.loads(user.removeprefix("DATA:\n"))["targets"]
-        first = next((t["target_ref"] for t in targets if t["kind"] == "finding"), None)
+        first = (
+            None
+            if self.concur
+            else next((t["target_ref"] for t in targets if t["kind"] == "finding"), None)
+        )
         return json.dumps({"verdicts": [
             {"target_ref": t["target_ref"], "verdict": "DISSENT" if t["target_ref"] == first else "CONCUR",
              "validator_confidence": "MEDIUM",
@@ -127,7 +146,8 @@ def main() -> None:
     @api.post("/__e2e/ai-reviewer/{mode}")
     def ai_reviewer(mode: str) -> dict[str, str]:
         """``dissent``: a local scripted reviewer that dissents on the first finding it sees, so the
-        UI's dissent resolution can be driven end to end. ``off`` restores the AI-off server."""
+        UI's dissent resolution can be driven end to end. ``concur``: it narrates and concurs, so
+        AI-written report sections appear. ``off`` restores the AI-off server."""
         if mode == "off":
             container.settings, worker.model, worker.ai_validation = plain
         else:
@@ -138,7 +158,8 @@ def main() -> None:
                     "model_license": "Apache-2.0",
                 }
             )
-            worker.model, worker.ai_validation = DissentingReviewer(), True
+            worker.model = DissentingReviewer(concur=mode == "concur")
+            worker.ai_validation = True
         return {"mode": mode}
 
     @api.post("/__e2e/delay/{ms}")

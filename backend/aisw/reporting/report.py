@@ -51,6 +51,9 @@ class ReportInputs:
     model_versions: list[str] = field(default_factory=list)
     revision: int = 1  # > 1 after a human overruled an AI dissent and assurance re-ran (ADR-022)
     supersedes: str | None = None
+    # Agent 8 / Agent 4 AI-written text that passed grounding, assurance and the validator.
+    executive_summary: dict[str, Any] | None = None
+    verification_questions: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
@@ -144,7 +147,10 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
         "coverage": [L.model_dump(mode="json") for L in inp.ledgers],
         "controls": inp.controls,
         "findings": [
-            {**f, "risk": inp.risks[f["finding_id"]]} if f["finding_id"] in inp.risks else f
+            {**f,
+             **({"risk": inp.risks[f["finding_id"]]} if f["finding_id"] in inp.risks else {}),
+             **({"verification_questions": inp.verification_questions[f["finding_id"]]}
+                if f["finding_id"] in inp.verification_questions else {})}
             for f in inp.accepted
         ],
         "scenarios": inp.scenarios, "recommendations": inp.recommendations, "ai": inp.ai,
@@ -157,6 +163,8 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
     }  # fmt: skip
     if inp.revision > 1:
         body["revision"] = {"number": inp.revision, "supersedes": inp.supersedes}
+    if inp.executive_summary:
+        body["executive_summary"] = {**inp.executive_summary, "ai_generated": True}
     suffix = f"-r{inp.revision}" if inp.revision > 1 else ""
     bundle = ReportBundle(
         report_id=f"rep-{inp.run_id}{suffix}", tenant_id=inp.tenant_id, project_id=inp.project_id,
@@ -255,6 +263,25 @@ def render_html(body: dict[str, Any]) -> str:
             f"{_e(rev['supersedes'] or '')} after a human review of AI validator dissent.</p>"
         )
     counts = ", ".join(f"{_e(k)}: {v}" for k, v in body["finding_counts"].items())
+    executive = ""
+    if ex := body.get("executive_summary"):
+        executive = (
+            '<section aria-labelledby="exec-h"><h2 id="exec-h">Executive summary (AI-written)</h2>'
+            f"<p>{_e(ex['summary'])}</p><p><em>Written by model {_e(ex.get('model_id') or 'unknown')}"
+            "; every claim was checked against the accepted findings. The findings table below is "
+            "authoritative.</em></p></section>"
+        )
+    questions = "".join(
+        f"<li>{_e(f['title'])}<ul>"
+        + "".join(f"<li>{_e(q)}</li>" for q in f["verification_questions"]["questions"])
+        + "</ul></li>"
+        for f in body["findings"] if f.get("verification_questions")
+    )  # fmt: skip
+    if questions:
+        questions = (
+            "<h2>Questions for asset owners (AI-written)</h2><p><em>Answering these confirms or "
+            f"refutes the recorded exposure. Nothing was tested to produce them.</em></p><ul>{questions}</ul>"
+        )
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta http-equiv="Content-Security-Policy" '
@@ -263,11 +290,11 @@ def render_html(body: dict[str, Any]) -> str:
         f"<h1>{_e(body['title'])}</h1>{banner}<p>{_e(body['disclaimer'])}</p>"
         f"<p>Run {_e(body['run_id'])} | scope hash {_e(body['scope_manifest_hash'])} | "
         f"policy {_e(', '.join(body['policy_versions']))} | "
-        f"report generated {_e(body['generated_at'])}</p>"
+        f"report generated {_e(body['generated_at'])}</p>{executive}"
         f"<h2>Findings ({counts})</h2><table><thead><tr><th>Severity</th><th>Risk tier</th><th>Title</th>"
         f"<th>Assets</th><th>Evidence</th></tr></thead><tbody>{rows}</tbody></table>"
         "<h2>Coverage</h2><table><thead><tr><th>Segment</th><th>Expected</th><th>Reconciled</th>"
         f"<th>Unknown</th><th>Unsupported</th><th>Reasons</th></tr></thead><tbody>{cov}</tbody></table>"
-        f"{_analysis_html(body)}"
+        f"{questions}{_analysis_html(body)}"
         f"<h2>Limitations</h2><ul>{limits}</ul></main></body></html>"
     )

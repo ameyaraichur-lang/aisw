@@ -172,12 +172,15 @@ def resolve_dissent(
         run = dict(conn.execute(
             text("SELECT * FROM assessment_runs WHERE run_id=:r FOR UPDATE"), {"r": run_id},
         ).mappings().one())  # fmt: skip
-        verdict = conn.execute(
-            text("SELECT verdict FROM ai_validations WHERE run_id=:r AND target_ref=:t"),
+        found = conn.execute(
+            text("SELECT verdict, effect FROM ai_validations WHERE run_id=:r AND target_ref=:t"),
             {"r": run_id, "t": body.target_ref},
-        ).scalar()
-        if verdict is None:
+        ).first()
+        if found is None:
             raise HTTPException(status_code=404, detail="not found")
+        verdict, effect = found
+        # A scope dissent is a review note (ADR-024): overruling it records the decision only.
+        reassess = body.decision == "OVERRULE" and effect == "HOLD_FOR_REVIEW"
         prior = conn.execute(
             text("SELECT decision, reason FROM ai_validation_resolutions "
                  "WHERE run_id=:r AND target_ref=:t"), {"r": run_id, "t": body.target_ref},
@@ -198,7 +201,7 @@ def resolve_dissent(
         if run["state"] not in {"REPORT_READY", "PARTIAL"} or latest != "PENDING":
             raise HTTPException(status_code=409, detail="run is not awaiting report approval")
         now = c.clock()
-        revision = run["assurance_revision"] + (body.decision == "OVERRULE")
+        revision = run["assurance_revision"] + reassess
         conn.execute(
             text("INSERT INTO ai_validation_resolutions (tenant_id, run_id, target_ref, decision, "
                  "reason, decided_by, decided_at, assurance_revision) VALUES (:t, :r, :ref, :d, "
@@ -206,7 +209,7 @@ def resolve_dissent(
             {"t": actor.tenant_id, "r": run_id, "ref": body.target_ref, "d": body.decision,
              "why": reason, "b": actor.actor_id, "n": now, "v": revision},
         )  # fmt: skip
-        if body.decision == "OVERRULE":
+        if reassess:
             conn.execute(
                 text("UPDATE assessment_runs SET state='ASSURANCE', assurance_revision=:v, "
                      "updated_at=:n WHERE run_id=:r"), {"v": revision, "n": now, "r": run_id},
@@ -224,7 +227,7 @@ def resolve_dissent(
             after_hash=canonical_hash({"decision": body.decision, "reason": reason}),
         )  # fmt: skip
     return {"target_ref": body.target_ref, "decision": body.decision, "decided_by": actor.actor_id,
-            "assurance_revision": revision, "reassessing": body.decision == "OVERRULE"}  # fmt: skip
+            "assurance_revision": revision, "reassessing": reassess}  # fmt: skip
 
 
 @router.get("/assessments/{run_id}/recommendations")

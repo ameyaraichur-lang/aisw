@@ -27,7 +27,7 @@ from aisw.llm.gateway import _strip_descriptions, injection_flags_text
 from aisw.llm.routing import CallMeter
 from aisw.llm.validator import extract
 
-PROMPT_VERSION = "agent-validation-1.0.0"
+PROMPT_VERSION = "agent-validation-1.1.0"
 MAX_ATTEMPTS = 2
 DISSENT_DEFECT = "AI_VALIDATOR_DISSENT"
 
@@ -50,9 +50,11 @@ IssueCode = Literal[
     "CLAIM_UNSUPPORTED",
     "CLAIM_OVERSTATED",
     "NEEDS_HUMAN_VERIFICATION",
+    "SCOPE_TOO_BROAD",
+    "SCOPE_INCONSISTENT",
 ]
 ISSUE_CODES: tuple[str, ...] = get_args(IssueCode)
-TargetKind = Literal["coverage", "finding", "scenario", "recommendation", "narrative"]
+TargetKind = Literal["scope", "coverage", "finding", "scenario", "recommendation", "narrative"]
 Text = Annotated[str, StringConstraints(min_length=1, max_length=400)]
 
 # Verdict -> effect. Enforced by apply_* below and by a database CHECK; never by the prompt.
@@ -62,6 +64,13 @@ EFFECT: dict[str, str] = {
     "INSUFFICIENT_EVIDENCE": "REVIEW_ITEM",
     "DISSENT": "HOLD_FOR_REVIEW",
 }
+
+
+def effect_for(kind: str, verdict: str) -> str:
+    """The scope gate (Agent 0) has already run and is enforced in code: a dissent about it can
+    only become a review note, never a hold."""
+    effect = EFFECT.get(verdict, "NONE")
+    return "REVIEW_ITEM" if kind == "scope" and effect == "HOLD_FOR_REVIEW" else effect
 
 
 class ValidationTarget(StrictModel):

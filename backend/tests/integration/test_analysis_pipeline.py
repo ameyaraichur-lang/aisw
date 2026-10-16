@@ -165,15 +165,18 @@ def test_validated_narratives_are_shown_and_labelled(sl: Slice) -> None:
     sl.drain()
     assert sl.status(run_id)["state"] == "REPORT_READY"
     rep = sl.report(run_id)
-    assert rep["ai"]["mode"] == "enabled" and rep["ai"]["narratives_accepted"] == 3
+    assert rep["ai"]["mode"] == "enabled" and rep["ai"]["narratives_accepted"] == 4
     assert rep["model_versions"] == ["stub-model-0"]
     assert rep["scenarios"][0]["narrative"]["model_id"] == "stub-model-0"
+    ex = rep["executive_summary"]
+    assert ex["ai_generated"] and ex["model_id"] == "stub-model-0" and ex["summary"]
+    assert not any(f.get("verification_questions") for f in rep["findings"])  # no Agent 4 findings
     assert all(
-        r["narrative"]["prompt_version"] == "narrative-1.1.0" for r in rep["recommendations"]
+        r["narrative"]["prompt_version"] == "narrative-1.2.0" for r in rep["recommendations"]
     )
     calls = sl.sql("SELECT status, attempts, input_hash FROM llm_calls WHERE run_id=:r", r=run_id)
-    assert len(calls) == 3 and {c[0] for c in calls} == {"VALIDATED"} and all(c[2] for c in calls)
-    assert len(model.calls) == 3
+    assert len(calls) == 4 and {c[0] for c in calls} == {"VALIDATED"} and all(c[2] for c in calls)
+    assert len(model.calls) == 4
     assert all("tools" not in c and "untrusted" in c["system"] for c in model.calls)
 
 
@@ -192,7 +195,7 @@ def test_model_is_never_called_while_the_run_row_is_locked(sl: Slice) -> None:
     _, _, run_id = sl.full_run(EXPECTED, ai_assist=True)
     holder.append(run_id)
     sl.drain()
-    assert sl.report(run_id)["ai"]["narratives_accepted"] == 3
+    assert sl.report(run_id)["ai"]["narratives_accepted"] == 4
 
 
 def test_model_outage_leaves_deterministic_results_identical(sl: Slice) -> None:
@@ -204,7 +207,7 @@ def test_model_outage_leaves_deterministic_results_identical(sl: Slice) -> None:
     assert sl.status(down)["state"] == "REPORT_READY"
     a, b = sl.report(plain), sl.report(down)
     assert shape(a) == shape(b)
-    assert b["ai"]["narratives_accepted"] == 0 and b["ai"]["not_shown"] == 3
+    assert b["ai"]["narratives_accepted"] == 0 and b["ai"]["not_shown"] == 4
     assert any("AI-written summaries were unavailable" in x for x in b["limitations"])
     assert all("narrative" not in s for s in b["scenarios"])
     st = sl.sql("SELECT DISTINCT status FROM narratives WHERE run_id=:r", r=down)
@@ -269,4 +272,4 @@ def test_ai_provenance_is_append_only(sl: Slice) -> None:
     for stmt in ("UPDATE llm_calls SET status='VALIDATED'", "DELETE FROM llm_calls"):
         with pytest.raises(DBAPIError), tenant_connection(sl.app_engine, "tenant-a") as c:
             c.execute(text(stmt))
-    assert sl.sql("SELECT count(*) FROM llm_calls WHERE run_id=:r", r=run_id)[0][0] == 3
+    assert sl.sql("SELECT count(*) FROM llm_calls WHERE run_id=:r", r=run_id)[0][0] == 4

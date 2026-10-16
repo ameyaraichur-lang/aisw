@@ -92,6 +92,8 @@ class Worker:
     model: ModelClient = field(default_factory=DisabledModelClient)
     ai_scenario_narratives: bool = True
     ai_recommendation_narratives: bool = True
+    ai_verification_questions: bool = True  # Agent 4 (ADR-024)
+    ai_executive_summary: bool = True  # Agent 8 (ADR-024)
     model_timeout: float = 60.0
     # Agent validation pass (ADR-021): off unless the container turns it on from settings.
     ai_validation: bool = False
@@ -553,6 +555,8 @@ class Worker:
                     conn, run, catalog=builtin_catalog(self.catalog_version),
                     scenario_ai=self.ai_scenario_narratives,
                     recommendation_ai=self.ai_recommendation_narratives,
+                    verification_ai=self.ai_verification_questions,
+                    executive_ai=self.ai_executive_summary,
                 )  # fmt: skip
                 packets = (
                     analysis.validation_packets(

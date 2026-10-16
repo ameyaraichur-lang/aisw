@@ -69,8 +69,8 @@ def test_validator_reviews_every_agent_and_concur_changes_nothing(sl: Slice) -> 
     rows = sl.sql("SELECT target_ref, agent_id, verdict, effect FROM ai_validations WHERE run_id=:r",
                   r=run_id)  # fmt: skip
     kinds = {ref.split(":")[0] for ref, *_ in rows}
-    assert kinds == {"coverage", "finding", "scenario", "recommendation", "narrative"}
-    assert {a for _, a, _, _ in rows} >= {1, 2, 5, 6, 7}
+    assert kinds == {"scope", "coverage", "finding", "scenario", "recommendation", "narrative"}
+    assert {a for _, a, _, _ in rows} >= {0, 1, 2, 5, 6, 7, 8}
     assert {(v, e) for *_, v, e in rows} == {("CONCUR", "ANNOTATION")}
     calls = sl.sql("SELECT purpose, status FROM llm_calls WHERE run_id=:r AND purpose LIKE "
                    "'validation:%'", r=run_id)  # fmt: skip

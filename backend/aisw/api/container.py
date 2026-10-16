@@ -86,6 +86,8 @@ class Container:
         )  # Disabled unless fully configured
         kw.setdefault("ai_scenario_narratives", self.settings.ai_narrative_enabled)
         kw.setdefault("ai_recommendation_narratives", self.settings.ai_architecture_enabled)
+        kw.setdefault("ai_verification_questions", self.settings.ai_verification_questions_enabled)
+        kw.setdefault("ai_executive_summary", self.settings.ai_executive_summary_enabled)
         kw.setdefault("model_timeout", float(self.settings.model_timeout_seconds))
         s = self.settings
         kw.setdefault("ai_validation", s.ai_enabled and s.ai_validation_enabled)

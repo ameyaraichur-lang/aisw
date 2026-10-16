@@ -22,15 +22,15 @@ class AgentInfo:
 
 
 AGENTS: tuple[AgentInfo, ...] = (
-    AgentInfo(0, "Scope & Authorization Gate", "Validates, signs and enforces the scope manifest and execution permit before any tool call.", "gate", outputs=("decision", "permit")),
+    AgentInfo(0, "Scope & Authorization Gate", "Validates, signs and enforces the scope manifest and execution permit before any tool call.", "gate", outputs=("decision", "permit"), ai_validated=True),
     AgentInfo(1, "Discovery & Reconciliation", "Reconciles inventory sources into one asset view; owner and criticality stay unknown unless supplied.", "adapter", ("cmdb_import",), outputs=("assets", "coverage"), ai_validated=True),
     AgentInfo(2, "Host & OS Configuration", "Collects host configuration and vulnerability evidence from approved imports or read-only collectors.", "adapter", ("fixture", "greenbone_import", "openscap_import", "wazuh_import"), outputs=("evidence", "observations"), ai_validated=True),
     AgentInfo(3, "Cloud Posture", "Collects cloud configuration posture from approved exports.", "adapter", ("prowler_import",), outputs=("evidence", "observations"), ai_validated=True),
-    AgentInfo(4, "Network, Perimeter & Web", "Collects exposure evidence: bounded port data, passive URL smoke checks, web baseline alerts.", "adapter", ("nmap_import", "url_smoke", "zap_import"), outputs=("evidence", "observations"), ai_validated=True),
+    AgentInfo(4, "Network, Perimeter & Web", "Collects exposure evidence: bounded port data, passive URL smoke checks, web baseline alerts.", "adapter", ("nmap_import", "url_smoke", "zap_import"), ai_capable=True, outputs=("evidence", "observations"), ai_validated=True),
     AgentInfo(5, "Exposure, Vulnerability & Threat Correlation", "Scores each finding with the versioned risk rubric and builds evidence-backed scenarios. Never invents a tier or a link.", "deterministic", ai_capable=True, outputs=("risk_assessments", "scenarios"), ai_validated=True),
     AgentInfo(6, "Security Architecture & Modernization", "Maps findings to approved target patterns and drafts traceable recommendations. Never executes a change.", "deterministic", ai_capable=True, outputs=("recommendations",), ai_validated=True),
     AgentInfo(7, "Independent Assurance", "Re-validates every finding, risk, scenario, recommendation and narrative against evidence; only ACCEPT reaches the report.", "deterministic", outputs=("assurance_results",), ai_validated=True),
-    AgentInfo(8, "Reporting & Ticket Drafts", "Assembles the report from accepted items only; drafts (never sends) tickets when explicitly enabled.", "deterministic", outputs=("report", "ticket_drafts")),
+    AgentInfo(8, "Reporting & Ticket Drafts", "Assembles the report from accepted items only; drafts (never sends) tickets when explicitly enabled.", "deterministic", ai_capable=True, outputs=("report", "ticket_drafts"), ai_validated=True),
 )  # fmt: skip
 
 

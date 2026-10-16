@@ -221,7 +221,7 @@ def test_agent_registry_maps_every_adapter_and_reports_ai_state(sl: Slice) -> No
     assert not any(a["ai_active"] for a in j["agents"])
     sl.enable_ai(ScriptedModel(grounded))
     on = sl.call("GET", "/api/v1/agents", "carol").json()
-    assert {a["agent_id"] for a in on["agents"] if a["ai_active"]} == {5, 6}
+    assert {a["agent_id"] for a in on["agents"] if a["ai_active"]} == {4, 5, 6, 8}
     assert on["ai"]["model_id"] == "stub-model-0" and on["ai"]["model_license"] == "Apache-2.0"
     assert on["ai"]["provider"] == "ollama" and on["ai"]["endpoint_local_only"] is True
 

@@ -44,6 +44,17 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     eng = make_db(pg_server, f"mig_{uuid.uuid4().hex[:8]}")
     migrate(eng, "head")
     assert _tables(eng) == TABLES
+    migrate(eng, "0009", down=True)  # 0010 (generation agents) is independently reversible
+    with eng.connect() as c:
+        checks = {
+            n: d for n, d in c.execute(text(
+                "SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint WHERE contype='c' "
+                "AND conrelid IN ('ai_validations'::regclass, 'narratives'::regclass)"))
+        }  # fmt: skip
+    assert "ai_validations_dissent_effect" not in checks and "ai_validations_check" in checks
+    assert "executive" not in checks["narratives_purpose_check"]
+    migrate(eng, "head")
+    migrate(eng, "0009", down=True)
     migrate(eng, "0008", down=True)  # 0009 (model-call usage) is independently reversible
     assert _tables(eng) == TABLES
     with eng.connect() as c:

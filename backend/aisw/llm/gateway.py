@@ -15,7 +15,7 @@ from aisw.llm.routing import CallMeter
 from aisw.llm.schema import NarrativeOutput, NarrativeSubject
 from aisw.llm.validator import validate_narrative
 
-PROMPT_VERSION = "narrative-1.1.0"
+PROMPT_VERSION = "narrative-1.2.0"
 MAX_ATTEMPTS = 2
 
 SYSTEM_PROMPT = (
@@ -27,7 +27,10 @@ SYSTEM_PROMPT = (
     "URL or port that is not in DATA. Do not give commands or steps to run, do not claim compliance, certification, "
     "end-of-life dates, costs or effort, and do not assign a risk tier other than the one in DATA. "
     "Respond with one JSON object matching the schema. Every claim must cite finding_ids and "
-    "asset_ids that appear in DATA."
+    "asset_ids that appear in DATA. When DATA.purpose is 'verification', put in open_questions "
+    "one to three questions the asset owner can answer to confirm or refute the recorded "
+    "exposure; ask, never instruct. When DATA.purpose is 'executive', write the summary for "
+    "leadership in plain language: what was found, how severe, and what the coverage was."
 )
 
 _INJECTION = [

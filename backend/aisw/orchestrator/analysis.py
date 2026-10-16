@@ -31,13 +31,19 @@ from aisw.contracts.enums import AssuranceVerdict
 from aisw.llm import packets as pk
 from aisw.llm.gateway import NarrativeResult
 from aisw.llm.schema import NarrativeOutput, NarrativeSubject
-from aisw.llm.subject import recommendation_subject, scenario_subject
+from aisw.llm.subject import (
+    SEVERITY_ORDER,
+    executive_subject,
+    recommendation_subject,
+    scenario_subject,
+    verification_subject,
+)
 from aisw.llm.validation import (
-    EFFECT,
     ValidationPacket,
     ValidationResult,
     ValidationTarget,
     apply_dissent,
+    effect_for,
 )
 from aisw.policy.results import finding_id_for
 from aisw.policy.rubric import Rubric, assess, exposure_for, normalize_criticality
@@ -181,6 +187,8 @@ def architecture_phase(
     catalog: Catalog,
     scenario_ai: bool,
     recommendation_ai: bool,
+    verification_ai: bool = False,
+    executive_ai: bool = False,
 ) -> list[NarrativeSubject]:
     """Deterministic recommendations; returns the narrative subjects still missing (AI runs only)."""
     tenant, project, run_id = run["tenant_id"], str(run["project_id"]), run["run_id"]
@@ -215,6 +223,15 @@ def architecture_phase(
         for rid, rec in load_recommendations(conn, run_id).items():
             if ("recommendation", rid) not in done:
                 pending.append(recommendation_subject(rec, findings))
+    if verification_ai:
+        pending += [s for s in verification_subjects(conn, run_id)
+                    if ("verification", s.subject_ref) not in done]  # fmt: skip
+    if (
+        executive_ai
+        and ("executive", "executive") not in done
+        and (ex := executive_subject(findings.values(), load_ledgers(conn, run_id))) is not None
+    ):
+        pending.append(ex)
     return pending
 
 
@@ -269,11 +286,74 @@ def _narrative_result(row: Mapping[str, Any]) -> NarrativeResult:
     )  # fmt: skip
 
 
+def load_ledgers(conn: Connection, run_id: str) -> list[CoverageLedger]:
+    return [
+        CoverageLedger.model_validate(b)
+        for (b,) in conn.execute(
+            text("SELECT body FROM coverage_ledger WHERE run_id=:r ORDER BY segment"),
+            {"r": run_id},
+        )
+    ]
+
+
+def finding_agents(
+    conn: Connection, run_id: str, findings: Mapping[str, Finding]
+) -> dict[str, int]:
+    """finding_id -> the agent whose adapter produced its evidence (evidence -> task -> adapter)."""
+    agent_of_ref: dict[str, int] = {}
+    for ref, adapter in conn.execute(
+        text("SELECT e.evidence_ref, t.adapter_id FROM evidence_artifacts e "
+             "JOIN run_tasks t ON t.task_id = e.task_id WHERE e.run_id=:r"), {"r": run_id},
+    ):  # fmt: skip
+        if (agent := agent_for_adapter(adapter)) is not None:
+            agent_of_ref[ref] = agent
+    out: dict[str, int] = {}
+    for f in findings.values():
+        if (
+            a := next((agent_of_ref[r] for r in f.evidence_refs if r in agent_of_ref), None)
+        ) is not None:
+            out[f.finding_id] = a
+    return out
+
+
+def load_observations(
+    conn: Connection, run_id: str, findings: Mapping[str, Finding]
+) -> dict[str, tuple[Any, Any]]:
+    """finding_id -> (observed, expected). One evidence blob backs many checks, so each finding is
+    linked to ITS observation via the deterministic finding id (pack, rule, asset)."""
+    pack_ids = {f.policy_version.rsplit(":", 1)[0] for f in findings.values()}
+    return {
+        finding_id_for(p, rule, a): (obs, exp)
+        for a, rule, obs, exp in conn.execute(
+            text("SELECT asset_id, rule_id, observed_value, expected_value FROM observations "
+                 "WHERE run_id=:r AND outcome='FAIL'"), {"r": run_id},
+        )
+        for p in pack_ids
+    }  # fmt: skip
+
+
+VERIFICATION_MAX_FINDINGS = 10
+
+
+def verification_subjects(conn: Connection, run_id: str) -> list[NarrativeSubject]:
+    """Agent 4's exposure findings, most severe first, each with its own observed/expected."""
+    findings = load_findings(conn, run_id)
+    agents = finding_agents(conn, run_id, findings)
+    observations = load_observations(conn, run_id, findings)
+    exposure = [f for fid, f in findings.items() if agents.get(fid) == 4]
+    return [
+        verification_subject(f, observations.get(f.finding_id))
+        for f in sorted(
+            exposure, key=lambda f: (SEVERITY_ORDER.get(f.severity.value, 9), f.finding_id)
+        )[:VERIFICATION_MAX_FINDINGS]
+    ]
+
+
 # ------------------------------------------------------------------ agent validation pass (ADR-021)
 def validation_packets(
     conn: Connection, run: dict[str, Any], *, batch: int, max_items: int
 ) -> list[ValidationPacket]:
-    """Packets for Agents 1-6. Empty unless the run uses AI and has not been validated yet."""
+    """Packets for Agents 0-6. Empty unless the run uses AI and has not been validated yet."""
     run_id = run["run_id"]
     if run["ai_mode"] != "enabled":
         return []
@@ -281,48 +361,20 @@ def validation_packets(
         text("SELECT 1 FROM ai_validations WHERE run_id=:r LIMIT 1"), {"r": run_id}
     ).first():
         return []
-    ledgers = [
-        CoverageLedger.model_validate(b)
-        for (b,) in conn.execute(
-            text("SELECT body FROM coverage_ledger WHERE run_id=:r ORDER BY segment"),
-            {"r": run_id},
-        )
-    ]
+    ledgers = load_ledgers(conn, run_id)
     findings = load_findings(conn, run_id)
-    agent_of_ref: dict[str, int] = {}
-    for ref, adapter in conn.execute(
-        text(
-            "SELECT e.evidence_ref, t.adapter_id FROM evidence_artifacts e "
-            "JOIN run_tasks t ON t.task_id = e.task_id WHERE e.run_id=:r"
-        ),
-        {"r": run_id},
-    ):
-        if (agent := agent_for_adapter(adapter)) is not None:
-            agent_of_ref[ref] = agent
-    # One evidence blob backs many checks, so link each finding to ITS observation via the
-    # deterministic finding id (pack, rule, asset), never via the evidence ref alone.
-    pack_ids = {f.policy_version.rsplit(":", 1)[0] for f in findings.values()}
-    observations = {
-        finding_id_for(p, rule, a): (obs, exp)
-        for a, rule, obs, exp in conn.execute(
-            text(
-                "SELECT asset_id, rule_id, observed_value, expected_value FROM observations "
-                "WHERE run_id=:r AND outcome='FAIL'"
-            ),
-            {"r": run_id},
-        )
-        for p in pack_ids
-    }
+    observations = load_observations(conn, run_id, findings)
+    agents = finding_agents(conn, run_id, findings)
     by_agent: dict[int, list[Finding]] = {}
     for f in findings.values():
-        agent = next((agent_of_ref[r] for r in f.evidence_refs if r in agent_of_ref), None)
-        if agent in {2, 3, 4}:
+        if (agent := agents.get(f.finding_id)) in {2, 3, 4}:
             by_agent.setdefault(agent, []).append(f)
     out: list[ValidationPacket] = []
 
     def add(agent_id: int, targets: list[ValidationTarget]) -> None:
         out.extend(pk.chunk(agent_id, targets, batch=batch, max_items=max_items))
 
+    add(0, [scope_target(conn, run)])
     add(1, pk.coverage_targets(ledgers))
     for agent_id in sorted(by_agent):
         add(agent_id, pk.finding_targets(by_agent[agent_id], observations))
@@ -336,16 +388,44 @@ def validation_packets(
     return out
 
 
+def scope_target(conn: Connection, run: dict[str, Any]) -> ValidationTarget:
+    run_id = run["run_id"]
+    m = conn.execute(
+        text("SELECT manifest_id, body, created_by, approved_by FROM scope_manifests "
+             "WHERE manifest_id=:m"), {"m": run["manifest_id"]},
+    ).one()  # fmt: skip
+    permit = conn.execute(
+        text("SELECT allowed_task_types FROM execution_permits WHERE permit_id=:p"),
+        {"p": run["permit_id"]},
+    ).mappings().first()  # fmt: skip
+    tasks = conn.execute(
+        text("SELECT adapter_id, task_type, status, expected_assets FROM run_tasks "
+             "WHERE run_id=:r ORDER BY adapter_id, task_type"), {"r": run_id},
+    ).mappings().all()  # fmt: skip
+    expected = {a for t in tasks for a in (t["expected_assets"] or [])}
+    return pk.scope_target(
+        str(m[0]), m[1], author=m[2], approvers=list(m[3] or []),
+        permit=dict(permit) if permit else None, tasks=[dict(t) for t in tasks],
+        expected_assets=len(expected),
+    )  # fmt: skip
+
+
 def narrative_packets(
     results: list[tuple[NarrativeSubject, NarrativeResult]], *, batch: int, max_items: int
 ) -> list[ValidationPacket]:
-    """Agent 7 reviews the narratives that passed deterministic grounding in this step."""
+    """Narratives that passed deterministic grounding in this step: Agent 8 reviews its executive
+    summary; Agent 7 reviews every other AI-written text."""
     items = [
         (f"nar-{s.purpose}-{s.subject_ref}", s, r.output)
         for s, r in results
         if r.status == "VALIDATED" and r.output is not None
     ]
-    return pk.chunk(7, pk.narrative_targets(items), batch=batch, max_items=max_items)
+    executive = [i for i in items if i[1].purpose == "executive"]
+    others = [i for i in items if i[1].purpose != "executive"]
+    return [
+        *pk.chunk(7, pk.narrative_targets(others), batch=batch, max_items=max_items),
+        *pk.chunk(8, pk.narrative_targets(executive), batch=batch, max_items=max_items),
+    ]
 
 
 # llm_calls shares one status vocabulary across narrative and validation calls.
@@ -409,7 +489,7 @@ def store_validations(
                 {
                     "t": run["tenant_id"], "r": run["run_id"], "ref": t.target_ref,
                     "a": packet.agent_id, "p": packet.packet_id, "v": verdict,
-                    "e": EFFECT.get(verdict, "NONE"),
+                    "e": effect_for(t.kind, verdict),
                     "i": json.dumps([i.model_dump(mode="json") for i in v.issues] if v else []),
                     "q": json.dumps(v.human_questions if v else []),
                     "c": v.validator_confidence if v else None,
@@ -444,10 +524,10 @@ def validation_summary(conn: Connection, run_id: str) -> dict[str, Any]:
     by_verdict: dict[str, int] = {}
     by_agent: dict[str, dict[str, int]] = {}
     models: set[str] = set()
-    overruled = upheld = 0
-    for agent, verdict, model, decision in conn.execute(
+    overruled = upheld = held = 0
+    for agent, verdict, effect, model, decision in conn.execute(
         text(
-            "SELECT v.agent_id, v.verdict, v.model_id, x.decision FROM ai_validations v "
+            "SELECT v.agent_id, v.verdict, v.effect, v.model_id, x.decision FROM ai_validations v "
             "LEFT JOIN ai_validation_resolutions x ON x.run_id = v.run_id "
             "AND x.target_ref = v.target_ref WHERE v.run_id=:r"
         ),
@@ -458,11 +538,12 @@ def validation_summary(conn: Connection, run_id: str) -> dict[str, Any]:
         slot[verdict] = slot.get(verdict, 0) + 1
         overruled += decision == "OVERRULE"
         upheld += decision == "UPHOLD"
+        held += effect == "HOLD_FOR_REVIEW" and decision != "OVERRULE"
         if model:
             models.add(model)
     return {
         "total": sum(by_verdict.values()), "by_verdict": by_verdict, "by_agent": by_agent,
-        "held_for_review": by_verdict.get("DISSENT", 0) - overruled,
+        "held_for_review": held,
         "overruled": overruled, "upheld": upheld,
         "unavailable": by_verdict.get("UNAVAILABLE", 0) + by_verdict.get("VALIDATOR_INVALID", 0),
         "models": sorted(models),
@@ -559,7 +640,12 @@ def assurance_analysis(
             {"v": res.verdict.value, "r": run_id, "i": rid},
         )
 
-    for row in load_narratives(conn, run_id):
+    rows = load_narratives(conn, run_id)
+    verification = (
+        {s.subject_ref: s for s in verification_subjects(conn, run_id)}
+        if any(r["purpose"] == "verification" for r in rows) else {}
+    )  # fmt: skip
+    for row in rows:
         purpose, ref = row["purpose"], row["subject_ref"]
         if purpose == "scenario" and ref in scenarios:
             subject = scenario_subject(scenarios[ref], findings)
@@ -567,6 +653,21 @@ def assurance_analysis(
         elif purpose == "recommendation" and ref in recs:
             subject = recommendation_subject(recs[ref], findings)
             parent = rec_verdict.get(ref)
+        elif purpose == "verification" and ref in verification:
+            subject, parent = verification[ref], verdicts.get(ref)
+        elif (
+            purpose == "executive"
+            and (ex := executive_subject(findings.values(), load_ledgers(conn, run_id))) is not None
+        ):
+            subject = ex
+            output = (row["body"] or {}).get("output") or {}
+            cited = {fid for c in output.get("claims", []) for fid in c["finding_ids"]}
+            # The summary may speak only for accepted findings, so its parent is the worst of them.
+            parent = (
+                AssuranceVerdict.ACCEPT
+                if cited and all(verdicts.get(f) is AssuranceVerdict.ACCEPT for f in cited)
+                else AssuranceVerdict.NEEDS_REVIEW
+            )
         else:
             continue
         nres = assess_narrative(_narrative_result(row), subject, parent, ctx)
@@ -629,6 +730,13 @@ def report_extras(conn: Connection, run: dict[str, Any]) -> dict[str, Any]:
                  "WHERE run_id=:r ORDER BY recommendation_id"), {"r": run_id})],
         "recommendation", "recommendation",
     )  # fmt: skip
+    executive = narratives.get(("executive", "executive"))
+    accepted = accepted_findings(conn, run_id)
+    verification = {
+        ref: {"questions": n["open_questions"], "model_id": n["model_id"], "ai_generated": True}
+        for (purpose, ref), n in narratives.items()
+        if purpose == "verification" and ref in accepted
+    }
     ai: dict[str, Any] = {"mode": run["ai_mode"], "narratives_total": ai_total,
                           "narratives_accepted": ai_shown, "not_shown": ai_total - ai_shown}  # fmt: skip
     summary = validation_summary(conn, run_id)
@@ -641,4 +749,14 @@ def report_extras(conn: Connection, run: dict[str, Any]) -> dict[str, Any]:
     return {
         "risks": risks, "scenarios": scenarios, "recommendations": recommendations,
         "analysis_excluded": excluded, "model_versions": sorted(models), "ai": ai,
+        "executive_summary": executive, "verification_questions": verification,
+    }  # fmt: skip
+
+
+def accepted_findings(conn: Connection, run_id: str) -> set[str]:
+    return {
+        fid for (fid,) in conn.execute(
+            text("SELECT finding_id FROM findings WHERE run_id=:r AND assurance_verdict='ACCEPT'"),
+            {"r": run_id},
+        )
     }  # fmt: skip
