@@ -89,6 +89,17 @@
       "label_while_pending": "Astra may be used on synthetic fixtures only; the configured approval reference covers synthetic data only.",
       "next_step": "Data protection review of what leaves the host (redacted findings, no raw evidence) and of the Azure tenant's retention terms; record the approval reference here and in AISW_ASTRA_DATA_APPROVAL_REF.",
       "decision": null
+    },
+    {
+      "id": "itsm-delivery",
+      "subject": "Ticket delivery to the customer's Jira or ServiceNow: field mapping, service account and egress rule",
+      "plan_ref": "R3-ITSM",
+      "artefact": "docs/adr/ADR-037-itsm-ticket-rendering-and-delivery.md",
+      "owner": "ITSM owner with the security programme lead",
+      "status": "PENDING",
+      "label_while_pending": "Delivery is off; tickets are drafts that can be previewed for Jira or ServiceNow. Delivery is tested against a loopback fake only.",
+      "next_step": "ITSM owner approves a rendered payload and a create-and-search-only service account; network owner approves the itsm egress destination; first ticket created in a sandbox project per docs/runbooks/itsm-delivery.md.",
+      "decision": null
     }
   ]
 }

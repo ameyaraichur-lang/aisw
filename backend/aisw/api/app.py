@@ -22,6 +22,7 @@ from aisw.api import (
     projects,
     retention,
     scope,
+    tickets,
     views,
 )
 from aisw.api.container import Container, build_container
@@ -134,4 +135,5 @@ def create_app(
     app.include_router(exceptions.router)
     app.include_router(assets.router)
     app.include_router(assurance.router)
+    app.include_router(tickets.router)
     return app

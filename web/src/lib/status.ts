@@ -106,6 +106,14 @@ export const EXCEPTION_DISPLAY: Record<string, Display> = {
   REVOKED: { icon: '⊘', label: 'Revoked', tone: 'neutral' },
 }
 
+// Ticket outbox (ADR-037): a draft is sent once, by a second approver, and never edited after.
+export const TICKET_DISPLAY: Record<string, Display> = {
+  DRAFT: { icon: '…', label: 'Draft: not sent', tone: 'neutral' },
+  SENDING: { icon: '◐', label: 'Sending', tone: 'info' },
+  SENT: { icon: '✓', label: 'Sent', tone: 'ok' },
+  FAILED: { icon: '!', label: 'Not sent: last attempt failed', tone: 'warn' },
+}
+
 export const LIFECYCLE_LABEL: Record<string, string> = {
   NEW: 'New', TRIAGED: 'Confirmed', FALSE_POSITIVE: 'False positive', REOPENED: 'Reopened',
   EXCEPTION_PENDING: 'Exception requested', ACCEPTED: 'Risk accepted (exception)',

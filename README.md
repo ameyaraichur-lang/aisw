@@ -121,7 +121,7 @@ flowchart LR
 | 5 | Exposure & correlation | deterministic | Versioned risk rubric `1.0.0`; observed-only same-asset scenarios |
 | 6 | Architecture & modernization | deterministic | Draft recommendations from a **sample** pattern catalog |
 | 7 | Independent assurance | deterministic | Recomputes risk; validates findings, scenarios, recommendations, narratives |
-| 8 | Reporting & ticket drafts | deterministic | Report from accepted items only; ticket drafts (off by default, never sent) |
+| 8 | Reporting & ticket drafts | deterministic | Report from accepted items only; ticket drafts (off by default), sent to Jira or ServiceNow only by a second approver when delivery is enabled |
 
 ## What is prepared and what is not
 
@@ -142,6 +142,7 @@ flowchart LR
 | Finding review and exceptions ([ADR-033](docs/adr/ADR-033-finding-review-and-exceptions.md)) | ✅ | Confirm, reject, reopen, request exception; a second person approves; an expired exception reports the FAIL again |
 | Assurance Console, AI validation trigger policy and model-call ledger ([ADR-036](docs/adr/ADR-036-avp-trigger-policy-and-assurance-console.md)) | 🟡 | Engine-vs-AI disagreement queue resolved by a human with a reason; the trigger policy is a sample awaiting policy-owner sign-off |
 | Modernization Roadmap and scenario chain view ([ADR-035](docs/adr/ADR-035-roadmap-waves-and-chain-view.md)) | ✅ | Waves follow the rubric tier only; work without a tier is left unscheduled rather than guessed |
+| Ticket rendering and two-person delivery to Jira or ServiceNow ([ADR-037](docs/adr/ADR-037-itsm-ticket-rendering-and-delivery.md)) | 🟡 | Off by default; a retry finds the ticket instead of duplicating it. Tested against a loopback fake only; real delivery awaits the `itsm-delivery` sign-off |
 | Asset Explorer | ✅ | Reconciled assets with sourced ownership, latest posture per rule and accepted findings; relationships are not modelled, so none is shown |
 | Passive URL smoke adapter | 🟡 | Proven against a **local server only** |
 | Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; real tool versions unverified. API upload only (no UI) |
@@ -170,7 +171,7 @@ flowchart LR
 | CI proof ([ADR-030](docs/adr/ADR-030-ci-on-github-actions.md)) | ❓ | GitHub Actions workflow (SHA-pinned, read-only) lints clean with actionlint and zizmor, but has **never run on a runner** |
 | Asset/relationship explorer UI, graph reasoning, attack paths | ⛔ | Reconciliation runs in the backend; no explorer UI |
 | Import upload UI; task dependency ordering between imports | ⛔ | Import the CMDB first through the API |
-| Retention UI/scheduler; ticket delivery (drafts only, by design) | ⛔ | |
+| Retention UI/scheduler | ⛔ | |
 | Real customer environment (CMDB, cloud account, on-prem zones) | ⛔ | Everything is fixtures; customer integration is a separate authorised phase |
 | Object-lock evidence storage, multi-node soak testing | ⛔ | |
 | Legal review of licences (LGPL `psycopg`) | ⛔ | Recorded PENDING in the [sign-off register](docs/implementation/signoffs.md) with owner and next step |
@@ -287,7 +288,7 @@ deploy/     images, compose, systemd units, egress rule examples; install runboo
 | [`docs/runbooks/`](docs/runbooks/README.md) | Operating the worker, permits and keys, retention, AI, incidents, release |
 | [`docs/implementation/reconnaissance.md`](docs/implementation/reconnaissance.md) | Toolchain facts and lessons learned per milestone |
 
-Configuration is fail-closed (`backend/aisw/core/config.py`): read-only mode, scope manifest required, active scans need approval, AI and ticket creation off, dev auth stub only in dev/test. `.env.example` lists variable **names only**; never commit real values.
+Configuration is fail-closed (`backend/aisw/core/config.py`): read-only mode, scope manifest required, active scans need approval, AI, ticket creation and ticket delivery off, dev auth stub only in dev/test. `.env.example` lists variable **names only**; never commit real values.
 
 ## Roadmap
 

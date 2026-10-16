@@ -334,6 +334,7 @@ export interface AgentsResponse {
   agents: AgentInfo[]
   ai: { enabled: boolean; model_id: string | null; model_license: string | null; provider: 'ollama' | 'astra' | null; endpoint_local_only: boolean; tools_available_to_model: boolean; may_decide: boolean; validation_enabled: boolean; validation_model: string | null }
   ticket_drafts_enabled: boolean
+  ticket_delivery: { enabled: boolean; target: 'jira' | 'servicenow' | null }
   rubric_version: string
   signoffs: { rubric: SignoffStatus; catalog: SignoffStatus }
 }
@@ -364,6 +365,34 @@ export interface TicketDraft {
   status: 'DRAFT'
   delivered: false
   payload: { summary: string; description: string; labels: string[]; delivery: string }
+}
+export type ItsmTarget = 'jira' | 'servicenow'
+export type TicketStatus = 'DRAFT' | 'SENDING' | 'SENT' | 'FAILED'
+export interface OutboxRow {
+  outbox_id: string
+  run_id: string
+  recommendation_id: string
+  status: TicketStatus
+  payload: TicketDraft['payload']
+  created_by: string
+  created_at: string
+  delivered: boolean
+  target: ItsmTarget | null
+  attempts: number
+  external_ref: string | null
+  external_url: string | null
+  last_error: string | null
+  sent_by: string | null
+  sent_at: string | null
+}
+export interface RenderedTicket {
+  outbox_id: string
+  target: ItsmTarget
+  correlation_key: string
+  payload: Record<string, unknown>
+  delivery_enabled: boolean
+  configured_target: ItsmTarget | null
+  sent: boolean
 }
 export interface ReportList {
   report_id: string

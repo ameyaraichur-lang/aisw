@@ -25,6 +25,7 @@ import uvicorn
 from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
+from pydantic import SecretStr
 from sqlalchemy import URL, create_engine, text
 
 from aisw.api.app import create_app
@@ -173,6 +174,27 @@ def main() -> None:
             worker.ai_validation = True
         return {"mode": mode}
 
+    fake_itsm: list[Any] = []
+
+    @api.post("/__e2e/itsm/{mode}")
+    def itsm(mode: str) -> dict[str, Any]:
+        """``jira`` / ``servicenow``: ticket drafts and delivery on, delivering to a loopback fake
+        ITSM. ``off`` restores the server's settings."""
+        if mode == "off":
+            container.settings = plain[0]
+            return {"mode": mode}
+        from tests.itsm_fake import FakeItsm  # noqa: PLC0415 - test-only module
+
+        if not fake_itsm:
+            fake_itsm.append(FakeItsm().start())
+        f = fake_itsm[0]
+        container.settings = container.settings.model_copy(
+            update={"enable_itsm_ticket_creation": True, "enable_itsm_ticket_delivery": True,
+                    "itsm_target": mode, "itsm_base_url": f.url, "itsm_username": f.username,
+                    "itsm_token": SecretStr(f.token), "itsm_jira_project_key": "SEC"}
+        )  # fmt: skip
+        return {"mode": mode, "tickets": len(f.jira) + len(f.servicenow)}
+
     @api.post("/__e2e/delay/{ms}")
     def delay(ms: int) -> dict[str, float]:
         state["step_delay"] = max(0, min(ms, 5000)) / 1000
@@ -192,6 +214,8 @@ def main() -> None:
     finally:  # never leave an embedded Postgres behind (the machine allows few shared-memory segments)
         stop.set()
         idp.close()
+        for f in fake_itsm:
+            f.stop()
         for eng in (app_engine, worker_engine, owner, admin):
             eng.dispose()
         server.cleanup()

@@ -93,3 +93,4 @@ iframe.report { width: 100%; min-height: 28rem; border: 1px solid var(--border);
 .lane > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
 .lane-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel-2); padding: .5rem .6rem; }
 .lane-card h4 { margin: 0 0 .3rem; font-size: .95rem; }
+.code { background: #0e1930; border: 1px solid var(--border); border-radius: 6px; padding: .6rem .8rem; max-height: 22rem; overflow: auto; font-size: .85rem; white-space: pre-wrap; word-break: break-word; }

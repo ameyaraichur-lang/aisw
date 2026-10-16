@@ -17,6 +17,7 @@ import { AuditPage, NotImplemented, ReportsPage } from './pages/Misc'
 import { Projects } from './pages/Projects'
 import { Roadmap } from './pages/Roadmap'
 import { RunPage } from './pages/RunDetail'
+import { TicketOutbox } from './pages/Tickets'
 import { Wizard } from './pages/Wizard'
 
 export default function App() {
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="assets" element={<Assets />} />
         <Route path="assets/:projectId/:assetId" element={<AssetDetailPage />} />
         <Route path="roadmap" element={<RequirePermission need={['finding:read']} title="Modernization Roadmap"><Roadmap /></RequirePermission>} />
+        <Route path="tickets" element={<RequirePermission need={['finding:read']} title="Ticket Outbox"><TicketOutbox /></RequirePermission>} />
         <Route path="architecture" element={<RequirePermission need={['finding:read']} title="Architecture & Modernization"><Architecture /></RequirePermission>} />
         <Route path="*" element={<NotImplemented title="Page not found" milestone="n/a" why="This route does not exist." />} />
       </Route>

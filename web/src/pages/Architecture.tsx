@@ -94,7 +94,7 @@ function Decide({ r, ticketsEnabled }: { r: Row; ticketsEnabled: boolean }) {
       {draft ? (
         <Banner tone="ok" title="Ticket draft saved (not sent)">
           <p>{draft.payload.summary}</p>
-          <p>Drafts stay in the outbox. Nothing is delivered to any ticketing system.</p>
+          <p>Drafts stay in the <Link to={`/tickets?run=${r.run_id}`}>Ticket Outbox</Link> until another approver sends them.</p>
         </Banner>
       ) : null}
       <ConfirmDialog

@@ -67,6 +67,13 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
                       "WHERE conname='imports_kind_check'")  # fmt: skip
     with eng.connect() as c:
         assert "trivy_json" in str(c.execute(kind_check).scalar())
+    outbox_cols = text("SELECT count(*) FROM information_schema.columns "
+                       "WHERE table_name='ticket_outbox' AND column_name='external_ref'")  # fmt: skip
+    with eng.connect() as c:
+        assert c.execute(outbox_cols).scalar() == 1
+    migrate(eng, "0016", down=True)  # 0017 (ticket delivery state) is reversible
+    with eng.connect() as c:
+        assert c.execute(outbox_cols).scalar() == 0
     migrate(eng, "0015", down=True)  # 0016 (AVP trigger decisions) is reversible
     assert _tables(eng) == TABLES - TRIGGERS
     migrate(eng, "0014", down=True)  # 0015 (import kinds) is reversible

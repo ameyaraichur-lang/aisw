@@ -169,7 +169,7 @@ def test_ticket_drafts_are_disabled_by_default(sl: Slice) -> None:
         "POST", "/api/v1/tickets/drafts", "bob", json={"run_id": run_id, "recommendation_id": rid}
     )
     assert r.status_code == 403 and "disabled" in r.json()["detail"]
-    assert sl.sql("SELECT count(*) FROM ticket_outbox")[0][0] == 0
+    assert sl.sql("SELECT count(*) FROM ticket_outbox WHERE run_id=:r", r=run_id)[0][0] == 0
 
 
 def test_ticket_draft_requires_acceptance_is_idempotent_and_never_delivered(sl: Slice) -> None:
@@ -193,14 +193,14 @@ def test_ticket_draft_requires_acceptance_is_idempotent_and_never_delivered(sl: 
     assert "Effort: unknown" in j["payload"]["description"]
     second = sl.call("POST", "/api/v1/tickets/drafts", "bob", json=body)
     assert second.status_code == 200 and second.json()["outbox_id"] == j["outbox_id"]
-    assert sl.sql("SELECT count(*) FROM ticket_outbox")[0][0] == 1
+    assert sl.sql("SELECT count(*) FROM ticket_outbox WHERE run_id=:r", r=run_id)[0][0] == 1
     assert sl.call("POST", "/api/v1/tickets/drafts", "bob",
                    json={"run_id": run_id, "recommendation_id": other}).status_code == 409  # fmt: skip
     listed = sl.call("GET", f"/api/v1/tickets/drafts?run_id={run_id}", "carol").json()
     assert len(listed) == 1 and listed[0]["delivered"] is False
-    # the outbox can only ever hold drafts: delivery is not representable
+    # a draft cannot jump to SENT: delivery goes through a claimed attempt (ADR-037)
     with pytest.raises(DBAPIError), tenant_connection(sl.app_engine, "tenant-a") as c:
-        c.execute(text("UPDATE ticket_outbox SET status='SENT'"))
+        c.execute(text("UPDATE ticket_outbox SET status='SENT' WHERE run_id=:r"), {"r": run_id})
 
 
 def test_agent_registry_maps_every_adapter_and_reports_ai_state(sl: Slice) -> None:

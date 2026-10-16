@@ -1,7 +1,7 @@
 """Scenarios, recommendations, recommendation decisions, ticket drafts and the agent registry.
 
 Read-only MVP: a recommendation decision records a human choice and nothing else; a ticket draft is
-stored in an outbox and is never delivered anywhere.
+stored in an outbox, and is delivered only through ``aisw.api.tickets`` when that is enabled.
 """
 
 from __future__ import annotations
@@ -475,13 +475,16 @@ def list_ticket_drafts(
     with tenant_connection(engine, actor.tenant_id) as conn:
         rows = conn.execute(
             text("SELECT outbox_id::text, run_id, recommendation_id, status, payload, created_by, "
-                 "created_at FROM ticket_outbox WHERE (CAST(:r AS text) IS NULL OR run_id=:r) "
+                 "created_at, target, attempts, external_ref, external_url, last_error, sent_by, "
+                 "sent_at FROM ticket_outbox WHERE (CAST(:r AS text) IS NULL OR run_id=:r) "
                  "ORDER BY created_at DESC"),
             {"r": run_id},
         ).all()  # fmt: skip
     return [
         {"outbox_id": r[0], "run_id": r[1], "recommendation_id": r[2], "status": r[3], "payload": r[4],
-         "created_by": r[5], "created_at": r[6].isoformat(), "delivered": False}
+         "created_by": r[5], "created_at": r[6].isoformat(), "delivered": r[3] == "SENT",
+         "target": r[7], "attempts": r[8], "external_ref": r[9], "external_url": r[10],
+         "last_error": r[11], "sent_by": r[12], "sent_at": r[13].isoformat() if r[13] else None}
         for r in rows
     ]  # fmt: skip
 
@@ -525,6 +528,10 @@ def agents(actor: ActorContext = Depends(get_actor), c: Container = Depends(_c))
             "may_decide": False,  # a model explains; deterministic checks decide
         },
         "ticket_drafts_enabled": s.enable_itsm_ticket_creation,
+        "ticket_delivery": {
+            "enabled": s.enable_itsm_ticket_delivery,
+            "target": s.itsm_target if s.enable_itsm_ticket_delivery else None,
+        },
         "rubric_version": rubric.version,
         "signoffs": {
             "rubric": signoffs.builtin().status_of(f"risk-rubric-{rubric.version}"),

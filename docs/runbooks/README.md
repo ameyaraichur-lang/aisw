@@ -9,5 +9,6 @@ Written from what the code does today. Steps marked **(unverified)** were not ex
 - [Permits, manifests and signing keys](permits-and-keys.md)
 - [Evidence retention, legal holds and purge](evidence-retention.md)
 - [Enabling and disabling AI](ai-enablement.md)
+- [Turning on ticket delivery (Jira or ServiceNow)](itsm-delivery.md) **(unverified against a real ITSM)**
 - [Security incidents](security-incidents.md)
 - [Release, SBOM and licence gate](release-and-supply-chain.md)

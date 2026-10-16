@@ -52,13 +52,13 @@ Done on 2026-10-16:
 
 ## 5. Rev 3 scope not built (only if the WARDEN plan is adopted, see §2)
 
-- **Rest of the Astra validation pass:** a trigger policy file and an Engine-vs-Astra disagreement queue page. Agents 0–8, the effect rules, the issue-code allowlist and dissent resolution are built (ADR-021, ADR-022, ADR-024).
+- ~~**Rest of the Astra validation pass:** a trigger policy file and an Engine-vs-Astra disagreement queue page.~~ **Done (ADR-036).** **Pending:** policy-owner sign-off of the sample trigger policy (`avp-triggers-1.0.0`).
 - ~~**OPA + Rego bundles** for network, storage, logging/encryption, IAM, lifecycle, hardening and K8s RBAC, plus `opa test` in CI.~~ **Done (ADR-031).** Mappings and thresholds await policy-owner review (sign-off `config-baseline-1.0.0`).
 - ~~**Framework mappings** (NIST CSF 2.0, CIS v8.1, 800-53r5, ATT&CK) with approval state, and a Control Matrix page.~~ **Done (ADR-032).** **Pending:** a policy owner reviews the 240 proposed mappings in each tenant (owner: policy owner; next step: work through the Control Matrix).
 - ~~**Exceptions with expiry** (an expired exception becomes FAIL), plus review actions on findings (confirm, reject, request exception).~~ **Done (ADR-033).**
 - ~~**Additional adapters:** Kubernetes (kubescape), firewall exports, LDAP/AD/IAM, NetBox/ServiceNow CMDB APIs, Trivy, Tenable/Qualys/Nessus imports.~~ **Done as file importers (ADR-034).** **Pending:** check each format against an export from the customer's real tool version (owner: platform admin; next step: upload one sanitised export per tool and compare with the fixture), and live API pulls if ever authorised.
 - **UI pages:** ~~Asset Explorer~~ (done: `/assets`; an estate map needs relationships, which are not modelled), Coverage Ledger view, ~~Exposure Scenarios chain view, Modernization Roadmap swimlanes~~ (done, ADR-035), ~~Assurance Console, Audit & Provenance with model-call ledger~~ (done, ADR-036: disagreement queue, trigger policy, ledger), Evaluation Lab scorecard.
-- **Reporting:** PDF/DOCX exports, control-gap matrix, architecture delta; ITSM draft delivery to Jira/ServiceNow (still draft-only, off by default).
+- **Reporting:** PDF/DOCX exports, control-gap matrix, architecture delta. ~~ITSM draft delivery to Jira/ServiceNow~~ **Built (ADR-037):** renderers, Ticket Outbox page and two-person find-then-create delivery, tested against a loopback fake. **Pending:** sign-off `itsm-delivery` (owner: ITSM owner with the security programme lead; next step: approve a rendered payload, a create-and-search-only service account and the egress rule, then send a first ticket to a sandbox project).
 - **Maple Trust fixture estate** (~60 assets) and `scripts/eval_targets.py` scorecard against an answer key.
 
 ## 6. Product and engineering gaps under either plan (P2)

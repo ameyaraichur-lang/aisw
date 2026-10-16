@@ -97,6 +97,12 @@ def destinations(settings: Settings) -> list[Destination]:
         via = settings.astra_proxy or settings.astra_endpoint
         if via and (o := _origin(via, 80)):
             add("astra-proxy" if settings.astra_proxy else "astra", o[0], [o[1]], ("worker",))
+    if (
+        settings.enable_itsm_ticket_delivery
+        and settings.itsm_base_url
+        and (o := _origin(settings.itsm_base_url, 80))
+    ):
+        add("itsm", o[0], [o[1]], ("api",))
     ports = [int(p) for p in settings.egress_scan_ports.split(",")]
     for cidr in settings.egress_zones:
         add("scan-zone", cidr, ports, ("worker",))

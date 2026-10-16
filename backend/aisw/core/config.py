@@ -265,6 +265,17 @@ class Settings(BaseSettings):
     exception_max_days: int = Field(default=365, ge=1, le=1095)  # longest lifetime of an exception
     max_assessment_concurrency: int = Field(default=2, ge=1, le=32)
     enable_itsm_ticket_creation: bool = False
+    # Ticket delivery (ADR-037): a second person sends an accepted draft. Off by default; drafts
+    # can be rendered for Jira or ServiceNow either way. The token comes from the secret provider.
+    enable_itsm_ticket_delivery: bool = False
+    itsm_target: Literal["jira", "servicenow"] | None = None
+    itsm_base_url: str | None = None
+    itsm_username: str | None = None
+    itsm_token: SecretStr | None = None
+    itsm_jira_project_key: str = Field(default="AISW", pattern=r"^[A-Z][A-Z0-9_]{1,9}$")
+    itsm_jira_issue_type: str = Field(default="Task", pattern=r"^[A-Za-z][\w \-]{0,39}$")
+    itsm_servicenow_table: str = Field(default="incident", pattern=r"^[a-z][a-z0-9_]{1,79}$")
+    itsm_timeout_seconds: int = Field(default=10, ge=1, le=60)
     log_redaction_enabled: bool = True
 
     @property
@@ -316,6 +327,18 @@ class Settings(BaseSettings):
             except ValueError:
                 raise ValueError(f"egress_dns_servers must be IP addresses: {d!r}") from None
 
+    def _check_itsm(self) -> None:
+        if not self.enable_itsm_ticket_creation:
+            raise ValueError("enable_itsm_ticket_delivery requires enable_itsm_ticket_creation")
+        token = self.itsm_token.get_secret_value().strip() if self.itsm_token else ""
+        if not (self.itsm_target and self.itsm_base_url and self.itsm_username and token):
+            raise ValueError(
+                "enable_itsm_ticket_delivery requires itsm_target, itsm_base_url, itsm_username "
+                "and itsm_token"
+            )
+        if problem := kms_url_problem(self.itsm_base_url, self.env):
+            raise ValueError(problem.replace("kms_addr", "itsm_base_url"))
+
     def _check_oidc(self) -> None:
         if not (self.oidc_client_id and self.oidc_redirect_uri):
             raise ValueError("oidc_issuer requires oidc_client_id and oidc_redirect_uri")
@@ -358,6 +381,8 @@ class Settings(BaseSettings):
         if self.oidc_issuer is not None:
             self._check_oidc()
         self._check_egress()
+        if self.enable_itsm_ticket_delivery:
+            self._check_itsm()
         if self.policy_engine == "opa":
             if not self.opa_url:
                 raise ValueError("policy_engine=opa requires opa_url")

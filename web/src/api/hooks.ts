@@ -3,7 +3,7 @@ import { api } from './client'
 import type {
   AgentsResponse, AiValidations, AssetDetail, AssetList, AssuranceOverview, AuditItem, Disagreement, ModelCallLedger, TriggerPolicyView, Recommendation, Scenario, AuthMode, ControlMatrix, ControlRow, ExceptionList, CoverageResponse, Connector, FindingDetail, FindingRow,
   InventoryEntry, ManifestSummary, Me, Overview, Page, PolicyPackInfo, Project, ReportBody,
-  ReportList, Roadmap, RunListItem, RunStatus, TaskView,
+  ReportList, Roadmap, RunListItem, RunStatus, TaskView, ItsmTarget, OutboxRow, RenderedTicket,
 } from './types'
 
 const qs = (o: Record<string, string | number | string[] | undefined | null>): string => {
@@ -73,6 +73,10 @@ export const useTriggerPolicy = (runId?: string) =>
   useQuery({ queryKey: ['assurance', 'triggers', runId ?? ''], queryFn: () => api<TriggerPolicyView>(`/assurance/trigger-policy${qs({ run_id: runId })}`) })
 export const useModelCalls = (p: { run_id?: string; purpose?: string; status?: string; limit: number; offset: number }) =>
   useQuery({ queryKey: ['model-calls', p], queryFn: () => api<ModelCallLedger>(`/model-calls${qs(p)}`), placeholderData: keepPreviousData, retry: false })
+export const useTicketOutbox = (runId?: string) =>
+  useQuery({ queryKey: ['tickets', runId ?? ''], queryFn: () => api<OutboxRow[]>(`/tickets/drafts${qs({ run_id: runId })}`) })
+export const useRenderedTicket = (outboxId: string, target: ItsmTarget | null) =>
+  useQuery({ queryKey: ['tickets', 'render', outboxId, target ?? ''], queryFn: () => api<RenderedTicket>(`/tickets/drafts/${outboxId}/render${qs({ target })}`) })
 export const useRoadmap = (runId: string) =>
   useQuery({ queryKey: ['run', runId, 'roadmap'], queryFn: () => api<Roadmap>(`/assessments/${runId}/roadmap`), enabled: !!runId })
 export const useRunRecommendations = (runId: string) =>
