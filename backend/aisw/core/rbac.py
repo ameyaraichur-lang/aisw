@@ -28,6 +28,8 @@ class Permission(StrEnum):
     ASSESSMENT_LAUNCH = "assessment:launch"
     ASSESSMENT_CANCEL = "assessment:cancel"
     FINDING_READ = "finding:read"
+    FINDING_TRIAGE = "finding:triage"
+    EXCEPTION_APPROVE = "exception:approve"
     REPORT_READ = "report:read"
     REPORT_APPROVE = "report:approve"
     RECOMMENDATION_DECIDE = "recommendation:decide"
@@ -62,6 +64,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.ASSESSMENT_LAUNCH,
             Permission.ASSESSMENT_CANCEL,
             Permission.FINDING_READ,
+            Permission.FINDING_TRIAGE,
             Permission.IMPORT_CREATE,
         }
     ),
@@ -71,12 +74,14 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.MANIFEST_APPROVE,
             Permission.RECOMMENDATION_DECIDE,
             Permission.FINDING_READ,
+            Permission.EXCEPTION_APPROVE,
         }
     ),
     Role.REVIEWER: frozenset(
         {
             Permission.PROJECT_READ,
             Permission.FINDING_READ,
+            Permission.FINDING_TRIAGE,
             Permission.REPORT_READ,
             Permission.REPORT_APPROVE,
         }

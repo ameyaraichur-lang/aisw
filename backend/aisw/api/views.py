@@ -3,7 +3,7 @@ the UI hiding a control is never the security boundary."""
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
@@ -14,6 +14,8 @@ from aisw.api.assessments import TERMINAL_RUN, _run_or_404
 from aisw.api.container import Container
 from aisw.api.controls import effective, latest_reviews
 from aisw.api.deps import get_actor, get_engine
+from aisw.api.exceptions import FINAL_RUN as REVIEWABLE_RUN
+from aisw.api.exceptions import allowed_actions, current_exception, exception_json, review_history
 from aisw.core.auth import list_dev_users
 from aisw.core.config import Environment
 from aisw.core.db import tenant_connection
@@ -21,6 +23,7 @@ from aisw.core.rbac import ROLE_PERMISSIONS, ActorContext, Permission, authorize
 from aisw.orchestrator.analysis import current_assurance
 from aisw.orchestrator.stream import stream_events
 from aisw.policy import mappings, signoffs
+from aisw.policy.exceptions import state as exc_state
 from aisw.policy.results import finding_id as make_finding_id
 
 router = APIRouter(prefix="/api/v1")
@@ -250,12 +253,13 @@ def finding_detail(
     with tenant_connection(engine, actor.tenant_id) as conn:
         run = _run_or_404(conn, run_id)
         row = conn.execute(
-            text("SELECT body, assurance_verdict FROM findings WHERE run_id=:r AND finding_id=:f"),
+            text("SELECT body, assurance_verdict, lifecycle, stable_dedupe_key FROM findings "
+                 "WHERE run_id=:r AND finding_id=:f"),
             {"r": run_id, "f": finding_id},
-        ).first()
+        ).first()  # fmt: skip
         if row is None:
             raise HTTPException(status_code=404, detail="not found")
-        body, verdict = row
+        body, verdict, lifecycle, dkey = row
         if verdict == "REJECT":
             authorize(actor, Permission.AUDIT_READ)  # rejected candidates: auditors only
         evidence = conn.execute(
@@ -298,6 +302,8 @@ def finding_detail(
             if finding_id in b["finding_ids"] and v == "ACCEPT"
         ]
         reviews = latest_reviews(conn, mappings.builtin())
+        history = review_history(conn, run_id, finding_id)
+        exc = current_exception(conn, str(run["project_id"]), dkey)
     risk = (
         {"rubric_version": risk_row[0], "tier": risk_row[1], "provisional_tier": risk_row[2],
          "basis": risk_row[3], "factors": risk_row[4], "missing_evidence": risk_row[5],
@@ -320,6 +326,10 @@ def finding_detail(
     return {
         "finding": body, "assurance_verdict": verdict, "authoritative": verdict == "ACCEPT",
         "framework_mappings": framework_mappings,
+        "lifecycle": lifecycle, "review_history": history,
+        "review_actions": allowed_actions(actor, lifecycle, verdict, run["state"] in REVIEWABLE_RUN),
+        "exception": exception_json(exc, c.clock()) if exc else None,
+        "exception_max_days": c.settings.exception_max_days,
         "evidence": [
             {"evidence_ref": e[0], "content_hash": e[1], "source": e[2], "tool_version": e[3],
              "collected_at": e[4].isoformat(), "redacted": e[5], "media_type": e[6], "size_bytes": e[7],
@@ -435,12 +445,18 @@ def overview(
             for v, s, n in conn.execute(
                 text(
                     "SELECT assurance_verdict, severity, count(*) FROM findings "
-                    "WHERE lifecycle <> 'RESOLVED' AND severity IN ('CRITICAL','HIGH') "
+                    "WHERE lifecycle NOT IN ('RESOLVED','FALSE_POSITIVE','ACCEPTED') "
+                    "AND severity IN ('CRITICAL','HIGH') "
                     "AND assurance_verdict IN ('ACCEPT','NEEDS_REVIEW') GROUP BY 1,2"
                 )
             )
         }
+        exc_rows = conn.execute(
+            text("SELECT status, expires_at FROM finding_exceptions WHERE status IN ('REQUESTED','APPROVED')")
+        ).all()  # fmt: skip
     expected = sum(b["expected_count"] for b in ledgers)
+    soon = now + timedelta(days=30)
+    exc_states = [(exc_state(s, x, now), x) for s, x in exc_rows]
     return {
         "as_of": now.isoformat(),
         "runs": {"total": sum(by_state.values()), "by_state": by_state},
@@ -462,6 +478,12 @@ def overview(
             "open_critical_high_authoritative": sev.get(("ACCEPT", "CRITICAL"), 0) + sev.get(("ACCEPT", "HIGH"), 0),
             "critical": sev.get(("ACCEPT", "CRITICAL"), 0), "high": sev.get(("ACCEPT", "HIGH"), 0),
             "pending_review_critical_high": sev.get(("NEEDS_REVIEW", "CRITICAL"), 0) + sev.get(("NEEDS_REVIEW", "HIGH"), 0),
+        },
+        "exceptions": {
+            "pending": sum(1 for s, _ in exc_states if s == "PENDING"),
+            "active": sum(1 for s, _ in exc_states if s == "ACTIVE"),
+            "expiring_30d": sum(1 for s, x in exc_states if s == "ACTIVE" and x <= soon),
+            "expired": sum(1 for s, _ in exc_states if s == "EXPIRED"),
         },
         "connectors": [
             {"adapter_id": a, "enabled": cap.enabled, "permission_ok": cap.permission_ok}

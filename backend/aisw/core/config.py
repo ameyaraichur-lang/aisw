@@ -260,6 +260,7 @@ class Settings(BaseSettings):
     worker_enabled: bool = False
 
     evidence_retention_days: int = Field(default=365, ge=1)
+    exception_max_days: int = Field(default=365, ge=1, le=1095)  # longest lifetime of an exception
     max_assessment_concurrency: int = Field(default=2, ge=1, le=32)
     enable_itsm_ticket_creation: bool = False
     log_redaction_enabled: bool = True

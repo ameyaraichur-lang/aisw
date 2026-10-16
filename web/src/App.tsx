@@ -8,6 +8,7 @@ import { CommandCenter } from './pages/CommandCenter'
 import { FindingDetail, Findings } from './pages/Findings'
 import { Integrations } from './pages/Integrations'
 import { ControlMatrix } from './pages/Controls'
+import { Exceptions } from './pages/Exceptions'
 import { Login } from './pages/Login'
 import { Architecture } from './pages/Architecture'
 import { AuditPage, NotImplemented, ReportsPage } from './pages/Misc'
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="findings" element={<RequirePermission need={['finding:read']} title="Findings & Exposure"><Findings /></RequirePermission>} />
         <Route path="findings/:runId/:findingId" element={<FindingDetail />} />
         <Route path="controls" element={<ControlMatrix />} />
+        <Route path="exceptions" element={<RequirePermission need={['finding:read']} title="Exceptions"><Exceptions /></RequirePermission>} />
         <Route path="reports" element={<RequirePermission need={['report:read']} title="Reports & Evidence"><ReportsPage /></RequirePermission>} />
         <Route path="audit" element={<RequirePermission need={['audit:read']} title="Policy, Users & Audit"><AuditPage /></RequirePermission>} />
         <Route path="assets" element={<NotImplemented title="Asset Explorer" milestone="planned" why="Asset reconciliation runs in the backend (Agent 1), but the asset and relationship explorer UI has not been built yet." />} />

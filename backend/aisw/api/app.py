@@ -15,6 +15,7 @@ from aisw.api import (
     assessments,
     auth,
     controls,
+    exceptions,
     imports,
     projects,
     retention,
@@ -128,4 +129,5 @@ def create_app(
     app.include_router(analysis.router)
     app.include_router(retention.router)
     app.include_router(controls.router)
+    app.include_router(exceptions.router)
     return app

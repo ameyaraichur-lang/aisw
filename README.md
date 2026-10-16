@@ -139,6 +139,7 @@ flowchart LR
 | Evidence ingest (redact, hash, write-once) | ✅ | Secrets never reach disk, DB or report |
 | Policy evaluation (JSON packs, pinned and hashed; OPA/Rego, [ADR-031](docs/adr/ADR-031-opa-policy-engine.md)) | 🟡 | Python and OPA engines held equivalent by tests; Rego domain rules are proposals awaiting review |
 | Framework mappings and Control Matrix ([ADR-032](docs/adr/ADR-032-framework-mappings.md)) | 🟡 | NIST CSF 2.0, CIS v8.1, 800-53 Rev. 5, ISO 27001, ATT&CK; each mapping is a proposal until a policy owner approves it |
+| Finding review and exceptions ([ADR-033](docs/adr/ADR-033-finding-review-and-exceptions.md)) | ✅ | Confirm, reject, reopen, request exception; a second person approves; an expired exception reports the FAIL again |
 | Passive URL smoke adapter | 🟡 | Proven against a **local server only** |
 | Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; real tool versions unverified. API upload only (no UI) |
 | Risk rubric, scenarios, recommendations, Agent 7 | 🟡 | Rubric weights and the architecture catalog are **samples** awaiting policy-owner approval, labelled in reports and the console; see the [sign-off register](docs/implementation/signoffs.md) |

@@ -31,6 +31,7 @@ AI_VALIDATION = {"ai_validations"}
 REVISIONS = {"ai_validation_resolutions"}
 SESSIONS = {"auth_session_revocations"}
 MAPPING_REVIEWS = {"framework_mapping_reviews"}
+EXCEPTIONS = {"finding_exceptions", "finding_reviews", "exception_applications"}
 TABLES = (
     FOUNDATION
     | PIPELINE
@@ -41,6 +42,7 @@ TABLES = (
     | REVISIONS
     | SESSIONS
     | MAPPING_REVIEWS
+    | EXCEPTIONS
 )
 
 
@@ -59,13 +61,19 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     grant = text("SELECT has_table_privilege('aisw_app', 'alembic_version', 'SELECT')")
     with eng.connect() as c:
         assert c.execute(grant).scalar() is True
+    migrate(eng, "0013", down=True)  # 0014 (exceptions and finding reviews) is reversible
+    assert _tables(eng) == TABLES - EXCEPTIONS
+    with eng.connect() as c:
+        assert not c.execute(
+            text("SELECT 1 FROM pg_proc WHERE proname='aisw_exception_transition'")
+        ).first()
     migrate(eng, "0012", down=True)  # 0013 (mapping reviews) is independently reversible
-    assert _tables(eng) == TABLES - MAPPING_REVIEWS
+    assert _tables(eng) == TABLES - EXCEPTIONS - MAPPING_REVIEWS
     migrate(eng, "0011", down=True)  # 0012 (ops grants) is independently reversible
     with eng.connect() as c:
         assert c.execute(grant).scalar() is False
     migrate(eng, "0010", down=True)  # 0011 (session revocations) is independently reversible
-    assert _tables(eng) == TABLES - MAPPING_REVIEWS - SESSIONS
+    assert _tables(eng) == TABLES - EXCEPTIONS - MAPPING_REVIEWS - SESSIONS
     migrate(eng, "0009", down=True)  # 0010 (generation agents) is independently reversible
     with eng.connect() as c:
         checks = {
@@ -78,24 +86,27 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     migrate(eng, "head")
     migrate(eng, "0009", down=True)
     migrate(eng, "0008", down=True)  # 0009 (model-call usage) is independently reversible
-    assert _tables(eng) == TABLES - MAPPING_REVIEWS - SESSIONS
+    assert _tables(eng) == TABLES - EXCEPTIONS - MAPPING_REVIEWS - SESSIONS
     with eng.connect() as c:
         assert not c.execute(
             text("SELECT 1 FROM information_schema.columns WHERE table_name='llm_calls' "
                  "AND column_name IN ('input_tokens', 'latency_ms', 'replayed')")
         ).first()  # fmt: skip
     migrate(eng, "0007", down=True)  # 0008 (review revisions) is independently reversible
-    assert _tables(eng) == TABLES - MAPPING_REVIEWS - SESSIONS - REVISIONS
+    assert _tables(eng) == TABLES - EXCEPTIONS - MAPPING_REVIEWS - SESSIONS - REVISIONS
     with eng.connect() as c:
         assert not c.execute(
             text("SELECT 1 FROM information_schema.columns WHERE table_name='reports' "
                  "AND column_name='revision'")
         ).first()  # fmt: skip
     migrate(eng, "0006", down=True)  # 0007 (agent validation) is independently reversible
-    assert _tables(eng) == TABLES - MAPPING_REVIEWS - SESSIONS - REVISIONS - AI_VALIDATION
+    assert (
+        _tables(eng) == TABLES - EXCEPTIONS - MAPPING_REVIEWS - SESSIONS - REVISIONS - AI_VALIDATION
+    )
     migrate(eng, "0005", down=True)  # 0006 (hardening) is independently reversible
     assert (
-        _tables(eng) == TABLES - MAPPING_REVIEWS - SESSIONS - REVISIONS - AI_VALIDATION - HARDENING
+        _tables(eng)
+        == TABLES - EXCEPTIONS - MAPPING_REVIEWS - SESSIONS - REVISIONS - AI_VALIDATION - HARDENING
     )
     with eng.connect() as c:
         assert not c.execute(

@@ -55,7 +55,7 @@ Done on 2026-10-16:
 - **Rest of the Astra validation pass:** a trigger policy file and an Engine-vs-Astra disagreement queue page. Agents 0–8, the effect rules, the issue-code allowlist and dissent resolution are built (ADR-021, ADR-022, ADR-024).
 - ~~**OPA + Rego bundles** for network, storage, logging/encryption, IAM, lifecycle, hardening and K8s RBAC, plus `opa test` in CI.~~ **Done (ADR-031).** Mappings and thresholds await policy-owner review (sign-off `config-baseline-1.0.0`).
 - ~~**Framework mappings** (NIST CSF 2.0, CIS v8.1, 800-53r5, ATT&CK) with approval state, and a Control Matrix page.~~ **Done (ADR-032).** **Pending:** a policy owner reviews the 227 proposed mappings in each tenant (owner: policy owner; next step: work through the Control Matrix).
-- **Exceptions with expiry** (an expired exception becomes FAIL), plus review actions on findings (confirm, reject, request exception).
+- ~~**Exceptions with expiry** (an expired exception becomes FAIL), plus review actions on findings (confirm, reject, request exception).~~ **Done (ADR-033).**
 - **Additional adapters:** Kubernetes (kubescape), firewall exports, LDAP/AD/IAM, NetBox/ServiceNow CMDB APIs, Trivy, Tenable/Qualys/Nessus imports.
 - **UI pages:** Estate Map / Asset Explorer (route exists as "planned"), Coverage Ledger view, Exposure Scenarios chain view, Modernization Roadmap swimlanes, Assurance Console, Audit & Provenance with model-call ledger, Evaluation Lab scorecard.
 - **Reporting:** PDF/DOCX exports, control-gap matrix, architecture delta; ITSM draft delivery to Jira/ServiceNow (still draft-only, off by default).

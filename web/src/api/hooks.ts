@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { api } from './client'
 import type {
-  AgentsResponse, AiValidations, AuditItem, Recommendation, Scenario, AuthMode, ControlMatrix, ControlRow, CoverageResponse, Connector, FindingDetail, FindingRow,
+  AgentsResponse, AiValidations, AuditItem, Recommendation, Scenario, AuthMode, ControlMatrix, ControlRow, ExceptionList, CoverageResponse, Connector, FindingDetail, FindingRow,
   InventoryEntry, ManifestSummary, Me, Overview, Page, PolicyPackInfo, Project, ReportBody,
   ReportList, RunListItem, RunStatus, TaskView,
 } from './types'
@@ -39,6 +39,8 @@ export const useControls = (runId: string | undefined) =>
   useQuery({ queryKey: ['run', runId, 'controls'], queryFn: () => api<ControlRow[]>(`/assessments/${runId}/controls`), enabled: !!runId })
 export const useControlMatrix = (p: { run_id?: string; policy_version?: string }) =>
   useQuery({ queryKey: ['control-matrix', p], queryFn: () => api<ControlMatrix>(`/control-matrix${qs(p)}`), enabled: !!(p.run_id || p.policy_version), placeholderData: keepPreviousData })
+export const useExceptions = (p: { state?: string }) =>
+  useQuery({ queryKey: ['exceptions', p], queryFn: () => api<ExceptionList>(`/exceptions${qs(p)}`), placeholderData: keepPreviousData })
 export const useRunFindings = (runId: string, p: { verdict: string[]; severity?: string; limit: number; offset: number }) =>
   useQuery({
     queryKey: ['run', runId, 'findings', p],

@@ -55,6 +55,8 @@ class ReportInputs:
     # Agent 8 / Agent 4 AI-written text that passed grounding, assurance and the validator.
     executive_summary: dict[str, Any] | None = None
     verification_questions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # ADR-033: exceptions that covered (APPLIED) or no longer covered (EXPIRED) a failing check.
+    exceptions: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _pending_signoffs(inp: ReportInputs) -> list[str]:
@@ -141,6 +143,18 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
         )
     if not inp.ledgers:
         limitations.append("No coverage information was produced.")
+    applied = [x for x in inp.exceptions if x["effect"] == "APPLIED"]
+    expired = [x for x in inp.exceptions if x["effect"] == "EXPIRED"]
+    if applied:
+        limitations.append(
+            f"{len(applied)} failing check(s) were covered by an approved, unexpired exception and "
+            "are not listed as findings; each is listed under Exceptions with its expiry."
+        )
+    if expired:
+        limitations.append(
+            f"{len(expired)} exception(s) had expired when the evidence was collected; those "
+            "checks are reported as findings again."
+        )
     limitations.extend(_pending_signoffs(inp))
 
     by_sev = {s: 0 for s in SEVERITY_ORDER}
@@ -187,6 +201,8 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
         body["revision"] = {"number": inp.revision, "supersedes": inp.supersedes}
     if inp.executive_summary:
         body["executive_summary"] = {**inp.executive_summary, "ai_generated": True}
+    if inp.exceptions:
+        body["exceptions"] = inp.exceptions
     suffix = f"-r{inp.revision}" if inp.revision > 1 else ""
     bundle = ReportBundle(
         report_id=f"rep-{inp.run_id}{suffix}", tenant_id=inp.tenant_id, project_id=inp.project_id,
@@ -304,6 +320,21 @@ def render_html(body: dict[str, Any]) -> str:
             "<h2>Questions for asset owners (AI-written)</h2><p><em>Answering these confirms or "
             f"refutes the recorded exposure. Nothing was tested to produce them.</em></p><ul>{questions}</ul>"
         )
+    exceptions = ""
+    if body.get("exceptions"):
+        exc_rows = "".join(
+            f"<tr><td>{_e(x['exception_id'])}</td><td>{_e(x['effect'])}</td><td>{_e(x['title'])}</td>"
+            f"<td>{_e(x['asset_id'])}</td><td>{_e(x['expires_at'])}</td><td>{_e(x['approved_by'])}</td>"
+            f"<td>{_e(x['reason'])}</td></tr>"
+            for x in body["exceptions"]
+        )
+        exceptions = (
+            "<h2>Exceptions</h2><p><em>APPLIED: an approved exception was in force when the evidence "
+            "was collected, so the check is not listed as a finding. EXPIRED: the exception had lapsed "
+            "and the finding is reported again.</em></p><table><thead><tr><th>Exception</th>"
+            "<th>Effect</th><th>Check</th><th>Asset</th><th>Expires</th><th>Approved by</th>"
+            f"<th>Reason</th></tr></thead><tbody>{exc_rows}</tbody></table>"
+        )
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta http-equiv="Content-Security-Policy" '
@@ -317,6 +348,6 @@ def render_html(body: dict[str, Any]) -> str:
         f"<th>Assets</th><th>Evidence</th></tr></thead><tbody>{rows}</tbody></table>"
         "<h2>Coverage</h2><table><thead><tr><th>Segment</th><th>Expected</th><th>Reconciled</th>"
         f"<th>Unknown</th><th>Unsupported</th><th>Reasons</th></tr></thead><tbody>{cov}</tbody></table>"
-        f"{questions}{_analysis_html(body)}"
+        f"{exceptions}{questions}{_analysis_html(body)}"
         f"<h2>Limitations</h2><ul>{limits}</ul></main></body></html>"
     )

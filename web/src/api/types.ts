@@ -180,11 +180,43 @@ export interface ControlMatrix {
   summary: Record<MappingStatus, number>
   can_review: boolean
 }
+export type ReviewAction = 'CONFIRM' | 'REJECT' | 'REOPEN' | 'REQUEST_EXCEPTION'
+export interface ReviewEntry { action: string; from: string; to: string; reason: string; actor: string; at: string; exception_id: string | null }
+export type ExceptionState = 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'REJECTED' | 'REVOKED'
+export interface ExceptionItem {
+  exception_id: string
+  project_id: string
+  project_name?: string
+  rule_id: string
+  asset_id: string
+  title: string
+  source_run_id: string
+  source_finding_id: string
+  reason: string
+  requested_by: string
+  requested_at: string
+  expires_at: string
+  status: string
+  state: ExceptionState
+  days_left: number | null
+  decided_by: string | null
+  decided_at: string | null
+  decision_reason: string | null
+  revoked_by: string | null
+  revoked_at: string | null
+  revoke_reason: string | null
+}
+export interface ExceptionList { as_of: string; max_days: number; counts: Record<ExceptionState, number>; items: ExceptionItem[]; can_decide: boolean }
 export interface FindingDetail {
   finding: Finding
   assurance_verdict: string
   authoritative: boolean
   framework_mappings: FrameworkMapping[]
+  lifecycle: string
+  review_history: ReviewEntry[]
+  review_actions: ReviewAction[]
+  exception: ExceptionItem | null
+  exception_max_days: number
   evidence: {
     evidence_ref: string
     content_hash: string
@@ -397,6 +429,7 @@ export interface Overview {
     high: number
     pending_review_critical_high: number
   }
+  exceptions: { pending: number; active: number; expiring_30d: number; expired: number }
   connectors: { adapter_id: string; enabled: boolean; permission_ok: boolean }[]
 }
 export interface AuditItem {

@@ -97,6 +97,21 @@ export const MAPPING_DISPLAY: Record<string, Display> = {
   REJECTED: { icon: '✕', label: 'Rejected', tone: 'bad' },
 }
 
+// Finding exceptions (ADR-033): a risk acceptance in force for a limited time.
+export const EXCEPTION_DISPLAY: Record<string, Display> = {
+  PENDING: { icon: '…', label: 'Awaiting approval', tone: 'warn' },
+  ACTIVE: { icon: '◇', label: 'In force', tone: 'info' },
+  EXPIRED: { icon: '⌛', label: 'Expired: reported again', tone: 'bad' },
+  REJECTED: { icon: '✕', label: 'Rejected', tone: 'neutral' },
+  REVOKED: { icon: '⊘', label: 'Revoked', tone: 'neutral' },
+}
+
+export const LIFECYCLE_LABEL: Record<string, string> = {
+  NEW: 'New', TRIAGED: 'Confirmed', FALSE_POSITIVE: 'False positive', REOPENED: 'Reopened',
+  EXCEPTION_PENDING: 'Exception requested', ACCEPTED: 'Risk accepted (exception)',
+  IN_REMEDIATION: 'In remediation', PENDING_VALIDATION: 'Pending validation', RESOLVED: 'Resolved',
+}
+
 export const TERMINAL_RUN_STATES = new Set(['CLOSED', 'FAILED', 'CANCELLED', 'EXPIRED', 'PARTIAL', 'REPORT_READY'])
 
 export function display(map: Record<string, Display>, key: string): Display {

@@ -15,7 +15,7 @@ export function CommandCenter() {
           <>
             <p className="muted" aria-live="polite">Data as of {fmtTime(o.as_of)}</p>
             <div className="grid">
-              <Card title="Coverage (assessed vs expected)" to={<Link to="/controls">Open control coverage</Link>}>
+              <Card title="Coverage (assessed vs expected)" to={<Link to="/controls">Open the control matrix</Link>}>
                 {o.coverage.runs_considered === 0 ? (
                   <p>No finished assessment yet, so no coverage can be claimed.</p>
                 ) : (
@@ -39,6 +39,11 @@ export function CommandCenter() {
                 {o.findings.pending_review_critical_high > 0 ? (
                   <Badge d={{ icon: '?', label: `${o.findings.pending_review_critical_high} critical/high pending review`, tone: 'warn' }} />
                 ) : null}
+              </Card>
+              <Card title="Exceptions" to={<Link to="/exceptions">Open exceptions</Link>}>
+                <div className="big">{o.exceptions.active} in force</div>
+                <p className="denominator">{o.exceptions.pending} awaiting approval; {o.exceptions.expired} expired and reported again</p>
+                {o.exceptions.expiring_30d > 0 ? <Badge d={{ icon: '⌛', label: `${o.exceptions.expiring_30d} expire within 30 days`, tone: 'warn' }} /> : null}
               </Card>
               <Card title="Active and partial runs" to={<Link to="/assessments">All assessments</Link>}>
                 <div className="big">{o.active_runs.length} active</div>

@@ -16,7 +16,7 @@ import json
 import random
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -49,6 +49,7 @@ from aisw.llm.validation import (
 from aisw.orchestrator import analysis
 from aisw.orchestrator.events import append_event
 from aisw.policy.engine import PackRegistry, PolicyEvaluator, PolicyPack
+from aisw.policy.exceptions import Grant, effect_at
 from aisw.policy.results import RuleResult, dedupe_key, finding_id, rollup
 from aisw.policy.rubric import builtin as builtin_rubric
 from aisw.reporting.coverage import build_ledger
@@ -668,7 +669,6 @@ class Worker:
             ).all()
         }
         results: list[RuleResult] = []
-        asset_results: dict[str, list[PolicyOutcome]] = {}
         seen_assets: set[str] = set()
         for _task_id, asset_id, status, _reason, attrs in status_rows:
             if status != "SCANNED" or asset_id in seen_assets:
@@ -681,7 +681,11 @@ class Worker:
                 else:
                     res = RuleResult(asset_id, rule, PolicyOutcome(o[2]), o[3], o[4], o[5])
                 results.append(res)
-                asset_results.setdefault(asset_id, []).append(res.outcome)
+
+        results, lapsed = self._apply_exceptions(conn, run, pack, results, obs)
+        asset_results: dict[str, list[PolicyOutcome]] = {}
+        for res in results:
+            asset_results.setdefault(res.asset_id, []).append(res.outcome)
 
         # controls
         for ctrl in sorted({r.control_id for r in pack.rules}):
@@ -724,7 +728,8 @@ class Worker:
                 severity_source=f"policy:{pack.key}", confidence="MEDIUM",
                 outcome=PolicyOutcome.FAIL, affected_assets=[res.asset_id],
                 evidence_refs=[res.evidence_ref], control_mappings=mappings,
-                assumptions=["Runtime exposure and business impact are not verified"],
+                assumptions=["Runtime exposure and business impact are not verified",
+                             *lapsed.get((res.asset_id, res.rule.rule_id), [])],
                 policy_version=pack.key, first_observed=o[6], last_observed=o[6],
             )  # fmt: skip
             conn.execute(
@@ -762,6 +767,49 @@ class Worker:
                 {"t": tenant, "r": run_id, "s": ledger.segment,
                  "b": json.dumps(ledger.model_dump(mode="json"))},
             )  # fmt: skip
+
+    def _apply_exceptions(
+        self, conn: Connection, run: dict[str, Any], pack: PolicyPack, results: list[RuleResult],
+        obs: dict[tuple[str, str], Any],
+    ) -> tuple[list[RuleResult], dict[tuple[str, str], list[str]]]:  # fmt: skip
+        """A FAIL covered by an exception in force when it was observed becomes EXCEPTION (ADR-033)."""
+        grants: dict[str, list[Grant]] = {}
+        for i, key, approved, expires, revoked in conn.execute(
+            text("SELECT exception_id, stable_dedupe_key, decided_at, expires_at, revoked_at "
+                 "FROM finding_exceptions WHERE project_id=:p AND status IN ('APPROVED','REVOKED')"),
+            {"p": str(run["project_id"])},
+        ):  # fmt: skip
+            grants.setdefault(key, []).append(Grant(i, approved, expires, revoked))
+        out: list[RuleResult] = []
+        lapsed: dict[tuple[str, str], list[str]] = {}
+        for res in results:
+            hit = None
+            if res.outcome is PolicyOutcome.FAIL and res.evidence_ref is not None:
+                at = obs[(res.asset_id, res.rule.rule_id)][6]
+                hit = effect_at(
+                    grants.get(dedupe_key(pack, res.rule.rule_id, res.asset_id), []), at
+                )
+            if hit is None:
+                out.append(res)
+                continue
+            grant, effect = hit
+            conn.execute(
+                text("INSERT INTO exception_applications (tenant_id, run_id, exception_id, rule_id, "
+                     "asset_id, effect, observed_at, expires_at) VALUES (:t, :r, :e, :rule, :a, :ef, "
+                     ":at, :x) ON CONFLICT DO NOTHING"),
+                {"t": run["tenant_id"], "r": run["run_id"], "e": grant.exception_id,
+                 "rule": res.rule.rule_id, "a": res.asset_id, "ef": effect, "at": at,
+                 "x": grant.expires_at},
+            )  # fmt: skip
+            if effect == "APPLIED":
+                out.append(replace(res, outcome=PolicyOutcome.EXCEPTION))
+            else:
+                out.append(res)
+                lapsed.setdefault((res.asset_id, res.rule.rule_id), []).append(
+                    f"Exception {grant.exception_id} expired at {grant.expires_at.isoformat()}; "
+                    "the finding is reported again"
+                )
+        return out, lapsed
 
     # ---- assurance ------------------------------------------------------------------------
     def _assurance_phase(self, conn: Connection, run: dict[str, Any]) -> None:
@@ -876,6 +924,18 @@ class Worker:
                                      "title": body["title"]})  # fmt: skip
             else:
                 rejected += 1  # REJECT or never assessed: never authoritative
+        exceptions = [
+            {"exception_id": i, "effect": ef, "rule_id": rule, "asset_id": a, "title": title,
+             "observed_at": at.isoformat(), "expires_at": x.isoformat(), "approved_by": by,
+             "reason": why}
+            for i, ef, rule, a, at, x, title, by, why in conn.execute(
+                text("SELECT a.exception_id, a.effect, a.rule_id, a.asset_id, a.observed_at, "
+                     "a.expires_at, e.title, e.decided_by, e.reason FROM exception_applications a "
+                     "JOIN finding_exceptions e ON e.exception_id = a.exception_id "
+                     "WHERE a.run_id=:r ORDER BY a.effect, a.rule_id, a.asset_id"),
+                {"r": run_id},
+            )
+        ]  # fmt: skip
         evidence = [
             {"ref": r, "hash": h}
             for r, h in conn.execute(
@@ -897,7 +957,7 @@ class Worker:
                 policy_version=pack.key, pack_hash=pack.pack_hash, tasks=tasks, ledgers=ledgers,
                 controls=controls, accepted=accepted, needs_review=needs_review,
                 rejected_count=rejected, evidence=evidence, run_partial=run["partial"],
-                generated_at=now, notice=pack.report_notice,
+                generated_at=now, notice=pack.report_notice, exceptions=exceptions,
                 **analysis.report_extras(conn, run),
             )
         )  # fmt: skip

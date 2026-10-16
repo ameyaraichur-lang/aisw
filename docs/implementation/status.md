@@ -51,13 +51,14 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Console API read models: me/auth-mode, connectors, policy packs, inventory/manifest/run lists, tasks, controls, finding detail (evidence + matched observation + assurance), tenant-wide findings, overview with denominators, audit events | Implemented (M4) | `tests/integration/test_console_api.py` |
 | SSE stream with cursor resume, heartbeat, rotation and clean end | Implemented (M4) | `tests/integration/test_console_api.py`; browser side in e2e |
 | Web shell: role-aware nav, skip link, landmarks, focus management, route guards | Implemented (M4) | `e2e/permissions.spec.ts`, `e2e/a11y.spec.ts` |
-| Command Center (coverage with denominator + as-of, authoritative critical/high, active/partial runs, connector health) | Implemented (M4) | exceptions card omitted (no exception feature yet) |
+| Command Center (coverage with denominator + as-of, authoritative critical/high, active/partial runs, connector health) | Implemented (M4) | exceptions card (pending, in force, expiring in 30 days, expired) added with ADR-033 |
 | New Assessment wizard (6 steps, server preflight, explicit review, idempotent launch) | Implemented (M4) | `e2e/happy-path.spec.ts`, `e2e/blocked-and-partial.spec.ts`, double-click test |
 | Approvals inbox (signs exact hash; active-profile acknowledgement) | Implemented (M4) | |
 | Live run timeline (events-derived stages, task panel, event log), reconnect/stale/polling fallback, cancel | Implemented (M4) | `e2e/reconnect.spec.ts`, `src/lib/events.test.ts` |
 | Coverage, findings, evidence explorer, controls, report preview/download/approve | Implemented (M4) | partial/failed/denied/empty states covered |
 | Accessibility: axe WCAG 2.2 AA on 24 screens (0 violations), keyboard, reduced motion, non-colour status | Implemented (M4) | automated checks only; no manual screen-reader pass |
-| Review actions on findings, exceptions, asset graph | Planned | shown as planned, nothing simulated |
+| Review actions on findings (confirm, reject as false positive, reopen, request exception) and time-boxed exceptions with two-person approval, revocation and expiry back to FAIL (ADR-033) | Implemented | `tests/unit/test_exception_rules.py`, `tests/integration/test_exceptions.py`, `web/e2e/exceptions.spec.ts` |
+| Asset graph | Planned (w3) | shown as planned, nothing simulated |
 | Production sign-in (OIDC via BFF cookie) | Implemented (ADR-026) | login page offers SSO; proven against the loopback mock IdP only |
 | Silent-stall detection for an open-but-dead stream | Planned | documented limitation (ADR-015) |
 | CI job for e2e | Unverified | written, never run on a runner (see CI workflow row) |

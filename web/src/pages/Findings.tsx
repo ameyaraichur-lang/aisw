@@ -3,8 +3,9 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useAllFindings, useFinding } from '../api/hooks'
 import { Badge, Banner, CopyButton, DataState, PageHeader, Pagination, ShortHash } from '../components/ui'
 import { RiskPanel } from '../components/analysis'
+import { ReviewPanel } from './Exceptions'
 import { fmtTime } from '../lib/format'
-import { MAPPING_DISPLAY, OUTCOME_DISPLAY, SEVERITY_DISPLAY, VERDICT_DISPLAY, display } from '../lib/status'
+import { LIFECYCLE_LABEL, MAPPING_DISPLAY, OUTCOME_DISPLAY, SEVERITY_DISPLAY, VERDICT_DISPLAY, display } from '../lib/status'
 
 export function Findings() {
   const [sp, setSp] = useSearchParams()
@@ -40,7 +41,7 @@ export function Findings() {
                   <tr key={f.run_id + f.finding_id}>
                     <td><Badge d={display(SEVERITY_DISPLAY, f.severity)} /></td>
                     <td><Link to={`/findings/${f.run_id}/${f.finding_id}`}>{f.title}</Link></td>
-                    <td>{f.project_name}</td><td>{f.affected_assets.join(', ')}</td><td>{f.lifecycle}</td>
+                    <td>{f.project_name}</td><td>{f.affected_assets.join(', ')}</td><td>{LIFECYCLE_LABEL[f.lifecycle] ?? f.lifecycle}</td>
                     <td><Link to={`/assessments/${f.run_id}`}>{f.run_id.slice(0, 8)}</Link></td>
                   </tr>))}
                 </tbody>
@@ -71,7 +72,7 @@ export function FindingDetail() {
               <Badge d={display(SEVERITY_DISPLAY, f.severity)} title={`severity source: ${f.severity_source}`} />
               <Badge d={display(OUTCOME_DISPLAY as never, f.outcome)} />
               <Badge d={display(VERDICT_DISPLAY, d.assurance_verdict)} />
-              <span className="chip">lifecycle {f.lifecycle}</span>
+              <span className="chip">lifecycle {LIFECYCLE_LABEL[d.lifecycle] ?? d.lifecycle}</span>
               <span className="chip">confidence {f.confidence}</span>
               <span className="chip">business risk: {d.risk_explanation.business_risk ?? 'not rated'}</span>
             </p>
@@ -149,10 +150,7 @@ export function FindingDetail() {
                     </dl>
                   ) : <p className="muted">Not yet assessed.</p>}
                 </section>
-                <section className="panel" aria-labelledby="ra">
-                  <h2 id="ra">Review actions</h2>
-                  <p className="muted">Recording decisions (confirm, reject, exception request) is planned for a later milestone. Nothing on this page changes data.</p>
-                </section>
+                <ReviewPanel runId={runId} d={d} />
               </div>
             </div>
           </>
