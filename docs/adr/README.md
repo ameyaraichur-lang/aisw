@@ -29,5 +29,6 @@
 - [ADR-027: Manifest signing through a Transit-compatible KMS, with a rotation drill](ADR-027-kms-signing-and-rotation.md)
 - [ADR-028: Egress allow-list: app-level scan zones plus generated host-firewall rules](ADR-028-egress-allow-list.md)
 - [ADR-029: Deployment packaging: four processes, secret files, a doctor, and no root](ADR-029-deployment-packaging.md)
+- [ADR-030: GitHub Actions as the CI system of record](ADR-030-ci-on-github-actions.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

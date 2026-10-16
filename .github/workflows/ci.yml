@@ -1,29 +1,56 @@
+# AISW CI (ADR-030). Actions are pinned to full commit SHAs; bump them deliberately.
+# Nothing here reaches a real target: tests use embedded Postgres, a mock IdP, a KMS emulator
+# and loopback servers only. No secrets are used.
 name: ci
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  UV_VERSION: "0.12.13"
+  NODE_VERSION: "24"
+
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    name: Backend gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     defaults: { run: { working-directory: backend } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - run: uv sync
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: { persist-credentials: false }
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        with: { version: "${{ env.UV_VERSION }}", working-directory: backend, enable-cache: true }
+      - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run mypy
+      - run: uv run mypy aisw tests
       - run: uv run pytest -q
       - run: uv run pip-audit
       - run: uv run python ../tools/export_schemas.py --check
-      - run: uv run python ../tools/sbom.py --check  # SBOM + licence gate (unverified on a runner: Python metadata may differ by platform)
+      # SBOM + licence gate (Python metadata may differ by platform; first runner result pending)
+      - run: uv run python ../tools/sbom.py --check
+      - name: Key rotation drill (emulator)
+        run: uv run python ../tools/key_rotation_drill.py --emulator --rotate
+
   web:
-    runs-on: ubuntu-latest
+    name: Web gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     defaults: { run: { working-directory: web } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 24 }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm run check:types
@@ -31,19 +58,75 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm audit --omit=dev
-  repo-hygiene:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: python3 tools/secret_scan.py .
+
   e2e:
-    runs-on: ubuntu-latest
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-node@v4
-        with: { node-version: 24 }
-      - run: cd backend && uv sync
-      - run: cd web && npm ci
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: { persist-credentials: false }
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        with: { version: "${{ env.UV_VERSION }}", working-directory: backend, enable-cache: true }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: uv sync --frozen
+        working-directory: backend
+      - run: npm ci
+        working-directory: web
       # Uses the runner's Google Chrome (channel: chrome); no browser download.
-      - run: cd web && npx playwright test
+      - run: npx playwright test
+        working-directory: web
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with: { name: playwright-results, path: web/test-results, retention-days: 7 }
+
+  deploy:
+    name: Images and compose
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: { persist-credentials: false }
+      - name: Build images
+        run: |
+          docker build -f deploy/docker/backend.Dockerfile -t aisw-backend:ci .
+          docker build -f deploy/docker/web.Dockerfile -t aisw-web:ci .
+      - name: Backend image runs as uid 10001 with migrations beside the package
+        run: |
+          test "$(docker run --rm --entrypoint id aisw-backend:ci -u)" = 10001
+          docker run --rm --entrypoint python aisw-backend:ci -c \
+            "from aisw.bootstrap import MIGRATIONS; assert (MIGRATIONS / 'versions').is_dir(), MIGRATIONS"
+          docker run --rm aisw-backend:ci aisw.doctor --help > /dev/null
+      - name: Web image serves the console with security headers
+        run: |
+          docker run -d --name web --add-host api:127.0.0.1 -p 127.0.0.1:18080:8080 aisw-web:ci
+          for _ in $(seq 30); do curl -fsS http://127.0.0.1:18080/healthz && break; sleep 1; done
+          curl -fsSI http://127.0.0.1:18080/ | tee headers.txt
+          grep -qi '^content-security-policy:' headers.txt
+          grep -qi '^x-content-type-options: nosniff' headers.txt
+          test "$(docker exec web id -u)" = 101
+      - name: Compose file is valid
+        working-directory: deploy/compose
+        run: |
+          cp aisw.env.example aisw.env
+          ./make-secrets.sh
+          docker compose config --quiet
+
+  hygiene:
+    name: Secret scan and workflow audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: { persist-credentials: false }
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        with: { version: "${{ env.UV_VERSION }}", ignore-empty-workdir: true }
+      - run: python3 tools/secret_scan.py .
+      - name: Workflow lint and security audit
+        run: |
+          uvx --from actionlint-py==1.7.12.25 actionlint
+          uvx zizmor==1.31.1 --offline .github/workflows

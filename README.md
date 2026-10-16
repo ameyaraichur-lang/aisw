@@ -161,7 +161,7 @@ flowchart LR
 | **Live validation (M9)**: `example.com` smoke, `scanme.nmap.org` bounded Nmap, ZAP on your own Juice Shop | ⛔ | Needs your explicit authorisation for each target |
 | Real scanner execution (Nmap, ZAP, Greenbone, Wazuh, Prowler) | ⛔ | Not in the MVP; only imports and the passive URL probe exist |
 | A real language model run on real evidence | ⛔ | Astra has run on synthetic fixtures only; real evidence needs the data-handling approval (ADR-020). No local model has been run |
-| CI proof | ❓ | The CI workflow is written but has never run on a runner |
+| CI proof ([ADR-030](docs/adr/ADR-030-ci-on-github-actions.md)) | ❓ | GitHub Actions workflow (SHA-pinned, read-only) lints clean with actionlint and zizmor, but has **never run on a runner** |
 | Asset/relationship explorer UI, graph reasoning, attack paths | ⛔ | Reconciliation runs in the backend; no explorer UI |
 | Import upload UI; task dependency ordering between imports | ⛔ | Import the CMDB first through the API |
 | Retention UI/scheduler; ticket delivery (drafts only, by design) | ⛔ | |

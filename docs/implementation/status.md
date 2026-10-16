@@ -9,7 +9,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Health/readiness endpoints | Implemented | `tests/unit/test_health.py` |
 | UI shell + outcome vocabulary (no data) | Implemented | `web/src/lib/status.test.ts`; build passes |
 | Repo secret scanner | Implemented (stopgap) | `tests/security/test_secret_scan.py`; gitleaks planned |
-| CI workflow | Unverified | `.github/workflows/ci.yml` written (now incl. schema-drift check), never run on a CI runner |
+| CI workflow (GitHub Actions, ADR-030): backend, web, e2e, deploy images, hygiene; SHA-pinned actions, read-only token | Unverified on a runner | `tests/unit/test_ci_workflow.py`; actionlint and zizmor clean locally; never run on a GitHub runner |
 | Strict contracts (envelope 1.1, manifest, permit, decision, domain entities, assurance, report) + exported JSON Schemas | Implemented (M1) | `tests/contract/` (53 tests), `schemas/` drift gate |
 | Tenant isolation via PostgreSQL RLS (forced, fail-closed when no tenant set) | Implemented (M1) | `tests/security/test_tenant_isolation_db.py`; real PG 16 via pgserver |
 | RBAC roles/permissions, separation of duties, dev identity stub (dev/test only) | Implemented (M1) | `tests/security/test_api_authz.py` |
@@ -57,7 +57,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Review actions on findings, exceptions, asset graph | Planned | shown as planned, nothing simulated |
 | Production sign-in (OIDC via BFF cookie) | Implemented (ADR-026) | login page offers SSO; proven against the loopback mock IdP only |
 | Silent-stall detection for an open-but-dead stream | Planned | documented limitation (ADR-015) |
-| CI job for e2e | Unverified | written, never run on a runner |
+| CI job for e2e | Unverified | written, never run on a runner (see CI workflow row) |
 | PASSIVE_HTTP_SMOKE adapter: pinned-address connect, TLS verify-before-send + certificate metadata, one GET/HEAD per hop, per-hop redirect vetting, header allow-list, no body, evidence of DNS/TLS/HTTP/chain/tool version | Implemented (M5), **tested against a local server only** | `tests/security/test_url_smoke_adapter.py` (42), `test_url_smoke_pipeline.py` (47); no public host contacted |
 | URL smoke policy pack (7 controls) + report notice "not a security certification" | Implemented (M5) | |
 | Generic asset attributes (migration 0003) | Implemented (M5) | independently reversible |

@@ -3,7 +3,7 @@
 # bootstrap (python -m aisw.bootstrap) and doctor (python -m aisw.doctor). Build from the repo root:
 #   docker build -f deploy/docker/backend.Dockerfile -t aisw-backend:<version> .
 FROM python:3.12.11-slim-bookworm AS build
-COPY --from=ghcr.io/astral-sh/uv:0.8.4 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.12.13 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never UV_PROJECT_ENVIRONMENT=/app/.venv
 WORKDIR /app
 COPY backend/pyproject.toml backend/uv.lock ./
