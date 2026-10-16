@@ -35,6 +35,7 @@ jobs:
       - run: uv run python ../tools/export_schemas.py --check
       # SBOM + licence gate (Python metadata may differ by platform; first runner result pending)
       - run: uv run python ../tools/sbom.py --check
+      - run: uv run python ../tools/signoffs.py --check
       - name: Key rotation drill (emulator)
         run: uv run python ../tools/key_rotation_drill.py --emulator --rotate
 

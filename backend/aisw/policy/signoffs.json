@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "note": "Human sign-offs the product depends on. While an item is PENDING the product keeps its 'sample' / 'provisional' / 'synthetic only' label. Recording a decision needs the named decider, the date, a decision reference and the sha256 of the exact artefact approved; editing the artefact afterwards invalidates the approval (tools/signoffs.py --check). Rendered to docs/implementation/signoffs.md.",
+  "signoffs": [
+    {
+      "id": "risk-rubric-1.0.0",
+      "subject": "Risk rubric 1.0.0: severity, criticality and exposure weights and the P0-P2 thresholds",
+      "plan_ref": "P0-6",
+      "artefact": "backend/aisw/policy/rubrics/risk-rubric-1.0.0.json",
+      "owner": "Policy owner (role policy_owner)",
+      "status": "PENDING",
+      "label_while_pending": "Risk tiers come from a sample rubric awaiting policy-owner approval; treat them as indicative.",
+      "next_step": "Policy owner reviews the weights and thresholds against a reviewed sample of real findings, then records the decision here or publishes an adjusted rubric version.",
+      "decision": null
+    },
+    {
+      "id": "architecture-catalog-1.0.0",
+      "subject": "Architecture catalog 1.0.0: target patterns used for recommendations",
+      "plan_ref": "P0-6",
+      "artefact": "backend/aisw/policy/catalogs/architecture-catalog-1.0.0.json",
+      "owner": "Policy owner with the customer's enterprise architect",
+      "status": "PENDING",
+      "label_while_pending": "Recommendation patterns come from a sample catalog, not the customer's approved reference architecture.",
+      "next_step": "Replace or confirm each pattern against the customer's reference architecture; an approved catalog is published as a new version with status APPROVED.",
+      "decision": null
+    },
+    {
+      "id": "ai-evaluation-bar",
+      "subject": "Acceptance bar for the AI reviewer and narrator (recall, false-dissent rate, narrative acceptance)",
+      "plan_ref": "P0-6",
+      "artefact": "backend/aisw/llm/evaluation.py",
+      "owner": "Policy owner with the security lead",
+      "status": "PENDING",
+      "label_while_pending": "The evaluation bar is provisional; meeting it on the synthetic labelled set is not an approval.",
+      "next_step": "Agree the thresholds and a labelled set drawn from reviewed real findings (needs the data approval below), then record the decision.",
+      "decision": null
+    },
+    {
+      "id": "licence-review",
+      "subject": "Licence review: LGPL psycopg/psycopg-binary at runtime, MPL dev tools, three packages without licence metadata",
+      "plan_ref": "P0-7",
+      "artefact": "docs/implementation/sbom/licence-policy.json",
+      "owner": "Named legal reviewer",
+      "status": "PENDING",
+      "label_while_pending": "Licence acceptances are engineering positions, not legal advice; no external redistribution until reviewed.",
+      "next_step": "Legal reviewer confirms or changes each acceptance in licence-policy.json, then records the decision here.",
+      "decision": null
+    },
+    {
+      "id": "astra-data-approval",
+      "subject": "Data-handling approval for sending redacted real evidence to Astra (open item O3)",
+      "plan_ref": "A-1",
+      "artefact": "docs/adr/ADR-020-astra-remote-model-provider.md",
+      "owner": "Product owner with the data protection officer",
+      "status": "PENDING",
+      "label_while_pending": "Astra may be used on synthetic fixtures only; the configured approval reference covers synthetic data only.",
+      "next_step": "Data protection review of what leaves the host (redacted findings, no raw evidence) and of the Azure tenant's retention terms; record the approval reference here and in AISW_ASTRA_DATA_APPROVAL_REF.",
+      "decision": null
+    }
+  ]
+}

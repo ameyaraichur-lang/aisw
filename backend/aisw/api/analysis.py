@@ -12,6 +12,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import Engine, text
 
+from aisw.agents.architecture import builtin_catalog
 from aisw.agents.registry import AGENTS
 from aisw.api.assessments import _run_or_404
 from aisw.api.container import Container
@@ -24,6 +25,7 @@ from aisw.core.rbac import ActorContext, Forbidden, Permission, authorize
 from aisw.core.redaction import redact_obj, redact_text
 from aisw.orchestrator.analysis import usage_totals, validation_summary
 from aisw.orchestrator.events import append_event
+from aisw.policy import signoffs
 from aisw.policy.rubric import builtin as builtin_rubric
 
 router = APIRouter(prefix="/api/v1")
@@ -491,4 +493,10 @@ def agents(actor: ActorContext = Depends(get_actor), c: Container = Depends(_c))
         },
         "ticket_drafts_enabled": s.enable_itsm_ticket_creation,
         "rubric_version": rubric.version,
+        "signoffs": {
+            "rubric": signoffs.builtin().status_of(f"risk-rubric-{rubric.version}"),
+            "catalog": signoffs.builtin().status_of(
+                f"architecture-catalog-{builtin_catalog().version}"
+            ),
+        },
     }

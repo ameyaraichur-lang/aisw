@@ -145,6 +145,7 @@ def test_bootstrap_api_worker_and_doctor_as_live_processes(deployment: dict[str,
         assert checks["database_role"] == checks["row_level_security"] == "PASS"
         assert checks["migrations_at_head"] == checks["evidence_store"] == "PASS"
         assert checks["signing_custody"] == "WARN" and checks["sign_in"] == "WARN"
+        assert checks["signoffs"] == "WARN"
         wdoc = run(["aisw.doctor", "--role", "worker", "--json"], env)
         assert wdoc.returncode == 0, wdoc.stdout
         assert {c["name"]: c["status"] for c in json.loads(wdoc.stdout)}["database_role"] == "PASS"

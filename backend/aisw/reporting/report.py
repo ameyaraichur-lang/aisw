@@ -15,6 +15,7 @@ from typing import Any
 from aisw.contracts.assurance import ReportBundle
 from aisw.contracts.base import canonical_hash
 from aisw.contracts.domain import CoverageLedger
+from aisw.policy import signoffs
 
 DISCLAIMER = (
     "Assessment report generated from recorded evidence. It is not a certification and does not "
@@ -54,6 +55,23 @@ class ReportInputs:
     # Agent 8 / Agent 4 AI-written text that passed grounding, assurance and the validator.
     executive_summary: dict[str, Any] | None = None
     verification_questions: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+
+def _pending_signoffs(inp: ReportInputs) -> list[str]:
+    """The sample/provisional label of every policy artefact this report actually relies on."""
+    used = {f"risk-rubric-{r['rubric_version']}" for r in inp.risks.values()}
+    used |= {
+        f"architecture-catalog-{r['catalog_ref'].rpartition('@')[2]}" for r in inp.recommendations
+    }
+    register = signoffs.builtin()
+    out = []
+    for signoff_id in sorted(used):
+        entry = register.get(signoff_id)
+        if entry is None:
+            out.append(f"{signoff_id} has no sign-off record; treat its results as unapproved.")
+        elif entry.status != "APPROVED":
+            out.append(f"{entry.label_while_pending} ({signoff_id}: {entry.status})")
+    return out
 
 
 def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
@@ -120,6 +138,7 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
         )
     if not inp.ledgers:
         limitations.append("No coverage information was produced.")
+    limitations.extend(_pending_signoffs(inp))
 
     by_sev = {s: 0 for s in SEVERITY_ORDER}
     for f in inp.accepted:

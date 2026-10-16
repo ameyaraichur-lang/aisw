@@ -219,6 +219,7 @@ def test_agent_registry_maps_every_adapter_and_reports_ai_state(sl: Slice) -> No
     assert j["ai"]["model_id"] is None and j["ticket_drafts_enabled"] is False
     assert j["ai"]["provider"] is None and j["ai"]["endpoint_local_only"] is True
     assert not any(a["ai_active"] for a in j["agents"])
+    assert j["signoffs"] == {"rubric": "PENDING", "catalog": "PENDING"}  # sample labels stay on
     sl.enable_ai(ScriptedModel(grounded))
     on = sl.call("GET", "/api/v1/agents", "carol").json()
     assert {a["agent_id"] for a in on["agents"] if a["ai_active"]} == {4, 5, 6, 8}
@@ -234,6 +235,7 @@ def test_finding_detail_carries_risk_without_inventing_business_risk(sl: Slice) 
     rx = d["risk_explanation"]
     assert rx["business_risk"] is None and rx["risk"]["basis"] == "NEEDS_POLICY_REVIEW"
     assert rx["risk"]["provisional_tier"] == "P2" and rx["risk"]["assurance_verdict"] == "ACCEPT"
+    assert rx["risk"]["rubric_signoff"] == "PENDING"
     assert rx["ai_narrative"] is None and len(rx["scenarios"]) == 1
 
 

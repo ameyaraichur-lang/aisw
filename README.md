@@ -140,7 +140,7 @@ flowchart LR
 | Policy evaluation (JSON packs, pinned and hashed) | 🟡 | Python evaluator behind an interface; OPA not installed |
 | Passive URL smoke adapter | 🟡 | Proven against a **local server only** |
 | Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; real tool versions unverified. API upload only (no UI) |
-| Risk rubric, scenarios, recommendations, Agent 7 | 🟡 | Rubric weights and the architecture catalog are **samples** awaiting policy-owner approval |
+| Risk rubric, scenarios, recommendations, Agent 7 | 🟡 | Rubric weights and the architecture catalog are **samples** awaiting policy-owner approval, labelled in reports and the console; see the [sign-off register](docs/implementation/signoffs.md) |
 | LLM gateway (disabled by default, loopback only, no tools, grounding validator) | 🟡 | Tested with a **scripted stub only**; no model has ever run |
 | Astra (Azure OpenAI) provider, opt-in ([ADR-020](docs/adr/ADR-020-astra-remote-model-provider.md)) | 🟡 | Controls tested with an in-memory transport; **run live on synthetic fixtures** (gpt-6-astra, gpt-5.4, gpt-4.1-mini) on 2026-10-16. No real evidence sent |
 | AI validation pass over Agents 1–7 ([ADR-021](docs/adr/ADR-021-agent-validation-pass.md)) | 🟡 | One-way: a dissent holds an item for review, nothing else. Tested with a scripted model and run live on Astra (synthetic, including the prompt-injection fixture). Quality on real estates not measured |
@@ -167,7 +167,7 @@ flowchart LR
 | Retention UI/scheduler; ticket delivery (drafts only, by design) | ⛔ | |
 | Real customer environment (CMDB, cloud account, on-prem zones) | ⛔ | Everything is fixtures; customer integration is a separate authorised phase |
 | OPA, object-lock evidence storage, multi-node soak testing | ⛔ | |
-| Legal review of licences (LGPL `psycopg`) | ⛔ | Recorded as pending |
+| Legal review of licences (LGPL `psycopg`) | ⛔ | Recorded PENDING in the [sign-off register](docs/implementation/signoffs.md) with owner and next step |
 
 ## Milestones
 

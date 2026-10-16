@@ -24,6 +24,7 @@
   - the evidence store is a 0700 directory;
   - AI gating;
   - egress zones;
+  - pending sign-offs (WARN while any is unapproved);
   - sign-in, for the API.
 
   Any FAIL exits 1. The systemd units run it in `ExecStartPre`.

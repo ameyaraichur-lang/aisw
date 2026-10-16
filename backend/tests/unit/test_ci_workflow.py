@@ -53,7 +53,7 @@ def test_every_local_gate_runs_in_ci() -> None:
     backend = runs("backend")
     for gate in ("uv sync --frozen", "ruff check .", "ruff format --check .", "mypy aisw tests",
                  "pytest -q", "pip-audit", "export_schemas.py --check", "sbom.py --check",
-                 "key_rotation_drill.py --emulator --rotate"):  # fmt: skip
+                 "key_rotation_drill.py --emulator --rotate", "signoffs.py --check"):  # fmt: skip
         assert gate in backend, gate
     web = runs("web")
     for gate in ("npm ci", "npm run lint", "npm run check:types", "npm run typecheck", "npm test",

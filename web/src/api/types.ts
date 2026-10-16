@@ -203,7 +203,9 @@ export interface RiskInfo {
   missing_evidence: string[]
   rationale: string
   assurance_verdict: string | null
+  rubric_signoff?: SignoffStatus
 }
+export type SignoffStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'UNRECORDED'
 export interface Narrative {
   summary: string
   claims: { text: string; finding_ids: string[]; asset_ids: string[] }[]
@@ -274,6 +276,7 @@ export interface AgentsResponse {
   ai: { enabled: boolean; model_id: string | null; model_license: string | null; provider: 'ollama' | 'astra' | null; endpoint_local_only: boolean; tools_available_to_model: boolean; may_decide: boolean; validation_enabled: boolean; validation_model: string | null }
   ticket_drafts_enabled: boolean
   rubric_version: string
+  signoffs: { rubric: SignoffStatus; catalog: SignoffStatus }
 }
 export type AiVerdict = 'CONCUR' | 'CONCERN' | 'DISSENT' | 'INSUFFICIENT_EVIDENCE' | 'NO_VERDICT' | 'VALIDATOR_INVALID' | 'UNAVAILABLE'
 export interface AiValidationItem {

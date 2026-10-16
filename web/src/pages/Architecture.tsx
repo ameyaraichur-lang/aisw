@@ -28,7 +28,8 @@ function AgentsPanel() {
                 : <> (model <code>{d.ai.model_id}</code>, licence {d.ai.model_license}, local endpoint only)</>
               : null}
             {d.ai.validation_enabled ? <>. Agent outcomes are reviewed by an AI validator (<code>{d.ai.validation_model}</code>) that can only hold items for human review</> : null}
-            {'. '}A model never has tools and never decides: deterministic checks do. Risk rubric <code>{d.rubric_version}</code>.
+            {'. '}A model never has tools and never decides: deterministic checks do. Risk rubric <code>{d.rubric_version}</code>
+            {d.signoffs.rubric !== 'APPROVED' ? ' (sample, awaiting policy-owner approval)' : null}.
           </p>
           <div className="table-wrap">
             <table>
@@ -127,7 +128,9 @@ export function Architecture() {
         lead="Draft recommendations built from independently accepted findings and approved target patterns. They are for planning only: nothing here changes a system."
       />
       <AgentsPanel />
-      <Banner tone="info" title="Sample patterns">The target patterns come from a sample catalog that must be replaced with your approved reference architecture. Effort is never estimated by the platform.</Banner>
+      {agents.data?.signoffs.catalog === 'APPROVED'
+        ? null
+        : <Banner tone="info" title="Sample patterns">The target patterns come from a sample catalog that must be replaced with your approved reference architecture. Effort is never estimated by the platform.</Banner>}
       {run ? <p className="row"><span className="chip">Showing run {run.slice(0, 8)} only</span> <button type="button" className="btn" onClick={() => { setOffset(0); setSp(status ? { status } : {}) }}>Show all runs</button></p> : null}
       <fieldset>
         <legend>Filter</legend>

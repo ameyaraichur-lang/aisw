@@ -19,6 +19,7 @@ from aisw.core.db import tenant_connection
 from aisw.core.rbac import ROLE_PERMISSIONS, ActorContext, Permission, authorize
 from aisw.orchestrator.analysis import current_assurance
 from aisw.orchestrator.stream import stream_events
+from aisw.policy import signoffs
 from aisw.policy.results import finding_id as make_finding_id
 
 router = APIRouter(prefix="/api/v1")
@@ -297,7 +298,8 @@ def finding_detail(
     risk = (
         {"rubric_version": risk_row[0], "tier": risk_row[1], "provisional_tier": risk_row[2],
          "basis": risk_row[3], "factors": risk_row[4], "missing_evidence": risk_row[5],
-         "rationale": risk_row[6], "assurance_verdict": risk_row[7]}
+         "rationale": risk_row[6], "assurance_verdict": risk_row[7],
+         "rubric_signoff": signoffs.builtin().status_of(f"risk-rubric-{risk_row[0]}")}
         if risk_row else None
     )  # fmt: skip
     # a tier is shown as business risk only when it is complete AND independently reproduced

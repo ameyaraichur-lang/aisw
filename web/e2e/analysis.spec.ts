@@ -24,6 +24,7 @@ test('risk is never invented, recommendations are drafts, and nothing is executa
   await page.goto(`/findings/${runId}/${high.finding_id}`)
   await expect(page.getByRole('heading', { name: 'Risk rubric' })).toBeVisible()
   await expect(page.getByText('Not rated: the inputs are incomplete, so no tier is invented.')).toBeVisible()
+  await expect(page.getByText('sample rubric awaiting policy-owner approval', { exact: false })).toBeVisible() // P0-6 pending
   await expect(page.getByText('Owner-supplied asset criticality is unknown')).toBeVisible()
   await expect(page.getByRole('complementary', { name: 'AI-written summary' })).toHaveCount(0)
 
@@ -58,6 +59,7 @@ test('an approver records a decision with a reason; others can only read', async
   await expect(page.getByRole('heading', { name: 'Architecture & Modernization' })).toBeVisible()
   await expect(page.getByText('AI is disabled', { exact: false })).toBeVisible()
   await expect(page.getByText('Showing run')).toBeVisible()
+  await expect(page.getByText('Sample patterns')).toBeVisible() // catalog sign-off pending
   await expect(page.getByText('2 recommendation(s)')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Accept for planning' })).toHaveCount(0)
   await expect(page.getByText('needs the approver role').first()).toBeVisible()

@@ -25,6 +25,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from aisw.authz.signing import SigningError
 from aisw.core.config import Environment, ModelProvider, Settings, load_settings
 from aisw.core.db import make_engine
+from aisw.policy import signoffs
 
 Status = Literal["PASS", "WARN", "FAIL"]
 MIGRATIONS = Path(__file__).resolve().parents[1] / "migrations"
@@ -146,6 +147,13 @@ def _egress(s: Settings, role: str) -> Check:
     return Check("egress_scan_zones", "PASS", ", ".join(s.egress_zones) or "not used by the API")
 
 
+def _signoffs() -> Check:
+    pending = [x.id for x in signoffs.builtin().signoffs if x.status != "APPROVED"]
+    if not pending:
+        return Check("signoffs", "PASS", "every recorded sign-off is approved")
+    return Check("signoffs", "WARN", f"not approved (sample labels shown): {', '.join(pending)}")
+
+
 def run_checks(s: Settings, role: Literal["api", "worker"], *,
                engine_factory: Callable[[str], Engine] = make_engine) -> list[Check]:  # fmt: skip
     out = [Check("settings", "PASS", f"env={s.env.value} role={role}")]
@@ -161,7 +169,7 @@ def run_checks(s: Settings, role: Literal["api", "worker"], *,
             out += _database(engine, role)
         finally:
             engine.dispose()
-    out += [_signing(s), _evidence(s), _ai(s), _egress(s, role)]
+    out += [_signing(s), _evidence(s), _ai(s), _egress(s, role), _signoffs()]
     if role == "api":
         out.append(_sign_in(s))
     return out

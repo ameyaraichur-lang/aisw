@@ -32,8 +32,8 @@ Two plans describe this product, and they disagree:
 | P0-3 | Egress enforcement at host or network level | **Built (ADR-028)**: scan zones enforced at preflight and dispatch, IdP endpoints bound to allowed hosts, nftables/iptables rules generated per role from settings, `egress_check verify` probe. **Pending:** load the rules on a real host and run `verify` with a deny canary (owner: platform admin) | `verify` passes on the API and worker hosts, with a canary that is reachable without the firewall being refused |
 | P0-4 | Deployment: Dockerfiles/compose or native service units, Postgres, worker process | **Built (ADR-029)**: `deploy/` has backend and web images, compose, systemd units and an install runbook; bootstrap, doctor, `/readyz`, worker heartbeat and graceful shutdown. The API and worker are proven as live processes against Postgres, driving a run to REPORT_READY. **Pending:** build the images and run the clean-machine install on a host with Docker or systemd (owner: platform admin) | Clean-machine install from the runbook; API, worker and UI up; doctor/health checks green |
 | P0-5 | First real CI run | **Built (ADR-030)**: five jobs (backend, web, e2e, deploy images, hygiene), SHA-pinned actions, read-only token, the drill and image checks added; actionlint and zizmor clean locally. **Pending:** push the branch and get a green run on GitHub Actions; the SBOM gate, pgserver and Chrome may differ on the runner (owner: repository owner) | All five jobs green on GitHub Actions |
-| P0-6 | Policy-owner approval of risk rubric `1.0.0` weights/thresholds and the architecture catalog | Both are labelled samples in UI and report | Signed-off versions committed; "sample" labels removed by version bump |
-| P0-7 | Legal review of licences (LGPL `psycopg`, MPL dev tools, three packages without metadata) | Recorded as pending in the SBOM report | Named reviewer's decision recorded in `licence-policy.json` |
+| P0-6 | Policy-owner approval of risk rubric `1.0.0` weights/thresholds, the architecture catalog and the AI evaluation bar | **Recorded PENDING** in the sign-off register ([`signoffs.md`](signoffs.md)) with owner and next step. While pending, the report adds the sample label of every rubric and catalog it relies on, and the console labels the rubric and keeps the sample-catalog banner. An approval needs the decider, date, reference and the sha256 of the exact file (`tools/signoffs.py --check` in CI). **Pending:** policy-owner decisions (owner: policy owner) | Signed-off versions committed; "sample" labels removed by version bump |
+| P0-7 | Legal review of licences (LGPL `psycopg`, MPL dev tools, three packages without metadata) | **Recorded PENDING** in the sign-off register (`licence-review`) and in the SBOM report; the acceptances in `licence-policy.json` stay engineering positions. **Pending:** a named legal reviewer's decision (owner: legal reviewer) | Named reviewer's decision recorded in `licence-policy.json` |
 
 ## 4. Astra follow-ups
 
@@ -48,7 +48,7 @@ Done on 2026-10-16:
 
 | # | Item | Notes |
 |---|---|---|
-| A-1 | Data-handling approval for Astra (open item O3) covering real evidence | Synthetic data only until then |
+| A-1 | Data-handling approval for Astra (open item O3) covering real evidence | **Recorded PENDING** in the sign-off register (`astra-data-approval`). Synthetic data only until then; the configured approval ref covers synthetic data only (owner: product owner with the data protection officer) |
 
 ## 5. Rev 3 scope not built (only if the WARDEN plan is adopted, see §2)
 

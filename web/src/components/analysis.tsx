@@ -21,7 +21,11 @@ export function RiskPanel({ risk }: { risk: RiskInfo | null }) {
   return (
     <>
       <dl className="kv">
-        <dt>Rubric</dt><dd><code>risk-rubric {risk.rubric_version}</code></dd>
+        <dt>Rubric</dt>
+        <dd>
+          <code>risk-rubric {risk.rubric_version}</code>
+          {risk.rubric_signoff !== 'APPROVED' ? ' (sample rubric awaiting policy-owner approval: treat tiers as indicative)' : null}
+        </dd>
         <dt>Business-risk tier</dt>
         <dd>{risk.tier ?? 'Not rated: the inputs are incomplete, so no tier is invented.'}</dd>
         <dt>Severity-only indication</dt><dd>{risk.provisional_tier} (not business risk)</dd>
