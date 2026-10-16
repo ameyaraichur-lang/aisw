@@ -35,7 +35,7 @@ export default function App() {
         <Route path="controls" element={<ControlCoverage />} />
         <Route path="reports" element={<RequirePermission need={['report:read']} title="Reports & Evidence"><ReportsPage /></RequirePermission>} />
         <Route path="audit" element={<RequirePermission need={['audit:read']} title="Policy, Users & Audit"><AuditPage /></RequirePermission>} />
-        <Route path="assets" element={<NotImplemented title="Asset Explorer" milestone="M6" why="Asset reconciliation and the relationship explorer arrive with the discovery and adapter milestone." />} />
+        <Route path="assets" element={<NotImplemented title="Asset Explorer" milestone="planned" why="Asset reconciliation runs in the backend (Agent 1), but the asset and relationship explorer UI has not been built yet." />} />
         <Route path="architecture" element={<RequirePermission need={['finding:read']} title="Architecture & Modernization"><Architecture /></RequirePermission>} />
         <Route path="*" element={<NotImplemented title="Page not found" milestone="n/a" why="This route does not exist." />} />
       </Route>

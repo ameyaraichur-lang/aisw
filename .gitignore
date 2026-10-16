@@ -19,3 +19,6 @@ dist/
 # Playwright artifacts
 web/test-results/
 web/playwright-report/
+
+# local tooling
+.claude/

@@ -4,7 +4,7 @@ export const NAV: Item[] = [
   { to: '/projects', label: 'Projects & Environments' },
   { to: '/integrations', label: 'Integrations & Collectors' },
   { to: '/assessments', label: 'Assessments' },
-  { to: '/assets', label: 'Asset Explorer', planned: 'M6' },
+  { to: '/assets', label: 'Asset Explorer', planned: 'planned' },
   { to: '/findings', label: 'Findings & Exposure', need: 'finding:read' },
   { to: '/architecture', label: 'Architecture & Modernization', need: 'finding:read' },
   { to: '/controls', label: 'Control Coverage' },

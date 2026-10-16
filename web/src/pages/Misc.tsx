@@ -11,7 +11,7 @@ export function NotImplemented({ title, milestone, why }: { title: string; miles
   return (
     <>
       <PageHeader title={title} />
-      <Banner tone="neutral" title={`Planned for ${milestone}`}>{why} Nothing on this page is simulated.</Banner>
+      <Banner tone="neutral" title={milestone === 'planned' ? 'Planned, not built yet' : `Planned for ${milestone}`}>{why} Nothing on this page is simulated.</Banner>
     </>
   )
 }
