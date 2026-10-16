@@ -1272,6 +1272,71 @@
       "pack_control": "US-7",
       "framework": "ISO-IEC-27001",
       "control_id": "A.8.20"
+    },
+    {
+      "pack_control": "IMG-1",
+      "framework": "NIST-CSF",
+      "control_id": "ID.RA-01"
+    },
+    {
+      "pack_control": "IMG-1",
+      "framework": "CIS-Controls",
+      "control_id": "7.7"
+    },
+    {
+      "pack_control": "IMG-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "RA-5"
+    },
+    {
+      "pack_control": "IMG-1",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SI-2"
+    },
+    {
+      "pack_control": "IMG-1",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.8"
+    },
+    {
+      "pack_control": "IMG-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1190"
+    },
+    {
+      "pack_control": "IMG-1",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1210"
+    },
+    {
+      "pack_control": "IMG-2",
+      "framework": "NIST-CSF",
+      "control_id": "PR.PS-02"
+    },
+    {
+      "pack_control": "IMG-2",
+      "framework": "CIS-Controls",
+      "control_id": "2.2"
+    },
+    {
+      "pack_control": "IMG-2",
+      "framework": "NIST-SP-800-53",
+      "control_id": "SA-22"
+    },
+    {
+      "pack_control": "IMG-2",
+      "framework": "ISO-IEC-27001",
+      "control_id": "A.8.8"
+    },
+    {
+      "pack_control": "IMG-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1068"
+    },
+    {
+      "pack_control": "IMG-2",
+      "framework": "MITRE-ATTACK",
+      "control_id": "T1190"
     }
   ]
 }

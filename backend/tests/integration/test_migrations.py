@@ -61,6 +61,13 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     grant = text("SELECT has_table_privilege('aisw_app', 'alembic_version', 'SELECT')")
     with eng.connect() as c:
         assert c.execute(grant).scalar() is True
+    kind_check = text("SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+                      "WHERE conname='imports_kind_check'")  # fmt: skip
+    with eng.connect() as c:
+        assert "trivy_json" in str(c.execute(kind_check).scalar())
+    migrate(eng, "0014", down=True)  # 0015 (import kinds) is reversible
+    with eng.connect() as c:
+        assert "trivy_json" not in str(c.execute(kind_check).scalar())
     migrate(eng, "0013", down=True)  # 0014 (exceptions and finding reviews) is reversible
     assert _tables(eng) == TABLES - EXCEPTIONS
     with eng.connect() as c:

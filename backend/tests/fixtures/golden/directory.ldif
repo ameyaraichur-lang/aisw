@@ -1,0 +1,45 @@
+version: 1
+# ldifde -f directory.ldif -r "(objectClass=user)" (synthetic, sanitized)
+
+dn: CN=adm.jsmith,OU=Admins,DC=corp,DC=example,DC=com
+objectClass: top
+objectClass: person
+objectClass: user
+sAMAccountName: adm.jsmith
+userAccountControl: 512
+lastLogonTimestamp: 134360640000000000
+whenCreated: 20230105090000.0Z
+memberOf: CN=Domain Admins,CN=Users,DC=corp,DC=example,
+ DC=com
+adminCount: 1
+
+dn: CN=svc-backup-old,OU=Service,DC=corp,DC=example,DC=com
+objectClass: user
+sAMAccountName: svc-backup-old
+userAccountControl: 66048
+lastLogonTimestamp: 134167968000000000
+whenCreated: 20210601090000.0Z
+
+dn: CN=leaver.m,OU=Disabled,DC=corp,DC=example,DC=com
+objectClass: user
+sAMAccountName: leaver.m
+userAccountControl: 514
+lastLogonTimestamp: 133801632000000000
+
+dn: CN=Zoe Ops,OU=Staff,DC=corp,DC=example,DC=com
+objectClass: user
+displayName:: Wm/DqyBPcHM=
+sAMAccountName: zoe.ops
+userAccountControl: 512
+lastLogonTimestamp: 134360640000000000
+
+dn: CN=WS-0042,OU=Workstations,DC=corp,DC=example,DC=com
+objectClass: computer
+objectClass: user
+sAMAccountName: WS-0042$
+userAccountControl: 4096
+
+dn: CN=stray,OU=Users,DC=other,DC=example,DC=org
+objectClass: user
+sAMAccountName: stray
+userAccountControl: 512

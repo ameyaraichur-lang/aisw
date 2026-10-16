@@ -36,6 +36,17 @@
       "decision": null
     },
     {
+      "id": "image-baseline-1.0.0",
+      "subject": "Image baseline 1.0.0: container image vulnerability and base-OS support rules over Trivy reports",
+      "plan_ref": "P0-6",
+      "artefact": "backend/aisw/policy/packs/image-baseline-1.0.0.json",
+      "owner": "Policy owner with the platform security lead",
+      "status": "PENDING",
+      "label_while_pending": "Container image thresholds are a synthetic baseline; any critical or high vulnerability fails, with or without a fix.",
+      "next_step": "Platform security lead decides whether unfixed vulnerabilities and which severities fail an image; the agreed thresholds ship as a new pack version marked APPROVED.",
+      "decision": null
+    },
+    {
       "id": "ai-evaluation-bar",
       "subject": "Acceptance bar for the AI reviewer and narrator (recall, false-dissent rate, narrative acceptance)",
       "plan_ref": "P0-6",

@@ -1,0 +1,28 @@
+{
+  "pack_id": "image-baseline",
+  "version": "1.0.0",
+  "description": "Policy over imported container image scans (Trivy). Synthetic baseline; thresholds and mappings need policy-owner review.",
+  "framework": {"name": "AISW-IMAGE-BASELINE", "version": "1.0.0"},
+  "rules": [
+    {
+      "rule_id": "image.critical_high_vulns",
+      "control_id": "IMG-1",
+      "title": "Container images carry no critical or high vulnerabilities",
+      "category": "vulnerability",
+      "severity": "HIGH",
+      "applies_to": {"asset_class": ["container_image"]},
+      "check": {"op": "equals", "value": []},
+      "mappings": []
+    },
+    {
+      "rule_id": "image.os_supported",
+      "control_id": "IMG-2",
+      "title": "Container image base OS is within its support period",
+      "category": "lifecycle",
+      "severity": "HIGH",
+      "applies_to": {"asset_class": ["container_image"]},
+      "check": {"op": "equals", "value": true},
+      "mappings": []
+    }
+  ]
+}

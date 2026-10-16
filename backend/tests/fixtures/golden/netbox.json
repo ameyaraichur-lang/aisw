@@ -1,0 +1,25 @@
+{
+  "count": 5,
+  "next": null,
+  "previous": null,
+  "results": [
+    {"id": 101, "name": "host-1", "status": {"value": "active", "label": "Active"},
+     "platform": {"id": 3, "name": "Ubuntu 22.04", "slug": "ubuntu-22-04"},
+     "primary_ip4": {"id": 9001, "address": "10.20.0.11/24"}, "site": {"name": "dc-east"},
+     "tenant": {"name": "Payments"},
+     "custom_fields": {"owner": "payments-ops", "criticality": {"value": "high", "label": "High"}, "environment": "prod"},
+     "last_updated": "2026-10-10T08:00:00.000000Z"},
+    {"id": 102, "name": "host-2", "status": {"value": "active", "label": "Active"},
+     "platform": {"id": 4, "name": "Windows Server 2022", "slug": "windows-server-2022"},
+     "primary_ip4": {"id": 9002, "address": "10.20.0.12/24"}, "tenant": {"name": "Payments"},
+     "custom_fields": {"owner": null, "criticality": null, "environment": "prod"},
+     "last_updated": "2026-10-11T08:00:00.000000Z"},
+    {"id": 7, "name": "host-3", "status": {"value": "active", "label": "Active"}, "cluster": {"name": "vmw-01"}, "vcpus": 4,
+     "platform": null, "primary_ip": {"address": "10.20.0.13/24"},
+     "custom_fields": {"owner": {"id": 5, "name": "platform-team", "display": "platform-team"}, "criticality": "medium"},
+     "last_updated": "2026-01-02T08:00:00.000000Z"},
+    {"id": 104, "name": "old-db-01", "status": {"value": "decommissioning", "label": "Decommissioning"},
+     "primary_ip4": {"address": "10.20.0.40/24"}, "custom_fields": {}, "last_updated": "2026-10-01T08:00:00Z"},
+    {"id": 105, "name": "spare-07", "status": {"value": "planned", "label": "Planned"}, "custom_fields": {}, "last_updated": "2026-10-01T08:00:00Z"}
+  ]
+}

@@ -8,7 +8,7 @@ Packs name their own controls (`FB-1`, `CB-NET-1`, …). Only `config-baseline` 
 ## Decision
 - **One catalog**: `backend/aisw/policy/mappings/framework-mappings-1.0.0.json`.
   - Maps every control of every built-in pack to five frameworks: NIST CSF 2.0, CIS Controls v8.1, NIST SP 800-53 Rev. 5, ISO/IEC 27001:2022 Annex A, and MITRE ATT&CK Enterprise (the techniques a control helps mitigate).
-  - The 227 entries include every mapping that `config-baseline` embeds, so the two sources cannot disagree; a test enforces this.
+  - The entries (227 at first, 240 after ADR-034 added the image-baseline controls) include every mapping that `config-baseline` embeds, so the two sources cannot disagree; a test enforces this.
   - `US-4` ("the endpoint answered") is deliberately unmapped: it is a reachability precondition, not a control.
   - Control titles are short paraphrases kept for display. Each framework's id format is checked when the catalog loads, so typos such as `SC7` or a CSF 1.1 id are refused.
 - **Review state per tenant** lives in `framework_mapping_reviews` (migration 0013).

@@ -1,0 +1,36 @@
+[
+  {
+    "SchemaVersion": 2,
+    "CreatedAt": "2026-10-14T08:00:00Z",
+    "ArtifactName": "registry.corp.test/payments/api:1.4.2",
+    "ArtifactType": "container_image",
+    "Metadata": {
+      "OS": {"Family": "debian", "Name": "12.7"},
+      "ImageID": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "RepoDigests": ["registry.corp.test/payments/api@sha256:2222222222222222222222222222222222222222222222222222222222222222"]
+    },
+    "Results": [
+      {"Target": "registry.corp.test/payments/api:1.4.2 (debian 12.7)", "Class": "os-pkgs", "Type": "debian",
+       "Vulnerabilities": [
+         {"VulnerabilityID": "CVE-2099-1001", "PkgName": "libsynth", "InstalledVersion": "1.0.0", "FixedVersion": "1.0.1", "Severity": "CRITICAL"},
+         {"VulnerabilityID": "CVE-2099-1002", "PkgName": "libsynth-utils", "InstalledVersion": "1.0.0", "Severity": "HIGH"},
+         {"VulnerabilityID": "CVE-2099-1003", "PkgName": "zlib-synth", "InstalledVersion": "2.0", "FixedVersion": "2.1", "Severity": "MEDIUM"}
+       ]},
+      {"Target": "app/requirements.txt", "Class": "lang-pkgs", "Type": "pip"}
+    ]
+  },
+  {
+    "SchemaVersion": 2,
+    "ArtifactName": "registry.corp.test/legacy/batch:2019",
+    "ArtifactType": "container_image",
+    "Metadata": {"OS": {"Family": "centos", "Name": "7.9.2009", "EOSL": true}, "ImageID": "sha256:3333333333333333333333333333333333333333333333333333333333333333"},
+    "Results": [{"Target": "registry.corp.test/legacy/batch:2019 (centos 7.9.2009)", "Class": "os-pkgs", "Type": "centos"}]
+  },
+  {
+    "SchemaVersion": 2,
+    "ArtifactName": "registry.corp.test/tools/static:latest",
+    "ArtifactType": "container_image",
+    "Metadata": {"ImageID": "sha256:4444444444444444444444444444444444444444444444444444444444444444"},
+    "Results": []
+  }
+]

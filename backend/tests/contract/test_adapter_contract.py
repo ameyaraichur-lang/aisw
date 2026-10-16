@@ -10,7 +10,14 @@ from pydantic import BaseModel
 
 from aisw.adapters.cloud_import import ProwlerImportAdapter
 from aisw.adapters.cmdb_import import CmdbImportAdapter
+from aisw.adapters.config_imports import (
+    AwsIamImportAdapter,
+    DirectoryImportAdapter,
+    FirewallImportAdapter,
+    KubescapeImportAdapter,
+)
 from aisw.adapters.fixture import FixtureAdapter
+from aisw.adapters.inventory_imports import NetboxImportAdapter, ServiceNowImportAdapter
 from aisw.adapters.scanner_imports import (
     GreenboneImportAdapter,
     NmapImportAdapter,
@@ -18,6 +25,12 @@ from aisw.adapters.scanner_imports import (
     WazuhImportAdapter,
 )
 from aisw.adapters.url_smoke import UrlSmokeAdapter
+from aisw.adapters.vuln_imports import (
+    NessusImportAdapter,
+    QualysImportAdapter,
+    TenableImportAdapter,
+    TrivyImportAdapter,
+)
 from aisw.adapters.web_import import ZapImportAdapter
 from aisw.contracts.base import StrictModel
 from aisw.contracts.enums import ProfileClass
@@ -33,7 +46,10 @@ from aisw.policy.engine import PackRegistry
 
 def all_adapters() -> list[Any]:
     return [FixtureAdapter(), UrlSmokeAdapter(), CmdbImportAdapter(), ProwlerImportAdapter(), GreenboneImportAdapter(),
-            NmapImportAdapter(), OpenScapImportAdapter(), WazuhImportAdapter(), ZapImportAdapter()]  # fmt: skip
+            NmapImportAdapter(), OpenScapImportAdapter(), WazuhImportAdapter(), ZapImportAdapter(),
+            FirewallImportAdapter(), KubescapeImportAdapter(), DirectoryImportAdapter(), AwsIamImportAdapter(),
+            NetboxImportAdapter(), ServiceNowImportAdapter(), NessusImportAdapter(), TenableImportAdapter(),
+            QualysImportAdapter(), TrivyImportAdapter()]  # fmt: skip
 
 
 @pytest.mark.parametrize("adapter", all_adapters(), ids=lambda a: a.capability.adapter_id)
@@ -72,12 +88,22 @@ def test_the_default_registry_registers_every_adapter_once() -> None:
     for a in all_adapters():
         reg.register(a)
     assert reg.ids() == [
+        "aws_iam_import",
         "cmdb_import",
+        "directory_import",
+        "firewall_import",
         "fixture",
         "greenbone_import",
+        "kubescape_import",
+        "nessus_import",
+        "netbox_import",
         "nmap_import",
         "openscap_import",
         "prowler_import",
+        "qualys_import",
+        "servicenow_import",
+        "tenable_import",
+        "trivy_import",
         "url_smoke",
         "wazuh_import",
         "zap_import",

@@ -16,7 +16,14 @@ from sqlalchemy import Engine
 
 from aisw.adapters.cloud_import import ProwlerImportAdapter
 from aisw.adapters.cmdb_import import CmdbImportAdapter
+from aisw.adapters.config_imports import (
+    AwsIamImportAdapter,
+    DirectoryImportAdapter,
+    FirewallImportAdapter,
+    KubescapeImportAdapter,
+)
 from aisw.adapters.fixture import FixtureAdapter
+from aisw.adapters.inventory_imports import NetboxImportAdapter, ServiceNowImportAdapter
 from aisw.adapters.scanner_imports import (
     GreenboneImportAdapter,
     NmapImportAdapter,
@@ -24,6 +31,12 @@ from aisw.adapters.scanner_imports import (
     WazuhImportAdapter,
 )
 from aisw.adapters.url_smoke import UrlSmokeAdapter
+from aisw.adapters.vuln_imports import (
+    NessusImportAdapter,
+    QualysImportAdapter,
+    TenableImportAdapter,
+    TrivyImportAdapter,
+)
 from aisw.adapters.web_import import ZapImportAdapter
 from aisw.authz.gate import ScopeGate
 from aisw.authz.inventory import DbInventory
@@ -132,6 +145,16 @@ def build_container(
         OpenScapImportAdapter,
         WazuhImportAdapter,
         ZapImportAdapter,
+        FirewallImportAdapter,
+        KubescapeImportAdapter,
+        DirectoryImportAdapter,
+        AwsIamImportAdapter,
+        NetboxImportAdapter,
+        ServiceNowImportAdapter,
+        NessusImportAdapter,
+        TenableImportAdapter,
+        QualysImportAdapter,
+        TrivyImportAdapter,
     ):  # file in, evidence out
         registry.register(imp(clock=clock))
     if settings.env is not Environment.PROD:

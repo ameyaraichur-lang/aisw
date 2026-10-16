@@ -22,7 +22,9 @@ from aisw.evidence.store import EvidenceIntegrityError, EvidenceStore
 MAX_IMPORT_BYTES = 5_000_000
 IMPORT_KINDS = frozenset(
     {"cmdb_csv", "cmdb_json", "prowler_json", "greenbone_xml", "openscap_xccdf", "wazuh_json",
-     "nmap_xml", "zap_json"}
+     "nmap_xml", "zap_json", "aws_security_groups_json", "iptables_save", "kubescape_json",
+     "k8s_rbac_json", "ad_users_csv", "ldif", "aws_credential_report_csv", "netbox_json",
+     "servicenow_json", "nessus_xml", "tenable_json", "qualys_xml", "trivy_json"}
 )  # fmt: skip
 _FILENAME = re.compile(r"[^A-Za-z0-9._-]")
 

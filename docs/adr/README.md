@@ -33,5 +33,6 @@
 - [ADR-031: OPA policy engine with packaged Rego, held equivalent to the Python evaluator](ADR-031-opa-policy-engine.md)
 - [ADR-032: Curated framework mappings with per-tenant policy-owner review](ADR-032-framework-mappings.md)
 - [ADR-033: Finding review actions and time-boxed exceptions](ADR-033-finding-review-and-exceptions.md)
+- [ADR-034: Configuration, inventory and vulnerability importers](ADR-034-config-inventory-vulnerability-imports.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

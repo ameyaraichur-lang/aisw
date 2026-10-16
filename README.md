@@ -114,10 +114,10 @@ flowchart LR
 | # | Agent | Kind | Built as |
 |---|---|---|---|
 | 0 | Scope & Authorization Gate | gate | Signed manifests (Ed25519), expiring permits with guarded renewal |
-| 1 | Discovery & Reconciliation | adapter | CMDB import + identity resolution; unknown stays unknown |
-| 2 | Host & OS configuration | adapter | fixture, Greenbone, OpenSCAP, Wazuh importers |
-| 3 | Cloud posture | adapter | Prowler importer |
-| 4 | Network, perimeter & web | adapter | Nmap and ZAP importers, passive URL smoke |
+| 1 | Discovery & Reconciliation | adapter | CMDB, NetBox and ServiceNow imports + identity resolution; unknown stays unknown |
+| 2 | Host & OS configuration | adapter | fixture, Greenbone, OpenSCAP, Wazuh, Nessus, Tenable, Qualys and Trivy importers |
+| 3 | Cloud posture | adapter | Prowler, kubescape, AD/LDAP and AWS IAM credential report importers |
+| 4 | Network, perimeter & web | adapter | Nmap, ZAP and firewall (security group, iptables) importers, passive URL smoke |
 | 5 | Exposure & correlation | deterministic | Versioned risk rubric `1.0.0`; observed-only same-asset scenarios |
 | 6 | Architecture & modernization | deterministic | Draft recommendations from a **sample** pattern catalog |
 | 7 | Independent assurance | deterministic | Recomputes risk; validates findings, scenarios, recommendations, narratives |
@@ -142,6 +142,7 @@ flowchart LR
 | Finding review and exceptions ([ADR-033](docs/adr/ADR-033-finding-review-and-exceptions.md)) | ✅ | Confirm, reject, reopen, request exception; a second person approves; an expired exception reports the FAIL again |
 | Passive URL smoke adapter | 🟡 | Proven against a **local server only** |
 | Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; real tool versions unverified. API upload only (no UI) |
+| More importers ([ADR-034](docs/adr/ADR-034-config-inventory-vulnerability-imports.md)): firewall, kubescape, AD/LDAP, AWS IAM, NetBox, ServiceNow, Nessus, Tenable, Qualys, Trivy | 🟡 | Feed the Rego pack and `image-baseline`; **synthetic** fixtures, real tool versions unverified |
 | Risk rubric, scenarios, recommendations, Agent 7 | 🟡 | Rubric weights and the architecture catalog are **samples** awaiting policy-owner approval, labelled in reports and the console; see the [sign-off register](docs/implementation/signoffs.md) |
 | LLM gateway (disabled by default, loopback only, no tools, grounding validator) | 🟡 | Tested with a **scripted stub only**; no model has ever run |
 | Astra (Azure OpenAI) provider, opt-in ([ADR-020](docs/adr/ADR-020-astra-remote-model-provider.md)) | 🟡 | Controls tested with an in-memory transport; **run live on synthetic fixtures** (gpt-6-astra, gpt-5.4, gpt-4.1-mini) on 2026-10-16. No real evidence sent |

@@ -16,7 +16,7 @@ Two plans describe this product, and they disagree:
 | Topic | Built in this repo (blueprint v2.1 open-source, `development-plan.md`) | WARDEN rev 3 plan in the parent workspace (blueprint v1.1) |
 |---|---|---|
 | LLM | Optional, local only (ADR-009); explains, never decides. Astra now opt-in (ADR-020) | Astra on every agent: generation for A4/A5/A6/A8 plus an "Astra validation pass" (AVP) for A0–A8 |
-| Policy | Python evaluator and OPA (ADR-031) over pinned packs; Rego domain rules with `opa test` in CI | Adapters feeding the domain facts (w2); mapping review |
+| Policy | Python evaluator and OPA (ADR-031) over pinned packs; Rego domain rules with `opa test` in CI | Importers feed network, IAM and K8s facts (ADR-034); storage, logging, TLS, hardening and lifecycle facts still need a feeder; mapping review |
 | UI | React/TypeScript/Vite console, SSE, ~10 screens | Vanilla JS, Socket.IO, APEX look, 13 pages (Estate Map, Control Matrix, Evaluation Lab, ...) |
 | Frameworks | Curated catalog over all packs with per-tenant review (ADR-032) | Policy-owner review of the proposals |
 | Branding/data | Generic AISW, synthetic fixtures | "WARDEN by Amdocs", Maple Trust estate fixtures (~60 assets) |
@@ -54,9 +54,9 @@ Done on 2026-10-16:
 
 - **Rest of the Astra validation pass:** a trigger policy file and an Engine-vs-Astra disagreement queue page. Agents 0–8, the effect rules, the issue-code allowlist and dissent resolution are built (ADR-021, ADR-022, ADR-024).
 - ~~**OPA + Rego bundles** for network, storage, logging/encryption, IAM, lifecycle, hardening and K8s RBAC, plus `opa test` in CI.~~ **Done (ADR-031).** Mappings and thresholds await policy-owner review (sign-off `config-baseline-1.0.0`).
-- ~~**Framework mappings** (NIST CSF 2.0, CIS v8.1, 800-53r5, ATT&CK) with approval state, and a Control Matrix page.~~ **Done (ADR-032).** **Pending:** a policy owner reviews the 227 proposed mappings in each tenant (owner: policy owner; next step: work through the Control Matrix).
+- ~~**Framework mappings** (NIST CSF 2.0, CIS v8.1, 800-53r5, ATT&CK) with approval state, and a Control Matrix page.~~ **Done (ADR-032).** **Pending:** a policy owner reviews the 240 proposed mappings in each tenant (owner: policy owner; next step: work through the Control Matrix).
 - ~~**Exceptions with expiry** (an expired exception becomes FAIL), plus review actions on findings (confirm, reject, request exception).~~ **Done (ADR-033).**
-- **Additional adapters:** Kubernetes (kubescape), firewall exports, LDAP/AD/IAM, NetBox/ServiceNow CMDB APIs, Trivy, Tenable/Qualys/Nessus imports.
+- ~~**Additional adapters:** Kubernetes (kubescape), firewall exports, LDAP/AD/IAM, NetBox/ServiceNow CMDB APIs, Trivy, Tenable/Qualys/Nessus imports.~~ **Done as file importers (ADR-034).** **Pending:** check each format against an export from the customer's real tool version (owner: platform admin; next step: upload one sanitised export per tool and compare with the fixture), and live API pulls if ever authorised.
 - **UI pages:** Estate Map / Asset Explorer (route exists as "planned"), Coverage Ledger view, Exposure Scenarios chain view, Modernization Roadmap swimlanes, Assurance Console, Audit & Provenance with model-call ledger, Evaluation Lab scorecard.
 - **Reporting:** PDF/DOCX exports, control-gap matrix, architecture delta; ITSM draft delivery to Jira/ServiceNow (still draft-only, off by default).
 - **Maple Trust fixture estate** (~60 assets) and `scripts/eval_targets.py` scorecard against an answer key.

@@ -171,6 +171,7 @@ def test_registry_only_serves_registered_packs() -> None:
     assert reg.get("../../etc/passwd") is None and reg.keys() == [
         "config-baseline:1.0.0",
         "fixture-baseline:1.0.0",
+        "image-baseline:1.0.0",
         "import-baseline:1.0.0",
         "url-smoke-baseline:1.0.0",
     ]

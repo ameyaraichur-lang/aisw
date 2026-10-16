@@ -1,0 +1,20 @@
+{
+  "result": [
+    {"sys_id": "1f0e2d3c4b5a69788796a5b4c3d2e1f0", "sys_class_name": "cmdb_ci_linux_server", "name": "host-1",
+     "fqdn": "host-1.corp.example.com", "ip_address": "10.20.0.11", "os": "Linux Red Hat",
+     "owned_by": {"display_value": "Payments Ops", "link": "https://instance.service-now.com/api/now/table/sys_user/abc", "value": "abc"},
+     "busines_criticality": {"display_value": "1 - most critical", "value": "1 - most critical"},
+     "used_for": {"display_value": "Production", "value": "Production"},
+     "install_status": {"display_value": "Installed", "value": "1"},
+     "last_discovered": "2026-10-12 06:00:00", "sys_updated_on": "2026-10-12 06:01:00"},
+    {"sys_id": "2f0e2d3c4b5a69788796a5b4c3d2e1f0", "sys_class_name": "cmdb_ci_win_server", "name": "host-2",
+     "ip_address": "10.20.0.12", "os": "Windows 2022 Datacenter",
+     "owned_by": "", "busines_criticality": "", "used_for": "Production", "install_status": "1",
+     "last_discovered": "", "sys_updated_on": "2026-10-13 09:00:00"},
+    {"sys_id": "3f0e2d3c4b5a69788796a5b4c3d2e1f0", "sys_class_name": "cmdb_ci_linux_server", "name": "host 3 (legacy)",
+     "ip_address": "10.20.0.13", "os": "Linux SuSE", "owned_by": "Platform Team", "busines_criticality": "3 - less critical",
+     "environment": "Staging", "install_status": "1", "last_discovered": "2025-12-01 10:00:00"},
+    {"sys_id": "4f0e2d3c4b5a69788796a5b4c3d2e1f0", "sys_class_name": "cmdb_ci_linux_server", "name": "retired-01",
+     "ip_address": "10.20.0.50", "install_status": {"display_value": "Retired", "value": "7"}, "last_discovered": "2024-01-01 10:00:00"}
+  ]
+}
