@@ -2,7 +2,7 @@
 
 A customer-hosted, **read-only**, **evidence-first** infrastructure security assessment platform, built from the *Agentic Infrastructure Security Warden Proof Blueprint v2.1 (open-source)* and its public-URL test profile.
 
-> **Status: proof-of-concept build, milestones M0–M8 complete, M9 (live validation) not started.**
+> **Status: proof-of-concept build, milestones M0–M8 complete, M9 (live validation) harness built, no live target authorised or run.**
 > It has only ever run against **synthetic fixtures and a local test server**. It has **not** scanned any real host, used any real scanner output, or run a real language model. It is not production-ready (no real sign-in yet) and it is **not a security certification tool**. See [What is prepared and what is not](#what-is-prepared-and-what-is-not) before relying on anything here.
 
 ## Contents
@@ -154,11 +154,11 @@ flowchart LR
 | LLM gateway (disabled by default, loopback only, no tools, grounding validator) | 🟡 | Tested with a **scripted stub only**; no model has ever run |
 | Astra (Azure OpenAI) provider, opt-in ([ADR-020](docs/adr/ADR-020-astra-remote-model-provider.md)) | 🟡 | Controls tested with an in-memory transport; **run live on synthetic fixtures** (gpt-6-astra, gpt-5.4, gpt-4.1-mini) on 2026-10-16. No real evidence sent |
 | AI validation pass over Agents 1–7 ([ADR-021](docs/adr/ADR-021-agent-validation-pass.md)) | 🟡 | One-way: a dissent holds an item for review, nothing else. Tested with a scripted model and run live on Astra (synthetic, including the prompt-injection fixture). Quality on real estates not measured |
-| Operator console (all main screens), SSE with cursor replay, accessibility | ✅ | Axe WCAG 2.2 AA automated on every main screen; no manual screen-reader test |
+| Operator console (all main screens), SSE with cursor replay, accessibility | ✅ | Axe WCAG 2.2 AA and structural rules automated on every main screen; the manual screen-reader pass is a [checklist](docs/runbooks/accessibility-screen-reader.md) awaiting sign-off |
 | Report export controls (audited, watermark, drafts restricted) | ✅ | |
 | Evidence retention (dry-run, hash-pinned execute, holds, **soft purge**) | 🟡 | Evidence Retention page and a daily scheduled check; automatic soft purge is opt-in and off; final deletion is a manual act |
 | SBOM (CycloneDX) and licence gate | 🟡 | Lockfile-based, cross-checked against Syft image scans and ScanCode in CI ([ADR-043](docs/adr/ADR-043-syft-scancode-and-gitleaks.md)); first CI run pending |
-| Threat model, 7 runbooks, generated scorecard, mutation log | ✅ | Runbook steps not exercised on a deployed system |
+| Threat model, 12 runbooks, generated scorecard, mutation log | ✅ | Runbook steps not exercised on a deployed system |
 | Generic OIDC sign-in through the BFF ([ADR-026](docs/adr/ADR-026-oidc-sign-in-through-the-bff.md)) | 🟡 | PKCE, nonce, signed session cookies, CSRF, revocation; tested against a **local mock IdP only**, no real tenant registered |
 | Manifest signing through a Transit KMS, rotation drill ([ADR-027](docs/adr/ADR-027-kms-signing-and-rotation.md)) | 🟡 | Drill passes against a **local emulator only**; no real KMS provisioned |
 | Egress: scan zones, IdP host binding, generated firewall rules ([ADR-028](docs/adr/ADR-028-egress-allow-list.md)) | 🟡 | App-level checks enforced; nftables/iptables rules generated and drift-tested, **never loaded on a real host** |
@@ -168,7 +168,7 @@ flowchart LR
 
 | Area | State | Why / what is needed |
 |---|---|---|
-| **Live validation (M9)**: `example.com` smoke, `scanme.nmap.org` bounded Nmap, ZAP on your own Juice Shop | ⛔ | Needs your explicit authorisation for each target |
+| **Live validation (M9)**: `example.com` smoke, `scanme.nmap.org` bounded Nmap, ZAP on your own Juice Shop | ⛔ | Harness and authorisation gate built and proven on loopback ([ADR-045](docs/adr/ADR-045-live-validation-harness.md)); needs your explicit authorisation for each target |
 | Real scanner execution (Nmap, ZAP, Greenbone, Wazuh, Prowler) | ⛔ | Not in the MVP; only imports and the passive URL probe exist |
 | A real language model run on real evidence | ⛔ | Astra has run on synthetic fixtures only; real evidence needs the data-handling approval (ADR-020). No local model has been run |
 | CI proof ([ADR-030](docs/adr/ADR-030-ci-on-github-actions.md)) | ❓ | GitHub Actions workflow (SHA-pinned, read-only) lints clean with actionlint and zizmor, but has **never run on a runner** |
@@ -195,7 +195,7 @@ flowchart LR
 | M6 | Import adapters, Agent 1 reconciliation, registry hardening | `0ff106a` |
 | M7 | Risk rubric, Agents 5–7, bounded LLM gateway (stub), workbench UI | `9fa075c` |
 | M8 | Permit renewal, retention, export controls, SBOM/licence gate, threat model, runbooks, scorecard | `2850882` |
-| M9 | Live external validation | **not started** |
+| M9 | Live external validation | harness built; **no target run** (awaiting authorisation) |
 
 Each milestone was committed only after its gate passed, and each was reviewed before the next began.
 
@@ -298,7 +298,7 @@ Configuration is fail-closed (`backend/aisw/core/config.py`): read-only mode, sc
 
 ## Roadmap
 
-1. **M9 live validation**, only with your explicit authorisation per target: (a) passive smoke of `example.com`, (b) one bounded Nmap run on `scanme.nmap.org` after re-checking its terms, (c) ZAP baseline then active against your own Juice Shop. Each step needs an approved manifest and produces an evidence package.
+1. **M9 live validation**, only with your explicit authorisation per target: (a) passive smoke of `example.com`, (b) one bounded Nmap run on `scanme.nmap.org` after re-checking its terms, (c) ZAP baseline then active against your own Juice Shop. Each step needs an approved manifest and produces an evidence package. The targets, their authorisation windows and the expected outcomes live in [`docs/implementation/live-validation/plan.json`](docs/implementation/live-validation/plan.json); `python -m aisw.validation.live preflight` refuses every target until the `live-validation` sign-off approves that exact file ([ADR-045](docs/adr/ADR-045-live-validation-harness.md)).
 2. **Before any real use:** register a real IdP client, provision a real KMS key and run the drill, load the egress rules on the hosts, a first install from `deploy/README.md`, a real CI run, approval of the risk rubric and architecture catalog by the policy owner, legal review of licences.
 3. **Optional:** Astra token budget, routing and replay (pending plan §4). The full list of pending work is in [`docs/implementation/pending-plan.md`](docs/implementation/pending-plan.md).
 

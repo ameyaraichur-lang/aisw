@@ -10,6 +10,7 @@ Written from what the code does today. Steps marked **(unverified)** were not ex
 - [Evidence retention, legal holds and purge](evidence-retention.md)
 - [Write-once evidence replica and audit anchors](evidence-integrity.md) **(emulators only; production backends pending sign-off)**
 - [Enabling and disabling AI](ai-enablement.md)
+- [Manual screen-reader pass](accessibility-screen-reader.md) **(checklist; not yet performed)**
 - [Turning on ticket delivery (Jira or ServiceNow)](itsm-delivery.md) **(unverified against a real ITSM)**
 - [Security incidents](security-incidents.md)
 - [Release, SBOM and licence gate](release-and-supply-chain.md)

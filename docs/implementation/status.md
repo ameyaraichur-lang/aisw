@@ -63,7 +63,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Approvals inbox (signs exact hash; active-profile acknowledgement) | Implemented (M4) | |
 | Live run timeline (events-derived stages, task panel, event log), reconnect/stale/polling fallback, cancel | Implemented (M4) | `e2e/reconnect.spec.ts`, `src/lib/events.test.ts` |
 | Coverage, findings, evidence explorer, controls, report preview/download/approve | Implemented (M4) | partial/failed/denied/empty states covered |
-| Accessibility: axe WCAG 2.2 AA on 24 screens (0 violations), keyboard, reduced motion, non-colour status | Implemented (M4) | automated checks only; no manual screen-reader pass |
+| Accessibility: axe WCAG 2.2 AA plus structural best-practice rules on 28 screens (0 violations), keyboard, reduced motion, non-colour status | Implemented (M4) | automated checks only; manual screen-reader pass is a checklist (`docs/runbooks/accessibility-screen-reader.md`) awaiting sign-off `accessibility-screen-reader` |
 | Review actions on findings (confirm, reject as false positive, reopen, request exception) and time-boxed exceptions with two-person approval, revocation and expiry back to FAIL (ADR-033) | Implemented | `tests/unit/test_exception_rules.py`, `tests/integration/test_exceptions.py`, `web/e2e/exceptions.spec.ts` |
 | Asset graph | Planned (w3) | shown as planned, nothing simulated |
 | Production sign-in (OIDC via BFF cookie) | Implemented (ADR-026) | login page offers SSO; proven against the loopback mock IdP only |
@@ -73,7 +73,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | URL smoke policy pack (7 controls) + report notice "not a security certification" | Implemented (M5) | |
 | Generic asset attributes (migration 0003) | Implemented (M5) | independently reversible |
 | URL negative suite: unapproved/unregistered URL, bad scheme/userinfo/ambiguous IP, unapproved port, loopback/private/metadata DNS, DNS rebinding after approval, expired manifest/permit, scope-hash mismatch, unapproved profile/adapter, hostile params, request budget, hostile redirects | Implemented (M5) | each asserts zero server requests and zero connection attempts |
-| Live validation against https://example.com | Not started | M9 only; needs your explicit authorisation |
+| Live validation against https://example.com | Harness ready (ADR-045), **not run**: the plan's targets are unauthorised | `tests/security/test_live_validation_harness.py` (loopback only); awaiting sign-off `live-validation` |
 | Real-CA, IPv6-only, HTTP/2-only, proxy and unusual-server behaviour | Unverified | local self-signed test PKI only |
 | Import foundation: upload API (size/UTF-8/redaction/RBAC/audit), immutable `imports` table (migration 0004), gateway-mediated tenant/project/kind/hash-verified reader, `in_scope` hook | Implemented (M6) | `tests/security/test_import_pipeline.py` (23) |
 | Import adapters: CMDB CSV/JSON, Prowler JSON, Greenbone XML, OpenSCAP XCCDF, Wazuh JSON, Nmap XML, ZAP JSON | Implemented (M6), **synthetic fixtures only** | `tests/security/test_import_adapters.py` (144); real-tool version compatibility **Unverified** |
@@ -114,6 +114,6 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | SBOM (CycloneDX, lockfile-based) + licence gate with recorded acceptances; Syft and ScanCode cross-checks in CI (ADR-043) | Implemented (M8); Syft verified locally, **image scan and ScanCode CI-only, first run pending** | `tests/security/test_sbom_gate.py`; `docs/implementation/sbom/`; LGPL (psycopg) legal review pending |
 | Report export controls: audited views/exports (incl. denials), drafts downloadable only by approvers, visible watermark | Implemented (M8) | `tests/security/test_hardening.py` |
 | Hardening tests: retry storm (bounded, spaced, terminates), backoff growth, cancel mid-run, two racing workers leave one ordered event log | Implemented (M8) | `tests/security/test_hardening.py` |
-| Threat model, 7 runbooks, scorecard generated from results, mutation log (38 mutations, all caught) | Implemented (M8) | `docs/architecture/threat-model.md`, `docs/runbooks/`, `docs/implementation/scorecard.md`; runbook steps not exercised on a deployed system |
-| Live external tests (example.com, scanme.nmap.org, Juice Shop) | Not started (M9; needs explicit authorisation) | |
+| Threat model, 12 runbooks, scorecard generated from results, mutation log (38 mutations, all caught) | Implemented (M8) | `docs/architecture/threat-model.md`, `docs/runbooks/`, `docs/implementation/scorecard.md`; runbook steps not exercised on a deployed system |
+| Live external tests (example.com, scanme.nmap.org, Juice Shop) | Harness and authorisation gate built (ADR-045); **no target run** (M9; needs explicit authorisation) | `python -m aisw.validation.live preflight` refuses all three |
 | Docker/compose, OPA, Postgres | Not available locally | see reconnaissance.md |

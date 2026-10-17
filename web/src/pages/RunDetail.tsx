@@ -192,7 +192,7 @@ function Coverage({ runId }: { runId: string }) {
           </div>
           {d.segments.map((c) => c.reasons && c.reasons.length ? (
             <section key={c.segment} className="panel" aria-label={`Gaps in ${c.segment}`}>
-              <h3>Named gaps in <code>{c.segment}</code></h3>
+              <h2>Named gaps in <code>{c.segment}</code></h2>
               <ul>{c.reasons.map((r) => <li key={r}><code>{r}</code></li>)}</ul>
             </section>
           ) : null)}
@@ -494,23 +494,23 @@ function ReportTab({ runId }: { runId: string }) {
             </dl>
             {b.executive_summary ? (
               <section aria-labelledby="exec-h" data-testid="executive-summary">
-                <h3 id="exec-h">Executive summary <Badge d={{ icon: '✦', label: 'AI-written', tone: 'neutral' }} /></h3>
+                <h2 id="exec-h">Executive summary <Badge d={{ icon: '✦', label: 'AI-written', tone: 'neutral' }} /></h2>
                 <p>{b.executive_summary.summary}</p>
                 <p className="muted">Written by model {b.executive_summary.model_id ?? 'unknown'}. Every claim was checked against accepted findings; the findings are authoritative.</p>
               </section>
             ) : null}
-            <h3>Limitations</h3>
+            <h2>Limitations</h2>
             {b.limitations.length ? <ul>{b.limitations.map((l, i) => <li key={i}>{l}</li>)}</ul> : <p className="muted">None recorded.</p>}
             {b.findings.some((f) => f.verification_questions) ? (
               <section aria-labelledby="vq-h" data-testid="verification-questions">
-                <h3 id="vq-h">Questions for asset owners <Badge d={{ icon: '✦', label: 'AI-written', tone: 'neutral' }} /></h3>
+                <h2 id="vq-h">Questions for asset owners <Badge d={{ icon: '✦', label: 'AI-written', tone: 'neutral' }} /></h2>
                 <p className="muted">Answering these confirms or refutes a recorded exposure. Nothing was tested to produce them.</p>
                 <ul>{b.findings.filter((f) => f.verification_questions).map((f) => (
                   <li key={f.finding_id}>{f.title}<ul>{f.verification_questions!.questions.map((q, n) => <li key={n}>{q}</li>)}</ul></li>
                 ))}</ul>
               </section>
             ) : null}
-            {b.pending_review.length ? (<><h3>Pending review (not authoritative)</h3><ul>{b.pending_review.map((p) => <li key={p.finding_id}><Badge d={display(SEVERITY_DISPLAY, p.severity)} /> {p.title}</li>)}</ul></>) : null}
+            {b.pending_review.length ? (<><h2>Pending review (not authoritative)</h2><ul>{b.pending_review.map((p) => <li key={p.finding_id}><Badge d={display(SEVERITY_DISPLAY, p.severity)} /> {p.title}</li>)}</ul></>) : null}
           </>
         )}
       </DataState>

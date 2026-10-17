@@ -30,6 +30,7 @@ EXPECTED = {
     "licence-review": "P0-7", "astra-data-approval": "A-1", "itsm-delivery": "R3-ITSM",
     "retention-auto-execute": "E-Retention",
     "evidence-worm-storage": "E-Evidence", "audit-anchor-witness": "E-Evidence",
+    "live-validation": "M9", "accessibility-screen-reader": "E-Accessibility",
 }  # fmt: skip
 
 
