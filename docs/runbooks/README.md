@@ -8,6 +8,7 @@ Written from what the code does today. Steps marked **(unverified)** were not ex
 - [Operating the worker and the task queue](worker-and-queue.md)
 - [Permits, manifests and signing keys](permits-and-keys.md)
 - [Evidence retention, legal holds and purge](evidence-retention.md)
+- [Write-once evidence replica and audit anchors](evidence-integrity.md) **(emulators only; production backends pending sign-off)**
 - [Enabling and disabling AI](ai-enablement.md)
 - [Turning on ticket delivery (Jira or ServiceNow)](itsm-delivery.md) **(unverified against a real ITSM)**
 - [Security incidents](security-incidents.md)

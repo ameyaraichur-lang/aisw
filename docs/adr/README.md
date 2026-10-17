@@ -41,5 +41,6 @@
 - [ADR-039: Maple Trust fixture estate, answer key, scorecard and Evaluation Lab](ADR-039-maple-trust-estate-and-evaluation-lab.md)
 - [ADR-040: Per-project role grants on top of tenant-wide roles](ADR-040-per-project-role-grants.md)
 - [ADR-041: Reachability from recorded evidence, exposure scoring and internet-to-asset paths](ADR-041-reachability-and-attack-paths.md)
+- [ADR-042: Write-once evidence replica and externally witnessed audit anchors](ADR-042-write-once-evidence-and-audit-anchors.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

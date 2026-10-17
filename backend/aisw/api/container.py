@@ -45,9 +45,11 @@ from aisw.authz.policy import GatePolicy
 from aisw.authz.service import ScopeService
 from aisw.authz.signing import KeyRing, LocalKeySigner, ManifestSigner
 from aisw.authz.transit import transit_from_settings
+from aisw.core.anchor import Witness, witness_from_settings
 from aisw.core.config import Environment, Settings
 from aisw.evidence.imports import ImportStore
 from aisw.evidence.store import EvidenceStore
+from aisw.evidence.worm import LocalObjectLockEmulator, WormEvidenceStore
 from aisw.gateway.gateway import ToolGateway
 from aisw.gateway.registry import AdapterRegistry
 from aisw.gateway.stores import AuditSink, DbAuditSink, DbAuthorizationStore
@@ -70,6 +72,7 @@ class Container:
     keyring: KeyRing | None = None
     evidence: EvidenceStore | None = None
     audit_sink: AuditSink | None = None
+    witness: Witness | None = None
     gate: ScopeGate = field(init=False)
     service: ScopeService | None = field(init=False, default=None)
     gateway: ToolGateway | None = field(init=False, default=None)
@@ -166,7 +169,13 @@ def build_container(
         local = LocalKeySigner.load_or_create("local-1", settings.signing_key_path)
         signer, keyring = local, KeyRing.from_signer(local)
     if evidence is None and settings.evidence_dir is not None:
-        evidence = EvidenceStore(settings.evidence_dir)
+        if settings.evidence_worm_backend == "emulator" and settings.evidence_worm_dir is not None:
+            evidence = WormEvidenceStore(
+                settings.evidence_dir, LocalObjectLockEmulator(settings.evidence_worm_dir, clock),
+                settings.evidence_worm_retain_days, clock,
+            )  # fmt: skip
+        else:
+            evidence = EvidenceStore(settings.evidence_dir)
     evaluator: PolicyEvaluator = PythonRuleEvaluator()
     if settings.policy_engine == "opa" and settings.opa_url:
         evaluator = OpaEvaluator(OpaClient(settings.opa_url))
@@ -174,4 +183,5 @@ def build_container(
         settings=settings, engine=engine, registry=registry, packs=PackRegistry.builtin(),
         evaluator=evaluator, clock=clock, resolver=resolver, signer=signer,
         keyring=keyring, evidence=evidence, audit_sink=audit_sink,
+        witness=witness_from_settings(settings.audit_witness_path, settings.audit_witness),
     )  # fmt: skip

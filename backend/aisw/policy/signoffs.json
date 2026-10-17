@@ -111,6 +111,28 @@
       "label_while_pending": "Auto-execute is off; the daily check only records the dry-run plan and a retention manager executes a reviewed plan.",
       "next_step": "Retention owner approves AISW_RETENTION_AUTO_EXECUTE=true per tenant and the AISW_RETENTION_CONFIRM_HOURS window, and names who removes quarantined files and when, per docs/runbooks/evidence-retention.md.",
       "decision": null
+    },
+    {
+      "id": "evidence-worm-storage",
+      "subject": "Write-once (Object Lock, COMPLIANCE mode) replica of all evidence and its retention period",
+      "plan_ref": "E-Evidence",
+      "artefact": "docs/runbooks/evidence-integrity.md",
+      "owner": "Platform owner with the retention owner",
+      "status": "PENDING",
+      "label_while_pending": "Evidence has a single mutable copy in production; the write-once replica runs only as a dev/test emulator.",
+      "next_step": "Platform owner provisions an Object Lock bucket in COMPLIANCE mode with a write-only platform role and no governance bypass, agrees the retention period with the retention owner, and implements the ObjectLockBackend, per docs/runbooks/evidence-integrity.md.",
+      "decision": null
+    },
+    {
+      "id": "audit-anchor-witness",
+      "subject": "External witness for signed audit-chain anchors",
+      "plan_ref": "E-Evidence",
+      "artefact": "docs/runbooks/evidence-integrity.md",
+      "owner": "Security programme lead",
+      "status": "PENDING",
+      "label_while_pending": "The audit chain is verified only against itself in production; anchors run only with the dev/test local-file witness.",
+      "next_step": "Security programme lead chooses the witness (RFC 3161 timestamp authority, transparency log, or object-lock bucket in a separate account), the Witness backend is implemented and aisw-anchor.timer is enabled, per docs/runbooks/evidence-integrity.md.",
+      "decision": null
     }
   ]
 }

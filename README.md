@@ -178,7 +178,8 @@ flowchart LR
 | Retention UI/scheduler | ✅ | Daily timer; auto soft purge needs the identical plan twice, a day apart |
 | Per-project roles | ✅ | Project grants add operator, approver, reviewer or report-reader rights on one project ([ADR-040](docs/adr/ADR-040-per-project-role-grants.md)) |
 | Real customer environment (CMDB, cloud account, on-prem zones) | ⛔ | Everything is fixtures; customer integration is a separate authorised phase |
-| Object-lock evidence storage, multi-node soak testing | ⛔ | |
+| Object-lock evidence storage, witnessed audit anchors | 🟡 | Write-once replica and signed hourly anchors with dev/test emulators ([ADR-042](docs/adr/ADR-042-write-once-evidence-and-audit-anchors.md)); production backends await sign-off |
+| Multi-node soak testing | ⛔ | |
 | Legal review of licences (LGPL `psycopg`) | ⛔ | Recorded PENDING in the [sign-off register](docs/implementation/signoffs.md) with owner and next step |
 
 ## Milestones

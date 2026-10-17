@@ -11,6 +11,7 @@
 
 ## Known limitations
 - ~~Retention is API-only (no UI), has no scheduler~~ **Resolved (migration 0020):** the Evidence Retention page covers plan, holds, execution, scheduled checks and the quarantine log; a daily timer records a dry-run check per tenant and soft-purges only when auto-execute is on and the identical plan was seen a full confirmation window (default 24 hours) earlier. Quarantine removal is still a manual act.
+- **Write-once replica (ADR-042):** quarantined blobs are never restored from the replica, and the replica's retention period must not exceed the retention manifests promise; agreed under `evidence-worm-storage`.
 - Permit renewal only runs while a run is dispatching; it has been tested with a simulated clock, not a multi-hour run.
 - The SBOM is not Syft/ScanCode; native libraries in wheels are not inventoried; psycopg (LGPL-3.0) awaits legal review; three packages have missing licence metadata and are accepted as dev-only/not-installed with the reason recorded.
 - The watermark is visible text, not forensic marking.

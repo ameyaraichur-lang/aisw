@@ -132,6 +132,30 @@ def _evidence(s: Settings) -> Check:
     return Check("evidence_store", "PASS", str(d))
 
 
+def _worm(s: Settings) -> Check:
+    if s.evidence_worm_backend == "none":
+        return Check(
+            "evidence_worm",
+            "WARN",
+            "no write-once replica: sign-off evidence-worm-storage is pending",
+        )
+    return Check(
+        "evidence_worm", "WARN", f"Object Lock emulator at {s.evidence_worm_dir} (dev/test only)"
+    )
+
+
+def _witness(s: Settings) -> Check:
+    if s.audit_witness == "none":
+        return Check(
+            "audit_witness",
+            "WARN",
+            "audit chain is not anchored: sign-off audit-anchor-witness is pending",
+        )
+    return Check(
+        "audit_witness", "WARN", f"local-file witness at {s.audit_witness_path} (dev/test only)"
+    )
+
+
 def _ai(s: Settings) -> Check:
     if not s.ai_enabled:
         return Check("ai", "PASS", "disabled")
@@ -181,7 +205,8 @@ def run_checks(s: Settings, role: Literal["api", "worker"], *,
             out += _database(engine, role)
         finally:
             engine.dispose()
-    out += [_signing(s), _evidence(s), _ai(s), _egress(s, role), _policy_engine(s), _signoffs()]
+    out += [_signing(s), _evidence(s), _worm(s), _witness(s), _ai(s), _egress(s, role),
+            _policy_engine(s), _signoffs()]  # fmt: skip
     if role == "api":
         out.append(_sign_in(s))
     return out

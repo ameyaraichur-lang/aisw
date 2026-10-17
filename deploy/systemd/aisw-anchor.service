@@ -1,0 +1,43 @@
+# Hourly audit anchor (ADR-042), started by aisw-anchor.timer. Signs the audit-chain head of each
+# tenant in AISW_ANCHOR_TENANTS and records it with the external witness. Exits non-zero (and the
+# unit shows failed) while no witness is configured; enable the timer only after audit-anchor-witness.
+[Unit]
+Description=AISW audit anchor
+Documentation=file:///opt/aisw/deploy/README.md
+After=network-online.target postgresql.service aisw-bootstrap.service
+Wants=network-online.target
+Requires=aisw-bootstrap.service
+
+[Service]
+Type=oneshot
+User=aisw
+Group=aisw
+WorkingDirectory=/opt/aisw/backend
+EnvironmentFile=/etc/aisw/aisw.env
+LoadCredential=aisw_database_url:/etc/aisw/secrets/aisw_database_url
+LoadCredential=aisw_session_secret:/etc/aisw/secrets/aisw_session_secret
+LoadCredential=kms_app_token:/etc/aisw/secrets/kms_app_token
+Environment=AISW_KMS_TOKEN_FILE=%d/kms_app_token
+ExecStart=/opt/aisw/backend/.venv/bin/python -m aisw.core.anchor
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+ReadWritePaths=/var/lib/aisw/anchor

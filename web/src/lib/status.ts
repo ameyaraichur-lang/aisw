@@ -140,3 +140,11 @@ export const METRIC_DISPLAY: Record<string, Display> = {
   MEASURED: { icon: '◆', label: 'Measured (no threshold)', tone: 'info' },
   NOT_MEASURED: { icon: '?', label: 'Not measured', tone: 'neutral' },
 }
+
+export const ANCHOR_PROBLEM_TEXT: Record<string, string> = {
+  ANCHORED_EVENT_CHANGED: 'An event covered by an anchor has changed since it was anchored.',
+  STATEMENT_MISMATCH: 'A stored anchor statement does not match its recorded hash.',
+  SIGNATURE_NOT_VERIFIED: 'An anchor signature could not be verified with the trusted keys.',
+  WITNESS_UNAVAILABLE: 'The witness that confirmed an anchor is not available to this server.',
+  WITNESS_MISMATCH: 'The witness does not confirm an anchor statement.',
+}

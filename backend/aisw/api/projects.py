@@ -11,8 +11,11 @@ from pydantic import Field
 from sqlalchemy import Engine, text
 from sqlalchemy.exc import IntegrityError
 
+from aisw.api.container import Container
 from aisw.api.deps import correlation_id, get_actor, get_engine
+from aisw.api.views import _c as views_container
 from aisw.contracts.base import NonEmpty, StrictModel, canonical_hash
+from aisw.core.anchor import verify_anchors
 from aisw.core.audit import append_audit, verify_chain
 from aisw.core.db import tenant_connection
 from aisw.core.idempotency import run_idempotent
@@ -159,13 +162,20 @@ def get_project(
 
 @router.get("/audit/verify")
 def audit_verify(
-    actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
+    actor: ActorContext = Depends(get_actor),
+    engine: Engine = Depends(get_engine),
+    c: Container = Depends(views_container),
 ) -> dict[str, Any]:
     authorize(actor, Permission.AUDIT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         rep = verify_chain(conn, actor.tenant_id)
+        anchors = verify_anchors(conn, actor.tenant_id, c.keyring, c.witness)
     return {"ok": rep.ok, "checked": rep.checked, "broken_at_seq": rep.broken_at_seq,
-            "reason": rep.reason}  # fmt: skip
+            "reason": rep.reason,
+            "anchors": {"ok": anchors.ok, "checked": anchors.checked,
+                        "latest_seq": anchors.latest_seq, "latest_at": anchors.latest_at,
+                        "witness_id": anchors.witness_id, "problems": anchors.problems,
+                        "witness_configured": c.witness is not None}}  # fmt: skip
 
 
 class RoleGrant(StrictModel):

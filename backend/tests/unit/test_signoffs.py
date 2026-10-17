@@ -29,6 +29,7 @@ EXPECTED = {
     "config-baseline-1.0.0": "P0-6", "image-baseline-1.0.0": "P0-6", "avp-triggers-1.0.0": "P0-6",
     "licence-review": "P0-7", "astra-data-approval": "A-1", "itsm-delivery": "R3-ITSM",
     "retention-auto-execute": "E-Retention",
+    "evidence-worm-storage": "E-Evidence", "audit-anchor-witness": "E-Evidence",
 }  # fmt: skip
 
 

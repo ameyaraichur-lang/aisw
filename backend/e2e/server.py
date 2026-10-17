@@ -32,6 +32,7 @@ from sqlalchemy import URL, create_engine, text
 from aisw.api.app import create_app
 from aisw.api.container import build_container
 from aisw.authz.signing import KeyRing, LocalKeySigner
+from aisw.core.anchor import anchor
 from aisw.core.config import Settings
 from aisw.evidence.store import EvidenceStore
 from aisw.llm.client import ModelUnavailable
@@ -118,6 +119,7 @@ def main() -> None:
         _env_file=env_file, env="dev", dev_auth_stub=True, oidc_issuer=idp.issuer,
         oidc_client_id=idp.client_id, oidc_client_secret=idp.client_secret,
         oidc_redirect_uri=f"{web}/api/v1/auth/callback", session_secret=secrets.token_urlsafe(32),
+        audit_witness="local_file", audit_witness_path=work / "witness.log",
     )  # fmt: skip
     container = build_container(
         settings, app_engine, signer=signer, keyring=KeyRing.from_signer(signer),
@@ -247,6 +249,13 @@ def main() -> None:
             confirm_hours=settings.retention_confirm_hours,
         )  # fmt: skip
         return {"outcome": r.outcome, "items": r.items}
+
+    @api.post("/__e2e/anchor")
+    def anchor_now() -> dict[str, Any]:
+        if container.witness is None or container.signer is None:
+            raise RuntimeError("the e2e witness and signer must be configured")
+        a = anchor(app_engine, "tenant-a", container.signer, container.witness, container.clock())
+        return {"anchored_seq": a.seq if a else None}
 
     @api.post("/__e2e/delay/{ms}")
     def delay(ms: int) -> dict[str, float]:

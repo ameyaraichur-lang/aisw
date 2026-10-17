@@ -120,6 +120,7 @@ def test_compose_secret_names_match_settings_fields() -> None:
         "aisw-bootstrap.service",
         "aisw-opa.service",
         "aisw-retention.service",
+        "aisw-anchor.service",
     ],  # fmt: skip
 )
 def test_systemd_units_are_sandboxed(unit: str) -> None:
@@ -181,3 +182,15 @@ def test_retention_timer_starts_the_check_daily_and_catches_up() -> None:
     cp.read_string((DEPLOY / "systemd" / "aisw-retention.timer").read_text())
     assert cp["Timer"]["OnCalendar"].startswith("*-*-*") and cp["Timer"]["Persistent"] == "true"
     assert cp["Install"]["WantedBy"] == "timers.target"
+
+
+def test_anchor_timer_runs_hourly_and_ships_without_a_production_witness() -> None:
+    cp = configparser.ConfigParser(strict=False, interpolation=None)
+    cp.optionxform = str  # type: ignore[assignment,method-assign]
+    cp.read_string((DEPLOY / "systemd" / "aisw-anchor.timer").read_text())
+    assert cp["Timer"]["OnCalendar"] == "hourly" and cp["Timer"]["Persistent"] == "true"
+    env = (DEPLOY / "systemd" / "aisw.env.example").read_text()
+    assert "AISW_AUDIT_WITNESS=none" in env and "AISW_EVIDENCE_WORM_BACKEND=none" in env
+    readme = (DEPLOY / "README.md").read_text()
+    enable = next(line for line in readme.splitlines() if "systemctl enable --now" in line)
+    assert "aisw-anchor.timer" not in enable  # enabled only after audit-anchor-witness

@@ -732,3 +732,21 @@ export interface RetentionAction {
   reason: string
   plan_hash: string
 }
+
+export interface AnchorState {
+  ok: boolean
+  checked: number
+  latest_seq: number | null
+  latest_at: string | null
+  witness_id: string | null
+  problems: string[]
+  witness_configured: boolean
+}
+
+export interface AuditVerify {
+  ok: boolean
+  checked: number
+  broken_at_seq: number | null
+  reason: string | null
+  anchors: AnchorState
+}

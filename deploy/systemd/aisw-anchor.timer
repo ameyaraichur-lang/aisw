@@ -1,0 +1,11 @@
+# Hourly audit anchor; Persistent catches up after downtime. See aisw-anchor.service.
+[Unit]
+Description=Hourly AISW audit anchor
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

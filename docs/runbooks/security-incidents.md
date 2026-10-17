@@ -4,7 +4,7 @@ First, preserve: do not edit or delete rows, evidence or quarantine files. Place
 
 | Suspicion | Do |
 |---|---|
-| Audit tampering | `GET /api/v1/audit/verify` (auditor). `ok:false` names the broken sequence. The chain is not externally witnessed: compare with any backup |
+| Audit tampering | `GET /api/v1/audit/verify` (auditor). `ok:false` names the broken sequence. `anchors` reports whether anchored events still match their signed, witnessed statements (`evidence-integrity.md`); without a configured witness, compare with any backup |
 | Cross-tenant exposure | Stop the API. RLS is forced and fail-closed; check `current_setting('app.tenant_id')` handling in the failing path; reproduce as a test before fixing |
 | Secret found in evidence/report | Redaction is pattern-based. Rotate the secret, add the pattern + a regression test, then (after review) plan a purge of that run's evidence; the report hash and audit stay |
 | Unexpected outbound connection | The gateway is the only egress path and every dispatch is audited. Check `gateway` audit rows for the run; confirm the egress firewall exists at the host (it is **not** enforced by this software) |

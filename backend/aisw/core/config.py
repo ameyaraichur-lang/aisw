@@ -269,6 +269,18 @@ class Settings(BaseSettings):
     )
     retention_auto_execute: bool = False
     retention_confirm_hours: int = Field(default=24, ge=1, le=720)
+    # Write-once evidence replica (ADR-042). none: no replica. emulator: local Object Lock emulator,
+    # dev/test only. Retention is COMPLIANCE mode for evidence_worm_retain_days from the write.
+    evidence_worm_backend: Literal["none", "emulator"] = "none"
+    evidence_worm_dir: Path | None = None
+    evidence_worm_retain_days: int = Field(default=30, ge=1, le=3650)
+    # Audit-chain anchoring (ADR-042): a signed statement of each tenant's chain head, held by a
+    # witness outside the database. local_file is an append-only log emulator (dev/test only).
+    audit_witness: Literal["none", "local_file"] = "none"
+    audit_witness_path: Path | None = None
+    anchor_tenants: str | None = Field(
+        default=None, pattern=r"^[A-Za-z0-9_\-]+(,[A-Za-z0-9_\-]+)*$"
+    )
     exception_max_days: int = Field(default=365, ge=1, le=1095)  # longest lifetime of an exception
     max_assessment_concurrency: int = Field(default=2, ge=1, le=32)
     enable_itsm_ticket_creation: bool = False
@@ -381,6 +393,18 @@ class Settings(BaseSettings):
             raise ValueError("log_redaction_enabled must be true")
         if self.dev_auth_stub and self.env is Environment.PROD:
             raise ValueError("dev_auth_stub is forbidden when env=prod")
+        if self.evidence_worm_backend == "emulator":
+            if self.env is Environment.PROD:
+                raise ValueError("the Object Lock emulator is for dev and test only")
+            if self.evidence_worm_dir is None or self.evidence_dir is None:
+                raise ValueError(
+                    "evidence_worm_backend=emulator requires evidence_worm_dir and evidence_dir"
+                )
+        if self.audit_witness == "local_file":
+            if self.env is Environment.PROD:
+                raise ValueError("the local-file audit witness is for dev and test only")
+            if self.audit_witness_path is None:
+                raise ValueError("audit_witness=local_file requires audit_witness_path")
         if self.astra_endpoint is not None and (
             problem := astra_endpoint_problem(self.astra_endpoint)
         ):
