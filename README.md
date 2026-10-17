@@ -249,11 +249,11 @@ Code size: roughly 10.7k lines of backend source, 9.2k lines of backend tests, 3
 
 The full threat model (20 threats, controls, tests, residual risk) is in [`docs/architecture/threat-model.md`](docs/architecture/threat-model.md). The most important open gaps:
 
-- **No production authentication.** Only the dev picker exists.
-- **Signing key is a local file** with no tested rotation or revocation.
-- **Egress is not firewalled by the software.** The gateway is the only egress path in code; host-level enforcement is a runbook item.
+- **Sign-in is tested against a mock IdP only.** OIDC through the BFF (ADR-026) has not met a real identity provider.
+- **KMS signing is tested against an emulator.** Rotation and revocation are drilled (ADR-027) but no real KMS has been used.
+- **Egress firewall rules are generated, not proven on a host.** The gateway is the only egress path in code; the host rules (ADR-028) are unverified on a real machine.
 - **Redaction and grounding checks are pattern-based**, so unknown secret formats or unidentified prose claims can slip through.
-- **Real-world behaviour is unverified:** real CAs/IPv6/proxies for the URL probe, real scanner output versions, real model quality.
+- **Real-world behaviour is unverified:** the URL probe against a public CA (IPv6-only, HTTP/2-only and proxy handling are tested on loopback), real scanner output versions, real model quality.
 
 ## AI / LLM
 

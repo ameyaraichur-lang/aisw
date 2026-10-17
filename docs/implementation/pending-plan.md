@@ -72,7 +72,7 @@ Done on 2026-10-16:
 | Evidence | ~~Object-lock/WORM storage; externally witnessed audit-chain anchor~~ (done as seams with dev/test emulators: write-once replica, signed and witnessed hourly anchors, migration 0023, ADR-042). **Pending:** sign-offs `evidence-worm-storage` (owner: platform owner; next step: provision an Object Lock bucket in COMPLIANCE mode with a write-only role and agree retention) and `audit-anchor-witness` (owner: security programme lead; next step: choose an RFC 3161 TSA, a transparency log or a separate-account WORM bucket) |
 | Events | ~~Silent-stall detection for an open but dead SSE stream (ADR-015)~~ (done: a client watchdog reopens the stream from the cursor after 30 s of silence) |
 | Authorisation | ~~Per-project roles~~ (done, ADR-040: additive project grants for operator, approver, reviewer and report reader, migration 0021); tenant-wide lists still need a tenant role |
-| URL probe | Real CA, IPv6-only, HTTP/2-only and proxy behaviour (tested on local PKI only) |
+| URL probe | ~~IPv6-only, HTTP/2-only and proxy behaviour~~ (done on loopback: IPv6 pinning and fallback, HTTP/2-only reported as `HTTP2_ONLY_UNSUPPORTED`, environment proxies ignored by design, ADR-016). **Pending:** a public-CA target, part of live validation (M9) and needing your authorisation |
 | Supply chain | Syft/ScanCode SBOM instead of the lockfile-based one; gitleaks instead of the stopgap secret scanner |
 | Scale | Multi-node worker soak test; DoS sizing |
 | Accessibility | Manual screen-reader pass (axe WCAG 2.2 AA automated only) |

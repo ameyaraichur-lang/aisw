@@ -13,7 +13,8 @@
 8. **Tests contact no public host.** A loopback-only socket guard fails any test that connects elsewhere; DNS is mocked; certificates are generated per test.
 
 ## Known limitations
-- Never run against `example.com` or any real host: M9 only, with explicit authorisation. TLS behaviour against real CAs, IPv6-only hosts, HTTP/2-only servers and unusual redirect or chunking behaviour is unverified.
+- Never run against `example.com` or any real host: M9 only, with explicit authorisation. TLS behaviour against real CAs and unusual redirect or chunking behaviour is unverified.
+- **Tested on loopback since:** IPv6-only targets (pinned `::1`, IPv4-to-IPv6 fallback, bracketed literal Host header); HTTP/2-only servers, reported as PARTIAL `HTTP2_ONLY_UNSUPPORTED` with no "no response" claim, whether the server answers HTTP/1.1 with HTTP/2 frames or refuses ALPN `http/1.1` in the handshake; the negotiated ALPN protocol is recorded; proxy variables in the environment are never used.
 - Only the IP the gateway pinned is contacted, so multi-address failover across a resolver's full answer set is minimal (tries pinned addresses in order).
-- No HEAD-fallback when a server rejects HEAD; no proxy support; no client certificates.
+- No HEAD-fallback when a server rejects HEAD; no client certificates; HTTP/1.1 only. No proxy support by design: a deployment that forces egress through a forward proxy cannot run the probe, because the probe must connect to the gateway-pinned address (ADR-028 allow-lists egress at the host firewall instead).
 - A redirect hop re-resolves DNS through the gateway's resolver, so a hostile resolver could still return different addresses per hop; every answer is vetted, and deployment egress firewalling (M8 runbook) remains the second control.

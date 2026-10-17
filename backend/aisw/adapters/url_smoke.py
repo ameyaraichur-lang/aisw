@@ -6,7 +6,8 @@ target against the signed scope and egress policy.
 
 What it deliberately does NOT do: resolve names itself (it connects only to pinned addresses, so
 DNS rebinding cannot redirect it), crawl, submit forms, fuzz, enumerate ports, send cookies or
-credentials, read or store a response body, or continue after a failed TLS verification.
+credentials, read or store a response body, or continue after a failed TLS verification. It speaks
+HTTP/1.1 only (offered by ALPN) and never uses a forward proxy, including one set in the environment.
 
 Anything the target sends (headers, certificate fields) is untrusted DATA: truncated, newline-
 stripped, redacted again at ingest, and never interpreted.
@@ -52,6 +53,8 @@ KEPT_HEADERS = (
     "location",
 )  # fmt: skip
 MAX_VALUE = 512
+HTTP2_ONLY = "HTTP2_ONLY_UNSUPPORTED"
+H2_FRAME_TYPES = {0x4, 0x7}  # SETTINGS and GOAWAY: what an HTTP/2-only server sends to HTTP/1.1
 NOTICE = "Public URL smoke test — not a security certification"
 
 
@@ -68,6 +71,11 @@ def url_asset_id(url: CanonicalURL) -> str:
 
 def _clean(value: str) -> str:
     return " ".join(value.replace("\r", " ").replace("\n", " ").split())[:MAX_VALUE]
+
+
+def _http2_reply(line: str) -> bool:
+    """True when the bytes read as a status line are an HTTP/2 frame header on stream 0."""
+    return len(line) >= 9 and ord(line[3]) in H2_FRAME_TYPES and line[5:9] == "\x00" * 4
 
 
 def _name(rdn: x509.Name) -> str:
@@ -197,6 +205,7 @@ class UrlSmokeAdapter:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
         ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        ctx.set_alpn_protocols(["http/1.1"])
         return ctx
 
     def _probe(
@@ -220,7 +229,13 @@ class UrlSmokeAdapter:
                                   "verify_code": exc.verify_code, **self._peek_metadata(hop["connect"]["ip"], url)}  # fmt: skip
                     hop["error"] = "TLS_VERIFY_FAILED"  # nothing is sent over an unverified channel
                     return hop
-                except (ssl.SSLError, OSError) as exc:
+                except ssl.SSLError as exc:
+                    alpn = "NO_APPLICATION_PROTOCOL" in f"{getattr(exc, 'reason', '')} {exc}"
+                    hop["error"] = (
+                        HTTP2_ONLY if alpn else f"TLS_HANDSHAKE_FAILED:{type(exc).__name__}"
+                    )
+                    return hop
+                except OSError as exc:
                     hop["error"] = f"TLS_HANDSHAKE_FAILED:{type(exc).__name__}"
                     return hop
                 hop["tls"] = {"verified": True, **self._session_info(tls)}
@@ -248,7 +263,8 @@ class UrlSmokeAdapter:
     def _session_info(self, tls: ssl.SSLSocket) -> dict[str, Any]:
         der = tls.getpeercert(binary_form=True)
         cipher = tls.cipher()
-        info: dict[str, Any] = {"version": tls.version(), "cipher": cipher[0] if cipher else None}
+        info: dict[str, Any] = {"version": tls.version(), "cipher": cipher[0] if cipher else None,
+                                "alpn": tls.selected_alpn_protocol()}  # fmt: skip
         if der:
             info["certificate"] = cert_metadata(der, self._clock())
         return info
@@ -291,6 +307,9 @@ class UrlSmokeAdapter:
             }  # fmt: skip
         except TimeoutError:
             hop["error"] = "READ_TIMEOUT"
+        except http.client.BadStatusLine as exc:
+            line = str(exc.args[0]) if exc.args else ""
+            hop["error"] = HTTP2_ONLY if _http2_reply(line) else "HTTP_PROTOCOL_ERROR:BadStatusLine"
         except (http.client.HTTPException, OSError) as exc:
             hop["error"] = f"HTTP_PROTOCOL_ERROR:{type(exc).__name__}"
         finally:
@@ -337,7 +356,7 @@ class UrlSmokeAdapter:
             if final["scheme"] == "https":
                 obs("http.hsts_present", "strict-transport-security" in r["headers"])
             obs("http.x_content_type_options", r["headers"].get("x-content-type-options", "absent"))
-        elif first["error"] not in {"TLS_VERIFY_FAILED"}:
+        elif first["error"] not in {"TLS_VERIFY_FAILED", HTTP2_ONLY}:  # not the target's answer
             obs("http.response_received", False)
         if any(h["redirect_blocked"] for h in hops):
             obs("http.redirects_within_scope", False)
