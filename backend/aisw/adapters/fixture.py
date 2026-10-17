@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from importlib import resources
@@ -31,8 +32,9 @@ class FixtureParams(StrictModel):
 
 
 class FixtureAdapter:
-    def __init__(self, clock: Callable[[], datetime] | None = None) -> None:
+    def __init__(self, clock: Callable[[], datetime] | None = None, delay_ms: int = 0) -> None:
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._delay = delay_ms / 1000
         self.capability = AdapterCapability(
             adapter_id=ADAPTER_ID, version="0.1.0", domains=frozenset({"host"}),
             profiles={PROFILE_ID: ProfileClass.READ_ONLY}, target_kinds=frozenset({"asset_group"}),
@@ -44,6 +46,8 @@ class FixtureAdapter:
 
     def execute(self, job: AdapterJob) -> AdapterOutput:
         params = FixtureParams.model_validate(job.params)
+        if self._delay:
+            time.sleep(self._delay)
         raw = json.loads(
             (resources.files("aisw.adapters") / "fixture_data" / f"{params.fixture_set}.json")
             .read_text(encoding="utf-8")

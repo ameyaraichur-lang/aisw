@@ -43,5 +43,6 @@
 - [ADR-041: Reachability from recorded evidence, exposure scoring and internet-to-asset paths](ADR-041-reachability-and-attack-paths.md)
 - [ADR-042: Write-once evidence replica and externally witnessed audit anchors](ADR-042-write-once-evidence-and-audit-anchors.md)
 - [ADR-043: Syft and ScanCode cross-checks and gitleaks in CI](ADR-043-syft-scancode-and-gitleaks.md)
+- [ADR-044: Multi-node worker soak with random kills](ADR-044-multi-worker-soak.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

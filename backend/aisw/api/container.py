@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -117,6 +117,7 @@ class Container:
         kw.setdefault("validation_concurrency", s.ai_validation_concurrency)
         kw.setdefault("run_token_budget", s.ai_run_token_budget)
         kw.setdefault("avp_trigger_version", s.ai_validation_trigger_version)
+        kw.setdefault("lease", timedelta(seconds=s.worker_lease_seconds))
         if self.service is not None:
             kw.setdefault("renew_permit", self.service.renew_permit)
         return Worker(
@@ -162,7 +163,7 @@ def build_container(
     ):  # file in, evidence out
         registry.register(imp(clock=clock))
     if settings.env is not Environment.PROD:
-        registry.register(FixtureAdapter(clock=clock))
+        registry.register(FixtureAdapter(clock=clock, delay_ms=settings.fixture_delay_ms))
     if signer is None and settings.signing_backend == "transit":
         signer, keyring = transit_from_settings(settings)
     elif signer is None and settings.signing_key_path and settings.env is not Environment.PROD:

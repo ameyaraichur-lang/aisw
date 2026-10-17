@@ -238,6 +238,11 @@ class Settings(BaseSettings):
     api_port: int = Field(default=8000, ge=1, le=65535)
     api_trusted_proxies: str = "127.0.0.1"  # X-Forwarded-* honoured only from these
     worker_heartbeat_file: Path | None = None
+    # A crashed worker's task is reclaimed after this long. Keep it above the slowest adapter call:
+    # a task that outlives its lease is re-run elsewhere and the first result is discarded.
+    worker_lease_seconds: int = Field(default=300, ge=5, le=3600)
+    # Holds each fixture-adapter task this long (dev/test only): lets soak tests kill mid-task.
+    fixture_delay_ms: int = Field(default=0, ge=0, le=10_000)
     signing_key_path: Path | None = None
     # Manifest signing custody (ADR-027). local_file: dev/test only. transit: a Transit-compatible
     # KMS (OpenBao/Vault); the token is read from a 0600 file written by the secret provider.
@@ -391,6 +396,8 @@ class Settings(BaseSettings):
             raise ValueError("require_approval_for_active_scans must be true")
         if not self.log_redaction_enabled:
             raise ValueError("log_redaction_enabled must be true")
+        if self.fixture_delay_ms and self.env is Environment.PROD:
+            raise ValueError("fixture_delay_ms is for dev and test only")
         if self.dev_auth_stub and self.env is Environment.PROD:
             raise ValueError("dev_auth_stub is forbidden when env=prod")
         if self.evidence_worm_backend == "emulator":
