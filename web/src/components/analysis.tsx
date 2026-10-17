@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge } from './ui'
 import type { Narrative, Recommendation, RiskInfo, Scenario } from '../api/types'
+import { describePorts } from '../lib/format'
 import { RECOMMENDATION_STATUS_DISPLAY, SEVERITY_DISPLAY, VERDICT_DISPLAY, display } from '../lib/status'
 
 export function TierBadge({ tier, provisional }: { tier: string | null; provisional?: string }) {
@@ -80,6 +81,23 @@ export function ChainView({ s, runId }: { s: Scenario; runId: string }) {
       <p className="hint">
         Solid links are recorded evidence{inferred ? '; dashed links are inferred and must be validated before they are relied on' : '; nothing in this chain is inferred'}.
       </p>
+      {s.path?.length ? (
+        <>
+          <h4>Route from the internet</h4>
+          <ol className="chain" aria-label={`Route to ${s.asset_id}`} data-testid="scenario-path">
+            <li><div className="chain__node chain__node--asset"><span className="muted">Origin</span><br />internet</div></li>
+            {s.path.map((e) => (
+              <li key={e.edge_id}>
+                <span className="chain__edge">{EDGE_LABEL[e.basis] ?? e.basis.toLowerCase()}</span>
+                <div className="chain__node">
+                  <div><Link to={`/assets?q=${encodeURIComponent(e.dst)}`}>{e.dst}</Link></div>
+                  <div className="muted">{describePorts(e.ports)} via <code>{e.via}</code>{e.note ? `: ${e.note}` : ''}</div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </>
+      ) : null}
       <ol className="chain" aria-label={`Evidence chain for ${s.title}`} data-testid="scenario-chain">
         <li><div className="chain__node chain__node--asset"><span className="muted">Asset</span><br /><Link to={`/assets?q=${encodeURIComponent(s.asset_id)}`}>{s.asset_id}</Link></div></li>
         {s.chain.map((c) => (

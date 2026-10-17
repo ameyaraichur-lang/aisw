@@ -32,6 +32,14 @@
           "title": "Exposure",
           "type": "string"
         },
+        "exposure_basis": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "type": "string"
+          },
+          "title": "Exposure Basis",
+          "type": "array"
+        },
         "severity": {
           "maxLength": 2048,
           "minLength": 1,

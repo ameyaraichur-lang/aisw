@@ -15,7 +15,7 @@
 
 ## Known limitations
 - The rubric weights, thresholds and the architecture catalog are samples; they are labelled as such in the UI and report and need policy-owner approval before use.
-- Exposure is category-derived (verified/configured/unknown); real reachability analysis does not exist, so most host findings are scored with exposure 0 and flagged.
+- ~~Exposure is category-derived; real reachability analysis does not exist~~ **Resolved (ADR-041):** host-firewall rules and declared-vantage scans raise exposure, backed by stored edges; host findings with no such evidence still score exposure 0 and are flagged.
 - Scenarios are same-asset groupings only; there is no attack-path or graph reasoning (ADR-010 stays planned).
 - The grounding validator is pattern-based: numbers of things ("12 hosts"), product names and prose claims that carry no identifier are not checked. Unusual control-id formats can cause false rejections (safe direction).
 - The model was exercised **only with scripted stubs and a local fake runtime**; behaviour of any real model, its latency and its output quality are unverified. No weights were downloaded.

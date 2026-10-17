@@ -572,7 +572,7 @@ class Worker:
             if state == "CORRELATION":
                 analysis.correlation_phase(
                     conn, run, rubric=builtin_rubric(self.rubric_version), now=self.clock(),
-                    freshness=self.freshness,
+                    freshness=self.freshness, evidence=self.evidence,
                 )  # fmt: skip
                 self._set_state(conn, run, "ARCHITECTURE_ANALYSIS")
                 return True

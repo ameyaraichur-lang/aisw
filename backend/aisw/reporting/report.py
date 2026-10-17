@@ -281,6 +281,17 @@ def _delta_html(body: dict[str, Any]) -> str:
             f"<tbody>{rows}</tbody></table>")  # fmt: skip
 
 
+def _route_html(path: list[dict[str, Any]]) -> str:
+    if not path:
+        return ""
+    hops = " → ".join(
+        f"{_e(h['dst'])} ({_e(h['basis'].lower())}, "
+        f"{_e('every port' if h['ports'] is None else ', '.join(str(lo) if lo == hi else f'{lo}-{hi}' for lo, hi in h['ports']))})"
+        for h in path
+    )
+    return f"<p>Route: internet → {hops}. Read from configuration or a declared-vantage scan; no traffic was sent.</p>"
+
+
 def _analysis_html(body: dict[str, Any]) -> str:
     out = ""
     if body.get("scenarios"):
@@ -290,6 +301,7 @@ def _analysis_html(body: dict[str, Any]) -> str:
             out += (
                 f"<h3>{_e(s['title'])}</h3><p>Asset {_e(s['asset_id'])} | risk tier {tier} | "
                 f"findings {_e(', '.join(s['finding_ids']))}</p>"
+                f"{_route_html(s.get('path') or [])}"
                 f"<p>Assumptions: {_e('; '.join(s['assumptions']) or 'none')}</p>"
                 f"<p>Validation steps: {_e('; '.join(s['validation_steps']))}</p>"
                 f"{_narrative_html(s.get('narrative'))}"

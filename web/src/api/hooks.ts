@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { api } from './client'
 import type {
-  AgentsResponse, AiValidations, AssetDetail, AssetList, AssuranceOverview, AuditItem, Disagreement, ModelCallLedger, TriggerPolicyView, Recommendation, Scenario, AuthMode, ControlMatrix, ControlRow, ExceptionList, CoverageResponse, Connector, FindingDetail, FindingRow,
+  AgentsResponse, AiValidations, AssetDetail, AssetList, AssuranceOverview, AuditItem, Disagreement, ModelCallLedger, TriggerPolicyView, Recommendation, Reachability, Scenario, AuthMode, ControlMatrix, ControlRow, ExceptionList, CoverageResponse, Connector, FindingDetail, FindingRow,
   InventoryEntry, ManifestSummary, Me, Overview, Page, PolicyPackInfo, Project, ReportBody,
   ReportList, Roadmap, RunListItem, RunStatus, TaskView, ItsmTarget, OutboxRow, RenderedTicket,
   AnswerKeyInfo, Scorecard, TrendRow, CoverageLedgerView, ImportFile, ProjectRoleGrant, RetentionPlan, RetentionCheck, RetentionHold,
@@ -69,6 +69,8 @@ export const useAudit = (p: { limit: number; offset: number; result?: string }) 
 export const useAgents = () => useQuery({ queryKey: ['agents'], queryFn: () => api<AgentsResponse>('/agents'), staleTime: 60_000 })
 export const useRunScenarios = (runId: string) =>
   useQuery({ queryKey: ['run', runId, 'scenarios'], queryFn: () => api<Scenario[]>(`/assessments/${runId}/scenarios`) })
+export const useRunReachability = (runId: string) =>
+  useQuery({ queryKey: ['run', runId, 'reachability'], queryFn: () => api<Reachability>(`/assessments/${runId}/reachability`) })
 export const useAssuranceOverview = () =>
   useQuery({ queryKey: ['assurance', 'overview'], queryFn: () => api<AssuranceOverview>('/assurance/overview') })
 export const useDisagreements = (p: { state: string; limit: number; offset: number }) =>

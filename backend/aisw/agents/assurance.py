@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 
 from aisw.agents.architecture import Catalog
 from aisw.agents.safety import prohibited_content
-from aisw.contracts.analysis import CorrelationScenario, RiskAssessment
+from aisw.contracts.analysis import INTERNET, CorrelationScenario, ReachEdge, RiskAssessment
 from aisw.contracts.assurance import AssuranceResult
 from aisw.contracts.domain import Finding, Recommendation
 from aisw.contracts.enums import AssuranceVerdict, EdgeBasis, RecommendationStatus
@@ -21,7 +21,7 @@ from aisw.contracts.refs import RefError, require_in_scope
 from aisw.llm.gateway import NarrativeResult
 from aisw.llm.schema import NarrativeSubject
 from aisw.llm.validator import validate_narrative
-from aisw.policy.rubric import Rubric, TierOrder, assess
+from aisw.policy.rubric import Rubric, TierOrder, assess, exposure_for
 
 VALIDATION_VERSION = "1.0.0"
 
@@ -155,8 +155,34 @@ def _constituents(
     return out
 
 
+def _exposure_supported(
+    risk: RiskAssessment, finding: Finding, rubric: Rubric, edges: Mapping[str, ReachEdge]
+) -> bool:
+    """Exposure above the category's own level must be backed by stored internet edges."""
+    claimed, own = risk.factors.exposure, exposure_for(finding.category, rubric)
+    if claimed == own:
+        return not risk.factors.exposure_basis
+    if own == "VERIFIED" or claimed == "UNKNOWN" or not risk.factors.exposure_basis:
+        return False
+    want = EdgeBasis.OBSERVED if claimed == "VERIFIED" else EdgeBasis.CONFIGURED
+    for eid in risk.factors.exposure_basis:
+        e = edges.get(eid)
+        if (
+            e is None
+            or e.src != INTERNET
+            or e.dst not in finding.affected_assets
+            or e.basis is not want
+        ):
+            return False
+    return True
+
+
 def assess_risk(
-    risk: RiskAssessment, finding: Finding | None, rubric: Rubric, ctx: AssuranceContext
+    risk: RiskAssessment,
+    finding: Finding | None,
+    rubric: Rubric,
+    ctx: AssuranceContext,
+    edges: Mapping[str, ReachEdge] | None = None,
 ) -> AssuranceResult:
     """Recompute the tier from the stored factors with the pinned rubric; any difference rejects."""
     defects: set[str] = set()
@@ -164,6 +190,8 @@ def assess_risk(
         defects.add("UNKNOWN_FINDING")
     elif risk.factors.severity.upper() != finding.severity.value:
         defects.add("SEVERITY_FACTOR_MISMATCH")
+    if finding is not None and not _exposure_supported(risk, finding, rubric, edges or {}):
+        defects.add("EXPOSURE_NOT_SUPPORTED")
     if risk.rubric_version != rubric.version:
         defects.add("RUBRIC_VERSION_MISMATCH")
     else:
@@ -192,9 +220,13 @@ def assess_scenario(
     verdicts: Mapping[str, AssuranceVerdict],
     risks: Mapping[str, RiskAssessment],
     ctx: AssuranceContext,
+    edges: Mapping[str, ReachEdge] | None = None,
 ) -> AssuranceResult:
     defects: set[str] = set()
     review: set[str] = set()
+    for hop in s.path:
+        if (edges or {}).get(hop.edge_id) != hop:
+            defects.add("PATH_EDGE_NOT_RECORDED")
     members = _constituents(s.finding_ids, findings, verdicts, defects, review)
     by_id = {f.finding_id: f for f in members}
     for f in members:
@@ -220,12 +252,13 @@ def assess_scenarios(
     verdicts: Mapping[str, AssuranceVerdict],
     risks: Mapping[str, RiskAssessment],
     ctx: AssuranceContext,
+    edges: Mapping[str, ReachEdge] | None = None,
 ) -> list[AssuranceResult]:
-    seen: dict[frozenset[str], int] = {}
+    seen: dict[tuple[frozenset[str], tuple[str, ...]], int] = {}
     out: list[AssuranceResult] = []
     for s in scenarios:
-        r = assess_scenario(s, findings, verdicts, risks, ctx)
-        key = frozenset(s.finding_ids)
+        r = assess_scenario(s, findings, verdicts, risks, ctx, edges)
+        key = (frozenset(s.finding_ids), tuple(e.edge_id for e in s.path))
         seen[key] = seen.get(key, 0) + 1
         if seen[key] > 1:
             r = _result(ctx, r.item_ref, {*r.defect_codes, "DUPLICATE_SCENARIO"})

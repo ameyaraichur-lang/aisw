@@ -35,6 +35,7 @@ EXCEPTIONS = {"finding_exceptions", "finding_reviews", "exception_applications"}
 TRIGGERS = {"ai_validation_triggers"}
 RETENTION_CHECKS = {"retention_checks"}
 PROJECT_ROLES = {"project_role_grants"}
+REACHABILITY = {"reachability_edges", "reachability_caveats"}
 TABLES = (
     FOUNDATION
     | PIPELINE
@@ -49,6 +50,7 @@ TABLES = (
     | TRIGGERS
     | RETENTION_CHECKS
     | PROJECT_ROLES
+    | REACHABILITY
 )
 
 
@@ -78,14 +80,16 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     sod = text("SELECT 1 FROM pg_proc WHERE proname='aisw_recommendation_sod'")
     with eng.connect() as c:
         assert c.execute(sod).first()
+    migrate(eng, "0021", down=True)  # 0022 (reachability graph) is reversible
+    assert _tables(eng) == TABLES - REACHABILITY
     migrate(eng, "0020", down=True)  # 0021 (per-project role grants) is reversible
-    assert _tables(eng) == TABLES - PROJECT_ROLES
+    assert _tables(eng) == TABLES - REACHABILITY - PROJECT_ROLES
     with eng.connect() as c:
         assert not c.execute(
             text("SELECT 1 FROM pg_proc WHERE proname='aisw_grant_revoke_once'")
         ).first()
     migrate(eng, "0019", down=True)  # 0020 (scheduled retention checks) is reversible
-    assert _tables(eng) == TABLES - PROJECT_ROLES - RETENTION_CHECKS
+    assert _tables(eng) == TABLES - REACHABILITY - PROJECT_ROLES - RETENTION_CHECKS
     deps = text("SELECT count(*) FROM information_schema.columns "
                 "WHERE table_name='run_tasks' AND column_name='depends_on'")  # fmt: skip
     with eng.connect() as c:
@@ -100,12 +104,15 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     with eng.connect() as c:
         assert c.execute(outbox_cols).scalar() == 0
     migrate(eng, "0015", down=True)  # 0016 (AVP trigger decisions) is reversible
-    assert _tables(eng) == TABLES - PROJECT_ROLES - RETENTION_CHECKS - TRIGGERS
+    assert _tables(eng) == TABLES - REACHABILITY - PROJECT_ROLES - RETENTION_CHECKS - TRIGGERS
     migrate(eng, "0014", down=True)  # 0015 (import kinds) is reversible
     with eng.connect() as c:
         assert "trivy_json" not in str(c.execute(kind_check).scalar())
     migrate(eng, "0013", down=True)  # 0014 (exceptions and finding reviews) is reversible
-    assert _tables(eng) == TABLES - PROJECT_ROLES - RETENTION_CHECKS - TRIGGERS - EXCEPTIONS
+    assert (
+        _tables(eng)
+        == TABLES - REACHABILITY - PROJECT_ROLES - RETENTION_CHECKS - TRIGGERS - EXCEPTIONS
+    )
     with eng.connect() as c:
         assert not c.execute(
             text("SELECT 1 FROM pg_proc WHERE proname='aisw_exception_transition'")
@@ -113,7 +120,13 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     migrate(eng, "0012", down=True)  # 0013 (mapping reviews) is independently reversible
     assert (
         _tables(eng)
-        == TABLES - PROJECT_ROLES - RETENTION_CHECKS - TRIGGERS - EXCEPTIONS - MAPPING_REVIEWS
+        == TABLES
+        - REACHABILITY
+        - PROJECT_ROLES
+        - RETENTION_CHECKS
+        - TRIGGERS
+        - EXCEPTIONS
+        - MAPPING_REVIEWS
     )
     migrate(eng, "0011", down=True)  # 0012 (ops grants) is independently reversible
     with eng.connect() as c:
@@ -122,6 +135,7 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     assert (
         _tables(eng)
         == TABLES
+        - REACHABILITY
         - PROJECT_ROLES
         - RETENTION_CHECKS
         - TRIGGERS
@@ -144,6 +158,7 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     assert (
         _tables(eng)
         == TABLES
+        - REACHABILITY
         - PROJECT_ROLES
         - RETENTION_CHECKS
         - TRIGGERS
@@ -160,6 +175,7 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     assert (
         _tables(eng)
         == TABLES
+        - REACHABILITY
         - PROJECT_ROLES
         - RETENTION_CHECKS
         - TRIGGERS
@@ -177,6 +193,7 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     assert (
         _tables(eng)
         == TABLES
+        - REACHABILITY
         - PROJECT_ROLES
         - RETENTION_CHECKS
         - TRIGGERS
@@ -190,6 +207,7 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     assert (
         _tables(eng)
         == TABLES
+        - REACHABILITY
         - PROJECT_ROLES
         - RETENTION_CHECKS
         - TRIGGERS

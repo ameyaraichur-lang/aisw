@@ -157,9 +157,11 @@ def test_effort_estimate_is_not_permitted_from_the_pipeline() -> None:
 
 
 def test_risk_recomputation_catches_tampering() -> None:
-    f = finding("f1")
+    f = finding("f1", category="network_exposure")
     ok = assess("f1", factors(), R)
     assert assess_risk(ok, f, R, CTX).verdict is V.ACCEPT
+    unbacked = assess_risk(ok, finding("f1"), R, CTX)  # host finding: exposure needs stored edges
+    assert "EXPOSURE_NOT_SUPPORTED" in unbacked.defect_codes
     tampered = ok.model_copy(update={"tier": "P0"})
     assert "RISK_NOT_REPRODUCIBLE" in assess_risk(tampered, f, R, CTX).defect_codes
     wrong_sev = ok.model_copy(update={"factors": factors(severity="LOW")})

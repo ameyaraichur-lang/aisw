@@ -157,7 +157,7 @@ export type Assumptions = string[];
 
 export type Basis = "COMPLETE" | "NEEDS_POLICY_REVIEW";
 
-export type Chain = [ChainLink, ChainLink, ...ChainLink[]];
+export type Chain = [ChainLink, ...ChainLink[]];
 
 export type EdgeBasis = "OBSERVED" | "CONFIGURED" | "INFERRED";
 
@@ -167,9 +167,27 @@ export type FindingId = string;
 
 export type Note = string | null;
 
-export type FindingIds = [string, string, ...string[]];
+export type FindingIds = [string, ...string[]];
 
 export type MissingEvidence = string[];
+
+export type Basis1 = "OBSERVED" | "CONFIGURED";
+
+export type Dst = string;
+
+export type EdgeId = string;
+
+export type EvidenceRef1 = string;
+
+export type Note1 = string | null;
+
+export type Ports = [unknown, unknown][] | null;
+
+export type Src = string;
+
+export type Via = string;
+
+export type Path = ReachEdge[];
 
 export type ScenarioId = string;
 
@@ -187,6 +205,7 @@ export interface CorrelationScenario {
   confidence: Confidence;
   finding_ids: FindingIds;
   missing_evidence?: MissingEvidence;
+  path?: Path;
   scenario_id: ScenarioId;
   tier: Tier;
   title: Title;
@@ -198,6 +217,17 @@ export interface ChainLink {
   evidence_ref: EvidenceRef;
   finding_id: FindingId;
   note?: Note;
+}
+
+export interface ReachEdge {
+  basis: Basis1;
+  dst: Dst;
+  edge_id: EdgeId;
+  evidence_ref: EvidenceRef1;
+  note?: Note1;
+  ports: Ports;
+  src: Src;
+  via: Via;
 }
 
 export type DiscoveredCount = number;
@@ -549,6 +579,8 @@ export type EvidenceFresh = boolean;
 
 export type Exposure = "VERIFIED" | "CONFIGURED" | "UNKNOWN";
 
+export type ExposureBasis = string[];
+
 export type ProvisionalTier = "P0" | "P1" | "P2" | "P3";
 
 export type Rationale = string;
@@ -571,6 +603,7 @@ export interface RiskFactors {
   criticality: Criticality;
   evidence_fresh: EvidenceFresh;
   exposure: Exposure;
+  exposure_basis?: ExposureBasis;
   severity: Severity;
 }
 

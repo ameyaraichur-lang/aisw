@@ -14,6 +14,7 @@ from typing import Any
 
 from sqlalchemy import Connection, text
 
+from aisw.agents import reachability as reach
 from aisw.agents.architecture import Catalog, build_recommendations
 from aisw.agents.assurance import (
     AssuranceContext,
@@ -22,12 +23,13 @@ from aisw.agents.assurance import (
     assess_risk,
     assess_scenarios,
 )
-from aisw.agents.correlation import build_scenarios
+from aisw.agents.correlation import build_path_scenarios, build_scenarios
 from aisw.agents.registry import agent_for_adapter
-from aisw.contracts.analysis import CorrelationScenario, RiskAssessment, RiskFactors
+from aisw.contracts.analysis import CorrelationScenario, ReachEdge, RiskAssessment, RiskFactors
 from aisw.contracts.assurance import AssuranceResult
 from aisw.contracts.domain import CoverageLedger, Finding, Recommendation
 from aisw.contracts.enums import AssuranceVerdict
+from aisw.evidence.store import EvidenceIntegrityError, EvidenceStore
 from aisw.llm import packets as pk
 from aisw.llm import triggers
 from aisw.llm.gateway import NarrativeResult
@@ -83,14 +85,129 @@ def _criticality(
     return max((x for x in labels if x), key=lambda x: rubric.criticality[x])
 
 
+# ------------------------------------------------------------------ Agent 5 reachability
+REACHABILITY_SOURCES = {"firewall_import", "nmap_import"}
+
+
+def _raw(store: EvidenceStore, tenant: str, content_hash: str) -> dict[str, Any] | None:
+    try:
+        data = json.loads(store.get(tenant, content_hash))
+    except (EvidenceIntegrityError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def reachability_graph(
+    conn: Connection, run: dict[str, Any], evidence: EvidenceStore
+) -> reach.Graph:
+    """Read from each importer's own hash-checked raw output, whichever policy pack judged it."""
+    tenant, project, run_id = run["tenant_id"], str(run["project_id"]), run["run_id"]
+    hosts = [
+        reach.Host(a, ip, name)
+        for a, ip, name in conn.execute(
+            text(
+                "SELECT DISTINCT a.asset_id, a.native_ids->>'ip', a.native_ids->>'hostname' "
+                "FROM assets a JOIN run_asset_status s ON s.asset_id=a.asset_id AND s.run_id=:r "
+                "WHERE a.project_id=:p AND a.asset_type='host' ORDER BY a.asset_id"
+            ),
+            {"r": run_id, "p": project},
+        )
+    ]
+    rules: list[reach.RuleFact] = []
+    scans: list[reach.OpenPorts] = []
+    unreadable: list[str] = []
+    for adapter, vantage, ref, content_hash in conn.execute(
+        text(
+            "SELECT t.adapter_id, t.params->>'vantage', e.evidence_ref, e.content_hash "
+            "FROM run_tasks t JOIN evidence_artifacts e ON e.task_id=t.task_id AND e.run_id=t.run_id "
+            "WHERE t.run_id=:r AND t.adapter_id = ANY(:a) AND t.status IN ('SUCCEEDED','PARTIAL') "
+            "AND e.evidence_ref LIKE '%/raw' ORDER BY e.evidence_ref"
+        ),
+        {"r": run_id, "a": sorted(REACHABILITY_SOURCES)},
+    ):
+        raw = _raw(evidence, tenant, content_hash)
+        if raw is None:
+            unreadable.append(ref)
+            continue
+        if adapter == "nmap_import":
+            scans += [
+                reach.OpenPorts(h.get("ip"), h.get("hostname"), [int(p) for p in h.get("open_ports") or []],
+                                vantage, adapter, ref)
+                for h in raw.get("hosts", []) if h.get("state") == "up"
+            ]  # fmt: skip
+            continue
+        sg = raw.get("format") == "aws_security_groups"
+        rules += [
+            reach.RuleFact(r["id"], "security_group_rule" if sg else "rule", raw.get("host"), r.get("fact") or {}, ref)
+            for r in raw.get("rules", [])
+        ]  # fmt: skip
+        rules += [reach.RuleFact(p["id"], "policy", raw.get("host"), p.get("fact") or {}, ref)
+                  for p in raw.get("policies", [])]  # fmt: skip
+    g = reach.build(hosts, rules, scans)
+    if unreadable:
+        g.caveats = sorted({*g.caveats, f"EVIDENCE_UNREADABLE:{len(unreadable)}"})
+    return g
+
+
+def store_reachability(conn: Connection, tenant: str, run_id: str, g: reach.Graph) -> None:
+    for e in g.edges:
+        conn.execute(
+            text(
+                "INSERT INTO reachability_edges (tenant_id, run_id, edge_id, src, dst, basis, body) "
+                "VALUES (:t, :r, :e, :s, :d, :b, CAST(:body AS jsonb)) ON CONFLICT DO NOTHING"
+            ),
+            {"t": tenant, "r": run_id, "e": e.edge_id, "s": e.src, "d": e.dst, "b": e.basis.value,
+             "body": json.dumps(e.model_dump(mode="json"))},
+        )  # fmt: skip
+    for c in g.caveats:
+        conn.execute(
+            text(
+                "INSERT INTO reachability_caveats (tenant_id, run_id, code) VALUES (:t, :r, :c) "
+                "ON CONFLICT DO NOTHING"
+            ),
+            {"t": tenant, "r": run_id, "c": c},
+        )
+
+
+def load_edges(conn: Connection, run_id: str) -> dict[str, ReachEdge]:
+    rows = conn.execute(
+        text("SELECT edge_id, body FROM reachability_edges WHERE run_id=:r ORDER BY edge_id"),
+        {"r": run_id},
+    ).all()
+    return {eid: ReachEdge.model_validate(b) for eid, b in rows}
+
+
+def _exposure(
+    f: Finding, rubric: Rubric, reached: Mapping[str, tuple[reach.Exposure, list[str]]]
+) -> tuple[reach.Exposure, list[str]]:
+    level: reach.Exposure = exposure_for(f.category, rubric)
+    basis: list[str] = []
+    for a in f.affected_assets:
+        lvl, ids = reached.get(a, ("UNKNOWN", []))
+        if reach.RANK[lvl] > reach.RANK[level]:
+            level, basis = lvl, list(ids)
+        elif lvl == level and basis:
+            basis += ids
+    return level, sorted(set(basis))
+
+
 # ------------------------------------------------------------------ Agent 5 (+ risk rubric)
 def correlation_phase(
-    conn: Connection, run: dict[str, Any], *, rubric: Rubric, now: datetime, freshness: timedelta
+    conn: Connection,
+    run: dict[str, Any],
+    *,
+    rubric: Rubric,
+    now: datetime,
+    freshness: timedelta,
+    evidence: EvidenceStore,
 ) -> None:
     tenant, project, run_id = run["tenant_id"], str(run["project_id"]), run["run_id"]
+    graph = reachability_graph(conn, run, evidence)
+    store_reachability(conn, tenant, run_id, graph)
     findings = load_findings(conn, run_id)
     if not findings:
         return
+    reached = reach.exposure(graph.edges)
     assets = _asset_rows(conn, project, {a for f in findings.values() for a in f.affected_assets})
     collected: dict[str, datetime] = {
         ref: when
@@ -116,9 +233,10 @@ def correlation_phase(
             (when := collected.get(ref)) is not None and now - when <= freshness
             for ref in f.evidence_refs
         )
+        level, basis = _exposure(f, rubric, reached)
         factors = RiskFactors(
             severity=f.severity.value, criticality=_criticality(f.affected_assets, assets, rubric),
-            exposure=exposure_for(f.category, rubric), evidence_fresh=fresh,
+            exposure=level, evidence_fresh=fresh, exposure_basis=basis,
             corroborating_sources=max(1, min(sources.get(a, 1) for a in f.affected_assets)),
         )  # fmt: skip
         r = assess(fid, factors, rubric)
@@ -135,7 +253,12 @@ def correlation_phase(
                 "m": json.dumps(r.missing_evidence), "ra": r.rationale,
             },
         )  # fmt: skip
-    for s in build_scenarios(list(findings.values()), risks):
+    found = list(findings.values())
+    targets = {a for f in found for a in f.affected_assets}
+    for s in [
+        *build_scenarios(found, risks, {a: lvl for a, (lvl, _) in reached.items()}),
+        *build_path_scenarios(found, risks, reach.paths(graph.edges, targets)),
+    ]:
         conn.execute(
             text(
                 "INSERT INTO correlation_scenarios (tenant_id, run_id, scenario_id, asset_id, body) "
@@ -639,16 +762,17 @@ def assurance_analysis(
         )
     }
     stored_risks = load_risks(conn, run_id)
+    edges = load_edges(conn, run_id)
     risks: dict[str, RiskAssessment] = {}
     for fid, risk in stored_risks.items():
-        res = assess_risk(risk, findings.get(fid), rubric, ctx)
+        res = assess_risk(risk, findings.get(fid), rubric, ctx, edges)
         store_assurance_result(conn, tenant, run_id, res, rev)
         if res.verdict is AssuranceVerdict.ACCEPT:
             risks[fid] = risk  # an irreproducible risk is treated as absent, never trusted
 
     scenarios = load_scenarios(conn, run_id)
     scenario_verdict: dict[str, AssuranceVerdict] = {}
-    for res in assess_scenarios(list(scenarios.values()), findings, verdicts, risks, ctx):
+    for res in assess_scenarios(list(scenarios.values()), findings, verdicts, risks, ctx, edges):
         res = apply_dissent(res, ai.get(res.item_ref))
         store_assurance_result(conn, tenant, run_id, res, rev)
         sid = res.item_ref.removeprefix("scenario:")

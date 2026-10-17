@@ -85,6 +85,8 @@ def connectors(
                 "kind": cap.kind,
                 "import_kinds": sorted(cap.import_kinds),
                 "formats": list(cap.formats),
+                "declares_vantage": cap.param_model is not None
+                and "vantage" in cap.param_model.model_fields,
                 "health": next(
                     (h.status for h in c.registry.health() if h.adapter_id == aid), "DISABLED"
                 ),

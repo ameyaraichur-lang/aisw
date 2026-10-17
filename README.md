@@ -172,7 +172,8 @@ flowchart LR
 | Real scanner execution (Nmap, ZAP, Greenbone, Wazuh, Prowler) | ⛔ | Not in the MVP; only imports and the passive URL probe exist |
 | A real language model run on real evidence | ⛔ | Astra has run on synthetic fixtures only; real evidence needs the data-handling approval (ADR-020). No local model has been run |
 | CI proof ([ADR-030](docs/adr/ADR-030-ci-on-github-actions.md)) | ❓ | GitHub Actions workflow (SHA-pinned, read-only) lints clean with actionlint and zizmor, but has **never run on a runner** |
-| Asset/relationship explorer UI, graph reasoning, attack paths | ⛔ | Reconciliation runs in the backend; no explorer UI |
+| Graph reasoning, attack paths | ✅ | Reachability from host firewall rules and declared-vantage scans; internet-to-asset routes ([ADR-041](docs/adr/ADR-041-reachability-and-attack-paths.md)); cloud security groups are a caveat only |
+| Estate relationship map | ⛔ | Asset Explorer lists assets; no map view |
 | Import upload UI; task dependency ordering between imports | ✅ | Inventory imports run first in the same run (migration 0019) |
 | Retention UI/scheduler | ✅ | Daily timer; auto soft purge needs the identical plan twice, a day apart |
 | Per-project roles | ✅ | Project grants add operator, approver, reviewer or report-reader rights on one project ([ADR-040](docs/adr/ADR-040-per-project-role-grants.md)) |

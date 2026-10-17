@@ -12,12 +12,14 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import Engine, text
 
+from aisw.agents import reachability as reach
 from aisw.agents.architecture import builtin_catalog
 from aisw.agents.registry import AGENTS
 from aisw.agents.roadmap import build_roadmap
 from aisw.api.assessments import _run_or_404
 from aisw.api.container import Container
 from aisw.api.deps import correlation_id, get_actor, get_engine
+from aisw.contracts.analysis import ReachEdge
 from aisw.contracts.base import NonEmpty, StrictModel, canonical_hash
 from aisw.core.audit import append_audit
 from aisw.core.config import ModelProvider
@@ -90,6 +92,39 @@ def run_scenarios(
         for sid, body, v in rows
         if _visible(actor, v)
     ]  # fmt: skip
+
+
+@router.get("/assessments/{run_id}/reachability")
+def run_reachability(
+    run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
+) -> dict[str, Any]:
+    """Edges from firewall configuration and declared-vantage scans, and what was not modelled."""
+    actor = project_of_run(engine, actor, run_id)
+    authorize(actor, Permission.FINDING_READ)
+    with tenant_connection(engine, actor.tenant_id) as conn:
+        _run_or_404(conn, run_id)
+        edges = [
+            b
+            for (b,) in conn.execute(
+                text(
+                    "SELECT body FROM reachability_edges WHERE run_id=:r ORDER BY dst, src, edge_id"
+                ),
+                {"r": run_id},
+            )
+        ]
+        caveats = [
+            c
+            for (c,) in conn.execute(
+                text("SELECT code FROM reachability_caveats WHERE run_id=:r ORDER BY code"),
+                {"r": run_id},
+            )
+        ]
+    exposed = reach.exposure(ReachEdge.model_validate(e) for e in edges)
+    return {
+        "edges": edges,
+        "caveats": caveats,
+        "exposure": {a: {"level": lvl, "edges": ids} for a, (lvl, ids) in sorted(exposed.items())},
+    }
 
 
 def _rec_row(

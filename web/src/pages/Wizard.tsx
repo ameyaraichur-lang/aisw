@@ -285,6 +285,7 @@ function ReviewStep({ manifestId }: { manifestId: string }) {
   const canUpload = session.can('import:create', m?.project_id)
   const [fixtureSet, setFixtureSet] = useState('baseline-ok')
   const [files, setFiles] = useState<Record<string, string>>({})
+  const [vantage, setVantage] = useState<Record<string, string>>({})
   const importers = (connectors.data ?? []).filter((c) => c.kind === 'import' && m?.adapters.includes(c.adapter_id))
   const missing = importers.filter((c) => !files[c.adapter_id])
   const inventoryFirst = importers.some((c) => c.domains.includes('inventory')) && importers.some((c) => !c.domains.includes('inventory'))
@@ -297,7 +298,7 @@ function ReviewStep({ manifestId }: { manifestId: string }) {
         assessment_profile: 'baseline-readonly-v1',
         adapter_params: {
           ...(m!.adapters.includes('fixture') ? { fixture: { fixture_set: fixtureSet } } : {}),
-          ...Object.fromEntries(importers.map((c) => [c.adapter_id, { import_id: files[c.adapter_id] }])),
+          ...Object.fromEntries(importers.map((c) => [c.adapter_id, { import_id: files[c.adapter_id], ...(vantage[c.adapter_id] ? { vantage: vantage[c.adapter_id] } : {}) }])),
         },
       }
       const sig = JSON.stringify(body)
@@ -344,7 +345,7 @@ function ReviewStep({ manifestId }: { manifestId: string }) {
               <section aria-labelledby="import-files" style={{ marginTop: '1rem' }}>
                 <h3 id="import-files">Import files</h3>
                 <p className="hint">Import adapters read a file you upload; they never contact a host. Records outside the signed scope are dropped and counted.{inventoryFirst ? ' Inventory imports run first in this run, so scanner hosts resolve onto the inventory\'s assets.' : ''}</p>
-                {importers.map((c) => <ImportPicker key={c.adapter_id} projectId={m.project_id} connector={c} value={files[c.adapter_id] ?? ''} canUpload={canUpload} onChange={(id) => setFiles((f) => ({ ...f, [c.adapter_id]: id }))} />)}
+                {importers.map((c) => <ImportPicker key={c.adapter_id} projectId={m.project_id} connector={c} value={files[c.adapter_id] ?? ''} canUpload={canUpload} onChange={(id) => setFiles((f) => ({ ...f, [c.adapter_id]: id }))} vantage={vantage[c.adapter_id] ?? ''} onVantage={(v) => setVantage((x) => ({ ...x, [c.adapter_id]: v }))} />)}
               </section>
             ) : null}
             {!approved ? (
@@ -367,7 +368,7 @@ function ReviewStep({ manifestId }: { manifestId: string }) {
   )
 }
 
-function ImportPicker({ projectId, connector, value, canUpload, onChange }: { projectId: string; connector: Connector; value: string; canUpload: boolean; onChange: (id: string) => void }) {
+function ImportPicker({ projectId, connector, value, canUpload, onChange, vantage, onVantage }: { projectId: string; connector: Connector; value: string; canUpload: boolean; onChange: (id: string) => void; vantage: string; onVantage: (v: string) => void }) {
   const qc = useQueryClient()
   const list = useImports(projectId)
   const [kind, setKind] = useState(connector.import_kinds[0] ?? '')
@@ -398,6 +399,17 @@ function ImportPicker({ projectId, connector, value, canUpload, onChange }: { pr
         <option value="">{list.isPending ? 'Loading uploads…' : usable.length ? 'Choose an uploaded file' : 'No matching uploads yet'}</option>
         {usable.map((f) => <option key={f.import_id} value={f.import_id}>{f.filename} ({f.kind}, {f.size_bytes} bytes, {f.uploaded_by}, {fmtTime(f.uploaded_at)})</option>)}
       </select>
+      {connector.declares_vantage ? (
+        <>
+          <label htmlFor={`${id}-vantage`}>Where the scan ran from</label>
+          <select id={`${id}-vantage`} value={vantage} onChange={(e) => onVantage(e.target.value)} aria-describedby={`${id}-vantage-hint`}>
+            <option value="">Not stated</option>
+            <option value="untrusted">Outside the estate (an untrusted network such as the internet)</option>
+            <option value="internal">Inside the estate</option>
+          </select>
+          <p className="hint" id={`${id}-vantage-hint`}>Only a scan from outside counts its open ports as verified exposure. This statement is recorded with the run under your name.</p>
+        </>
+      ) : null}
       {canUpload ? (
         <div className="row" style={{ marginTop: '.5rem' }}>
           {connector.import_kinds.length > 1 ? (

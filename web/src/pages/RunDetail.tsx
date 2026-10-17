@@ -2,12 +2,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link, NavLink, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { api, ApiError, apiBlob, apiText } from '../api/client'
-import { useAiValidations, useControls, useCoverage, useReportBody, useReports, useRunFindings, useRunRecommendations, useRunScenarios, useRunStatus, useTasks } from '../api/hooks'
+import { useAiValidations, useControls, useCoverage, useReportBody, useReports, useRunFindings, useRunReachability, useRunRecommendations, useRunScenarios, useRunStatus, useTasks } from '../api/hooks'
 import type { AiDecision, ControlRow, TaskView } from '../api/types'
 import { useSession } from '../auth/useSession'
 import { RecommendationBody, RecommendationHeader, ScenarioCard } from '../components/analysis'
 import { Badge, Banner, ConfirmDialog, CopyButton, DataState, PageHeader, Pagination, ShortHash } from '../components/ui'
-import { fmtTime } from '../lib/format'
+import { describePorts, fmtTime } from '../lib/format'
 import { deriveStages, describeEvent, tasksFinished } from '../lib/events'
 import { AI_VERDICT_DISPLAY, OUTCOME_DISPLAY, RUN_STATE_DISPLAY, SEVERITY_DISPLAY, TASK_STATUS_DISPLAY, VERDICT_DISPLAY, display, type PolicyOutcome } from '../lib/status'
 import { useRunStream } from '../lib/useRunStream'
@@ -245,6 +245,51 @@ function RunFindings({ runId }: { runId: string }) {
   )
 }
 
+const CAVEAT_TEXT: Record<string, string> = {
+  UPSTREAM_FILTERING_NOT_EVALUATED: 'Filtering upstream of each host (perimeter, NAT, cloud network rules) was not evaluated.',
+  SCAN_VANTAGE_NOT_STATED: 'scan(s) did not state where they ran from, so their open ports say nothing about the internet.',
+  SECURITY_GROUP_ATTACHMENTS_UNKNOWN: 'security group rule(s) were read, but which instances they attach to is not known.',
+  EVIDENCE_UNREADABLE: 'raw evidence file(s) failed the integrity check and were not used.',
+}
+
+function caveatText(code: string) {
+  const [name, detail] = [code.split(':')[0], code.split(':').slice(1).join(':')]
+  const text = CAVEAT_TEXT[name]
+  if (!text) return code
+  return /^\d+$/.test(detail) ? `${detail} ${text}` : text
+}
+
+function ReachabilityPanel({ runId }: { runId: string }) {
+  const q = useRunReachability(runId)
+  return (
+    <section aria-labelledby="re-h">
+      <h2 id="re-h">Reachability</h2>
+      <p className="hint">Read from host firewall configuration and from scans whose launcher declared they ran from an untrusted network. No traffic was sent.</p>
+      <DataState q={q} label="reachability" isEmpty={(d) => d.edges.length === 0 && d.caveats.length === 0} empty={<p className="muted">No firewall configuration or declared-vantage scan in this run, so exposure comes from finding categories only.</p>}>
+        {(d) => (
+          <>
+            {d.caveats.length ? <Banner tone="warn" title="Not modelled"><ul>{d.caveats.map((c) => <li key={c}>{caveatText(c)}</li>)}</ul></Banner> : null}
+            <table className="table" aria-label="Reachability edges" data-testid="reach-edges">
+              <thead><tr><th scope="col">From</th><th scope="col">To</th><th scope="col">Ports</th><th scope="col">Basis</th><th scope="col">Source</th></tr></thead>
+              <tbody>
+                {d.edges.map((e) => (
+                  <tr key={e.edge_id}>
+                    <td>{e.src}</td>
+                    <td><Link to={`/assets?q=${encodeURIComponent(e.dst)}`}>{e.dst}</Link>{d.exposure[e.dst] && e.src === 'internet' ? <span className="chip">{d.exposure[e.dst].level === 'VERIFIED' ? 'exposure verified' : 'exposure configured'}</span> : null}</td>
+                    <td>{describePorts(e.ports)}</td>
+                    <td>{e.basis.toLowerCase()}</td>
+                    <td><code>{e.via}</code>{e.note ? <div className="muted">{e.note}</div> : null}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </DataState>
+    </section>
+  )
+}
+
 function Analysis({ runId }: { runId: string }) {
   const sc = useRunScenarios(runId)
   const rc = useRunRecommendations(runId)
@@ -252,10 +297,11 @@ function Analysis({ runId }: { runId: string }) {
     <>
       <section aria-labelledby="sc-h">
         <h2 id="sc-h">Correlated scenarios</h2>
-        <DataState q={sc} label="scenarios" isEmpty={(d) => d.length === 0} empty={<p className="muted">No scenario was built: it takes two or more recorded weaknesses on the same asset. Nothing is inferred beyond what was observed.</p>}>
+        <DataState q={sc} label="scenarios" isEmpty={(d) => d.length === 0} empty={<p className="muted">No scenario was built: it takes two or more recorded weaknesses on the same asset, or one weakness on an asset a recorded route reaches from the internet. Nothing is inferred beyond what was observed.</p>}>
           {(d) => <>{d.map((x) => <ScenarioCard key={x.scenario_id} s={x} runId={runId} />)}</>}
         </DataState>
       </section>
+      <ReachabilityPanel runId={runId} />
       <section aria-labelledby="rc-h">
         <h2 id="rc-h">Draft recommendations</h2>
         <p className="hint">For planning only. Decisions are recorded in <Link to={`/architecture?run=${runId}`}>Architecture &amp; Modernization</Link>; nothing is executed.</p>

@@ -43,6 +43,7 @@ export interface Connector {
   kind: 'live' | 'import'
   import_kinds: string[]
   formats: string[]
+  declares_vantage?: boolean
 }
 export interface ImportFile {
   import_id: string
@@ -306,6 +307,22 @@ export interface Scenario {
   assurance_verdict: string | null
   authoritative: boolean
   narrative: Narrative | null
+  path?: ReachEdge[]
+}
+export interface ReachEdge {
+  edge_id: string
+  src: string
+  dst: string
+  basis: 'OBSERVED' | 'CONFIGURED'
+  ports: [number, number][] | null
+  via: string
+  evidence_ref: string
+  note: string | null
+}
+export interface Reachability {
+  edges: ReachEdge[]
+  caveats: string[]
+  exposure: Record<string, { level: 'VERIFIED' | 'CONFIGURED'; edges: string[] }>
 }
 export interface Recommendation {
   recommendation_id: string
