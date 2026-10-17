@@ -73,7 +73,7 @@ Done on 2026-10-16:
 | Events | ~~Silent-stall detection for an open but dead SSE stream (ADR-015)~~ (done: a client watchdog reopens the stream from the cursor after 30 s of silence) |
 | Authorisation | ~~Per-project roles~~ (done, ADR-040: additive project grants for operator, approver, reviewer and report reader, migration 0021); tenant-wide lists still need a tenant role |
 | URL probe | ~~IPv6-only, HTTP/2-only and proxy behaviour~~ (done on loopback: IPv6 pinning and fallback, HTTP/2-only reported as `HTTP2_ONLY_UNSUPPORTED`, environment proxies ignored by design, ADR-016). **Pending:** a public-CA target, part of live validation (M9) and needing your authorisation |
-| Supply chain | Syft/ScanCode SBOM instead of the lockfile-based one; gitleaks instead of the stopgap secret scanner |
+| Supply chain | ~~Syft/ScanCode SBOM; gitleaks~~ (done, ADR-043: CI cross-checks the lockfile SBOM against Syft image scans and ScanCode licence detection; gitleaks scans the full history; Syft and gitleaks run locally, ScanCode in CI only). **Pending:** the first CI run of the image scan and ScanCode; signing of release artefacts |
 | Scale | Multi-node worker soak test; DoS sizing |
 | Accessibility | Manual screen-reader pass (axe WCAG 2.2 AA automated only) |
 | Hygiene | ~~Starlette `TestClient`/`httpx` deprecation warning in every test run~~ **Done:** the test client uses `httpx2`, as Starlette now requires |

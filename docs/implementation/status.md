@@ -8,7 +8,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Fail-closed typed configuration | Implemented | `tests/security/test_config_fail_closed.py` |
 | Health/readiness endpoints | Implemented | `tests/unit/test_health.py` |
 | UI shell + outcome vocabulary (no data) | Implemented | `web/src/lib/status.test.ts`; build passes |
-| Repo secret scanner | Implemented (stopgap) | `tests/security/test_secret_scan.py`; gitleaks planned |
+| Repo secret scanner, plus gitleaks over the full history in CI (ADR-043) | Implemented | `tests/security/test_secret_scan.py`; gitleaks 8.30.1 run locally over the history: only the four fingerprinted test fixtures |
 | CI workflow (GitHub Actions, ADR-030): backend, web, e2e, deploy images, hygiene; SHA-pinned actions, read-only token | Unverified on a runner | `tests/unit/test_ci_workflow.py`; actionlint and zizmor clean locally; never run on a GitHub runner |
 | Strict contracts (envelope 1.1, manifest, permit, decision, domain entities, assurance, report) + exported JSON Schemas | Implemented (M1) | `tests/contract/` (53 tests), `schemas/` drift gate |
 | Tenant isolation via PostgreSQL RLS (forced, fail-closed when no tenant set) | Implemented (M1) | `tests/security/test_tenant_isolation_db.py`; real PG 16 via pgserver |
@@ -110,7 +110,7 @@ Legend: **Implemented** (tested here) · **Mocked** · **Unverified** (written, 
 | Validation of Agents 0 and 8 | Planned | not built; see `docs/implementation/pending-plan.md` |
 | Real model behaviour, quality and latency; model licence review | Unverified / Planned | needs an approved open-source model and your go-ahead to run one locally |
 | Approved architecture catalog and rubric weights (policy owner) | Planned | the shipped ones are samples |
-| SBOM (CycloneDX, lockfile-based) + licence gate with recorded acceptances | Implemented (M8), **not Syft/ScanCode** | `tests/security/test_sbom_gate.py`; `docs/implementation/sbom/`; LGPL (psycopg) legal review pending |
+| SBOM (CycloneDX, lockfile-based) + licence gate with recorded acceptances; Syft and ScanCode cross-checks in CI (ADR-043) | Implemented (M8); Syft verified locally, **image scan and ScanCode CI-only, first run pending** | `tests/security/test_sbom_gate.py`; `docs/implementation/sbom/`; LGPL (psycopg) legal review pending |
 | Report export controls: audited views/exports (incl. denials), drafts downloadable only by approvers, visible watermark | Implemented (M8) | `tests/security/test_hardening.py` |
 | Hardening tests: retry storm (bounded, spaced, terminates), backoff growth, cancel mid-run, two racing workers leave one ordered event log | Implemented (M8) | `tests/security/test_hardening.py` |
 | Threat model, 7 runbooks, scorecard generated from results, mutation log (38 mutations, all caught) | Implemented (M8) | `docs/architecture/threat-model.md`, `docs/runbooks/`, `docs/implementation/scorecard.md`; runbook steps not exercised on a deployed system |

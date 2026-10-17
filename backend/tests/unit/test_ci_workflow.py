@@ -63,6 +63,21 @@ def test_every_local_gate_runs_in_ci() -> None:
     assert workflow()["jobs"]["backend"]["env"]["AISW_REQUIRE_OPA"] == "1"
     assert "npx playwright test" in runs("e2e")
     assert "secret_scan.py" in runs("hygiene") and "actionlint" in runs("hygiene")
+    assert 'gitleaks" git --redact=100' in runs("hygiene")
+    history = next(
+        s for s in steps("hygiene") if str(s.get("uses", "")).startswith("actions/checkout@")
+    )
+    assert history["with"]["fetch-depth"] == 0  # gitleaks needs the whole history
+    assert "syft scan docker:aisw-backend:ci" in runs(
+        "deploy"
+    ) and "sbom_crosscheck.py check" in runs("deploy")
+    assert "sbom_crosscheck.py stage" in runs("licences") and "scancode --license" in runs(
+        "licences"
+    )
+    for job, var in (("hygiene", "GITLEAKS"), ("deploy", "SYFT")):
+        env = workflow()["jobs"][job]["env"]
+        assert re.fullmatch(r"[0-9a-f]{64}", env[f"{var}_SHA256"]), job
+        assert "sha256sum -c" in runs(job), job
     deploy = runs("deploy")
     for dockerfile in (REPO / "deploy" / "docker").glob("*.Dockerfile"):
         assert f"deploy/docker/{dockerfile.name}" in deploy, dockerfile.name

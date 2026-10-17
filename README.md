@@ -157,7 +157,7 @@ flowchart LR
 | Operator console (all main screens), SSE with cursor replay, accessibility | ✅ | Axe WCAG 2.2 AA automated on every main screen; no manual screen-reader test |
 | Report export controls (audited, watermark, drafts restricted) | ✅ | |
 | Evidence retention (dry-run, hash-pinned execute, holds, **soft purge**) | 🟡 | Evidence Retention page and a daily scheduled check; automatic soft purge is opt-in and off; final deletion is a manual act |
-| SBOM (CycloneDX) and licence gate | 🟡 | Lockfile-based, **not Syft/ScanCode** |
+| SBOM (CycloneDX) and licence gate | 🟡 | Lockfile-based, cross-checked against Syft image scans and ScanCode in CI ([ADR-043](docs/adr/ADR-043-syft-scancode-and-gitleaks.md)); first CI run pending |
 | Threat model, 7 runbooks, generated scorecard, mutation log | ✅ | Runbook steps not exercised on a deployed system |
 | Generic OIDC sign-in through the BFF ([ADR-026](docs/adr/ADR-026-oidc-sign-in-through-the-bff.md)) | 🟡 | PKCE, nonce, signed session cookies, CSRF, revocation; tested against a **local mock IdP only**, no real tenant registered |
 | Manifest signing through a Transit KMS, rotation drill ([ADR-027](docs/adr/ADR-027-kms-signing-and-rotation.md)) | 🟡 | Drill passes against a **local emulator only**; no real KMS provisioned |
@@ -265,7 +265,7 @@ AI is **off by default** and nothing depends on it. When enabled, a model may wr
 
 ## Supply chain and licences
 
-`tools/sbom.py` writes a CycloneDX SBOM and licence report to [`docs/implementation/sbom/`](docs/implementation/sbom/) from `uv.lock`, `package-lock.json` and installed metadata, and applies an allow/review/deny policy. It is **not** Syft or ScanCode, and does not see native libraries inside wheels. Items needing attention:
+`tools/sbom.py` writes a CycloneDX SBOM and licence report to [`docs/implementation/sbom/`](docs/implementation/sbom/) from `uv.lock`, `package-lock.json` and installed metadata, and applies an allow/review/deny policy. It does not see native libraries inside wheels or OS packages; CI cross-checks it against Syft and ScanCode (ADR-043). Items needing attention:
 
 - `psycopg` / `psycopg-binary` are **LGPL-3.0** and ship at runtime. Used unmodified as separate packages; a named legal reviewer must confirm before any external distribution.
 - Several MPL-2.0 packages (accessibility and build tooling) are dev/test only and not shipped.
@@ -279,8 +279,8 @@ This is an engineering gate, not legal advice.
 backend/    FastAPI services (aisw/), Alembic migrations (0001-0006), tests, e2e test server
 web/        React/TypeScript console, Playwright specs, README screenshot capture
 schemas/    JSON Schemas exported from the contracts
-docs/       plan, status matrix, ADRs 001-020, threat model, runbooks, SBOM and licence report, scorecard, screenshots
-tools/      secret scan, schema export, SBOM, scorecard, stale-Postgres cleanup
+docs/       plan, status matrix, ADRs 001-043, threat model, runbooks, SBOM and licence report, scorecard, screenshots
+tools/      secret scan, schema export, SBOM and its Syft/ScanCode cross-check, scorecard, stale-Postgres cleanup
 deploy/     images, compose, systemd units, egress rule examples; install runbook in deploy/README.md
 ```
 
