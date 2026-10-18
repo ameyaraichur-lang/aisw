@@ -1,31 +1,46 @@
-/* Design tokens: restrained navy/neutral, high contrast (all text pairs >= 4.5:1; most >= 7:1). */
+/* Design tokens: HUD theme, deep navy with cyan signal colour. Text sits on solid panel colours so
+   every pair is measurable and >= 4.5:1 (most >= 7:1); glow and gradients are decoration only. */
 :root {
-  --bg: #0b1426;
-  --panel: #111d36;
-  --panel-2: #162645;
-  --border: #2c3d63;
-  --text: #e8edf7;
-  --text-muted: #aebbd3;
-  --focus: #6cb6ff;
-  --accent: #8ec5ff;
-  --ok: #7ee2a8;
-  --bad: #ff9a9a;
+  --bg: #040a18;
+  --panel: #0a1630;
+  --panel-2: #0f2142;
+  --border: #22406e;
+  --glow: rgb(92 220 255 / .28);
+  --text: #e6f1ff;
+  --text-muted: #a7bcdb;
+  --focus: #7ff3ff;
+  --accent: #5cdcff;
+  --violet: #b48cff;
+  --ok: #5ef0b6;
+  --bad: #ff8fa3;
   --warn: #ffd479;
   --info: #8ec5ff;
   --neutral: #c8d1e3;
-  --radius: 8px;
+  --radius: 10px;
+  --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
   color-scheme: dark;
   font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); }
-a { color: var(--accent); }
-h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
+body {
+  margin: 0; color: var(--text); background-color: var(--bg);
+  background-image:
+    radial-gradient(60rem 40rem at 85% -10%, rgb(92 220 255 / .10), transparent 60%),
+    radial-gradient(50rem 36rem at -10% 110%, rgb(180 140 255 / .09), transparent 60%),
+    linear-gradient(rgb(92 220 255 / .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(92 220 255 / .035) 1px, transparent 1px);
+  background-size: auto, auto, 44px 44px, 44px 44px;
+  background-attachment: fixed;
+}
+a { color: var(--accent); text-underline-offset: .18em; }
+a:hover { text-shadow: 0 0 10px var(--glow); }
+h1 { font-size: 1.65rem; margin: 0 0 .25rem; letter-spacing: .01em; }
+h1::after { content: ''; display: block; width: 3.5rem; height: 2px; margin-top: .35rem; background: linear-gradient(90deg, var(--accent), var(--violet), transparent); box-shadow: 0 0 10px var(--glow); }
 h2 { font-size: 1.15rem; margin: 1.25rem 0 .5rem; }
 h3 { font-size: 1rem; margin: 1rem 0 .4rem; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 h1:focus { outline: none; }
-code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; }
+code { font-family: var(--mono); font-size: .9em; }
 .muted { color: var(--text-muted); }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
