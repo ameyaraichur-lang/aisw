@@ -28,12 +28,11 @@ test('Mission Control shows the estate, streams new run events and keeps a text 
   await expect(group).toContainText(/db-01 \(host; High finding/)
   expect((await new AxeBuilder({ page }).withTags(TAGS).analyze()).violations).toEqual([])
 
-  // events of a run started while the page is open arrive in the stream and are marked as new
-  const before = await log.getByRole('listitem').count()
+  // events of a run started while the page is open arrive in the stream (capped at the newest 60) and are marked as new
   const second = await launch(request, projectId, m, 'baseline-ok')
   await expect(page.locator('.mc-ev--fresh').first()).toBeVisible({ timeout: 30_000 })
   await untilState(request, second, ['REPORT_READY'])
-  await expect.poll(() => log.getByRole('listitem').count()).toBeGreaterThan(before)
+  await expect(log.locator(`a[href="/assessments/${second}/timeline"]`).first()).toBeVisible({ timeout: 15_000 })
   await expect(page.getByRole('link', { name: new RegExp(`run ${second.slice(0, 8)}`) })).toBeVisible({ timeout: 15_000 })
 })
 
