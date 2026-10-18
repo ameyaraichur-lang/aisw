@@ -1,6 +1,6 @@
 # ADR-030: GitHub Actions as the CI system of record
 
-**Status:** Accepted. The workflow passes actionlint and zizmor locally, and every command in it passes locally. It has **never run on a GitHub runner** (pending-plan P0-5).
+**Status:** Accepted. The workflow passes actionlint and zizmor locally, and every command in it passes locally. First run on GitHub Actions on 2026-10-18 ([run 39111965433](https://github.com/ameyaraichur-lang/aisw/actions/runs/39111965433), draft PR #1): all six jobs green with no workflow changes.
 
 ## Context
 The original workflow ran most of the gates. It used floating action tags, unbounded jobs and `uv sync` without `--frozen`. It skipped the key-rotation drill and never built the deployment images. The rev 3 plan also drafted a `.gitlab-ci.yml`. The repository owner chose GitHub Actions (open question 4 in the pending plan).

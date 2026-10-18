@@ -1,6 +1,6 @@
 # ADR-043: Syft and ScanCode cross-checks and gitleaks in CI
 
-**Status:** Accepted (Syft and gitleaks run locally; ScanCode runs in CI only; first CI run pending)
+**Status:** Accepted (Syft and gitleaks run locally; ScanCode runs in CI only; all green on the [first CI run](https://github.com/ameyaraichur-lang/aisw/actions/runs/39111965433), 2026-10-18)
 
 ## Context
 The SBOM (`tools/sbom.py`, ADR-019) is built from `uv.lock`, `package-lock.json` and installed Python metadata. It cannot see OS packages in the images or native code bundled in wheels, and its licences come from what packages declare about themselves. The secret scanner (`tools/secret_scan.py`) is a small pattern list over the working tree, not the git history.

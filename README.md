@@ -157,12 +157,12 @@ flowchart LR
 | Operator console (all main screens), SSE with cursor replay, accessibility | ✅ | Axe WCAG 2.2 AA and structural rules automated on every main screen; the manual screen-reader pass is a [checklist](docs/runbooks/accessibility-screen-reader.md) awaiting sign-off |
 | Report export controls (audited, watermark, drafts restricted) | ✅ | |
 | Evidence retention (dry-run, hash-pinned execute, holds, **soft purge**) | 🟡 | Evidence Retention page and a daily scheduled check; automatic soft purge is opt-in and off; final deletion is a manual act |
-| SBOM (CycloneDX) and licence gate | 🟡 | Lockfile-based, cross-checked against Syft image scans and ScanCode in CI ([ADR-043](docs/adr/ADR-043-syft-scancode-and-gitleaks.md)); first CI run pending |
+| SBOM (CycloneDX) and licence gate | 🟡 | Lockfile-based, cross-checked against Syft image scans and ScanCode in CI ([ADR-043](docs/adr/ADR-043-syft-scancode-and-gitleaks.md)); green on the first CI run (all 35 runtime components confirmed). Base-image OS packages are not in the lockfile SBOM |
 | Threat model, 12 runbooks, generated scorecard, mutation log | ✅ | Runbook steps not exercised on a deployed system |
 | Generic OIDC sign-in through the BFF ([ADR-026](docs/adr/ADR-026-oidc-sign-in-through-the-bff.md)) | 🟡 | PKCE, nonce, signed session cookies, CSRF, revocation; tested against a **local mock IdP only**, no real tenant registered |
 | Manifest signing through a Transit KMS, rotation drill ([ADR-027](docs/adr/ADR-027-kms-signing-and-rotation.md)) | 🟡 | Drill passes against a **local emulator only**; no real KMS provisioned |
 | Egress: scan zones, IdP host binding, generated firewall rules ([ADR-028](docs/adr/ADR-028-egress-allow-list.md)) | 🟡 | App-level checks enforced; nftables/iptables rules generated and drift-tested, **never loaded on a real host** |
-| Deployment: images, compose, systemd, bootstrap, doctor ([ADR-029](docs/adr/ADR-029-deployment-packaging.md), [`deploy/`](deploy/README.md)) | 🟡 | API and worker proven as **live processes** against Postgres (run to REPORT_READY); images **never built**, units **never loaded** (no Docker or systemd here) |
+| Deployment: images, compose, systemd, bootstrap, doctor ([ADR-029](docs/adr/ADR-029-deployment-packaging.md), [`deploy/`](deploy/README.md)) | 🟡 | API and worker proven as **live processes** against Postgres (run to REPORT_READY); images **built and checked in CI** (non-root, security headers, compose valid) but **never deployed**; units **never loaded** |
 
 ### Not prepared
 
@@ -171,7 +171,7 @@ flowchart LR
 | **Live validation (M9)**: `example.com` smoke, `scanme.nmap.org` bounded Nmap, ZAP on your own Juice Shop | ⛔ | Harness and authorisation gate built and proven on loopback ([ADR-045](docs/adr/ADR-045-live-validation-harness.md)); needs your explicit authorisation for each target |
 | Real scanner execution (Nmap, ZAP, Greenbone, Wazuh, Prowler) | ⛔ | Not in the MVP; only imports and the passive URL probe exist |
 | A real language model run on real evidence | ⛔ | Astra has run on synthetic fixtures only; real evidence needs the data-handling approval (ADR-020). No local model has been run |
-| CI proof ([ADR-030](docs/adr/ADR-030-ci-on-github-actions.md)) | ❓ | GitHub Actions workflow (SHA-pinned, read-only) lints clean with actionlint and zizmor, but has **never run on a runner** |
+| CI proof ([ADR-030](docs/adr/ADR-030-ci-on-github-actions.md)) | ✅ | All six GitHub Actions jobs green on the [first run](https://github.com/ameyaraichur-lang/aisw/actions/runs/39111965433) (2026-10-18): 1545 backend and 40 end-to-end tests, images, Syft, ScanCode, gitleaks |
 | Graph reasoning, attack paths | ✅ | Reachability from host firewall rules and declared-vantage scans; internet-to-asset routes ([ADR-041](docs/adr/ADR-041-reachability-and-attack-paths.md)); cloud security groups are a caveat only |
 | Estate relationship map | ⛔ | Asset Explorer lists assets; no map view |
 | Import upload UI; task dependency ordering between imports | ✅ | Inventory imports run first in the same run (migration 0019) |
