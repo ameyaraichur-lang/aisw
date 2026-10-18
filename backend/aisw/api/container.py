@@ -141,7 +141,9 @@ def build_container(
 ) -> Container:
     clock = clock or (lambda: datetime.now(UTC))
     registry = AdapterRegistry()
-    registry.register(UrlSmokeAdapter(ca_file=ca_file, clock=clock))  # read-only, scope-bound
+    registry.register(UrlSmokeAdapter(  # read-only, scope-bound
+        ca_file=ca_file, inspection_ca_file=settings.tls_inspection_ca_file, clock=clock,
+    ))  # fmt: skip
     for imp in (
         CmdbImportAdapter,
         ProwlerImportAdapter,

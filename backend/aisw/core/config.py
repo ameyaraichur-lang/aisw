@@ -244,6 +244,10 @@ class Settings(BaseSettings):
     # Holds each fixture-adapter task this long (dev/test only): lets soak tests kill mid-task.
     fixture_delay_ms: int = Field(default=0, ge=0, le=10_000)
     signing_key_path: Path | None = None
+    # PEM of the organisation's TLS-inspection root(s), when the scan host's network re-signs TLS. The
+    # URL probe then reports such connections as inspected instead of failing the target's
+    # certificate (ADR-016). Never add these roots to the trust store itself.
+    tls_inspection_ca_file: Path | None = None
     # Manifest signing custody (ADR-027). local_file: dev/test only. transit: a Transit-compatible
     # KMS (OpenBao/Vault); the token is read from a 0600 file written by the secret provider.
     # Policy engine (ADR-003, ADR-031): the Python evaluator, or OPA running the packaged Rego.

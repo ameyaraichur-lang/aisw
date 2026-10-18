@@ -84,8 +84,8 @@ def servers(pki: dict[str, Any]) -> Iterator[dict[str, Server]]:
         x.stop()
 
 
-def adapter(pki: dict[str, Any]) -> UrlSmokeAdapter:
-    return UrlSmokeAdapter(ca_file=pki["ca"])
+def adapter(pki: dict[str, Any], inspection: Path | None = None) -> UrlSmokeAdapter:
+    return UrlSmokeAdapter(ca_file=pki["ca"], inspection_ca_file=inspection)
 
 
 def hook_for(*origins: str, ports: list[int]) -> Callable[[CanonicalURL, str, int], VettedTarget]:
@@ -103,7 +103,7 @@ def hook_for(*origins: str, ports: list[int]) -> Callable[[CanonicalURL, str, in
 def run(
     pki: dict[str, Any], srv: Server, path: str = "/", params: dict[str, Any] | None = None,
     scope: tuple[str, ...] | None = None, hook: Any = "default", host: str = "smoke.test",
-    pinned: tuple[str, ...] = ("127.0.0.1",),
+    pinned: tuple[str, ...] = ("127.0.0.1",), inspection: Path | None = None,
 ) -> AdapterOutput:  # fmt: skip
     url = f"{srv.scheme}://{host}:{srv.port}{path}"
     origins = scope if scope is not None else (f"{srv.scheme}://{host}:{srv.port}",)
@@ -113,7 +113,7 @@ def run(
         target_kind="url", target_selector=url, params=params or {}, pinned_addresses=pinned,
         request_budget=10, vet_redirect=vet,
     )  # fmt: skip
-    return adapter(pki).execute(job)
+    return adapter(pki, inspection).execute(job)
 
 
 # ---- the happy path ------------------------------------------------------------------------
@@ -229,6 +229,42 @@ def test_tls_verification_failure_sends_no_http_request(
     assert hop["tls"]["certificate"][
         "sha256_fingerprint"
     ]  # metadata still described the cert we rejected
+
+
+# ---- TLS inspection: the network re-signs TLS with the organisation's own CA ----------------------
+def test_an_inspected_connection_is_reported_and_its_certificate_is_not_judged(
+    pki: dict[str, Any], servers: dict[str, Server]
+) -> None:
+    # "untrusted" stands in for the inspection proxy: outside the trust store, named by the operator.
+    srv = servers["untrusted"]
+    out = run(pki, srv, "/ok", inspection=pki["untrusted"].cert_path)
+    hop = out.raw["hops"][0]
+    assert hop["tls"]["inspected"] is True and hop["tls"]["verified"] is False
+    assert hop["error"] is None and hop["response"]["status"] == 200 and srv.paths() == ["/ok"]
+    assert out.status == "SUCCEEDED" and len(out.warnings) == 1
+    assert out.warnings[0].startswith(
+        "TLS_INSPECTED:smoke.test: certificate issued by CN=smoke.test"
+    )
+    observed = {
+        o.rule_id: o.value
+        for o in adapter(pki).normalize(out, run_id="r", task_id="k").observations
+    }
+    assert not [
+        r for r in observed if r.startswith("tls.")
+    ]  # the proxy's certificate is not the target's
+    assert observed["http.response_received"] is True and observed["http.hsts_present"] is True
+
+
+@pytest.mark.parametrize("which", ["untrusted", "wrongname"])
+def test_inspection_ca_does_not_excuse_other_tls_failures(
+    pki: dict[str, Any], servers: dict[str, Server], which: str
+) -> None:
+    other_ca = pki["expired"].cert_path if which == "untrusted" else pki["wrongname"].cert_path
+    srv = servers[which]  # untrusted: issued by another CA; wrongname: right CA, wrong hostname
+    out = run(pki, srv, "/ok", inspection=other_ca)
+    hop = out.raw["hops"][0]
+    assert out.warnings == ["TLS_VERIFY_FAILED"] and srv.requests == []
+    assert "inspected" not in hop["tls"] and hop["request_sent"] is False
 
 
 def test_expired_certificate_metadata_is_negative(
