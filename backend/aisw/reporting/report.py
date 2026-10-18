@@ -95,6 +95,12 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
     for t in inp.tasks:
         if t["status"] not in {"SUCCEEDED"}:
             limitations.append(f"Task {t['adapter_id']} on {t['target']}: {t['status']}.")
+        elif warnings := t.get("warnings"):
+            limitations.append(
+                f"Task {t['adapter_id']} on {t['target']} succeeded with warnings: "
+                + "; ".join(warnings[:5])
+                + (f" (and {len(warnings) - 5} more)." if len(warnings) > 5 else ".")
+            )
     if inp.rejected_count:
         limitations.append(
             f"{inp.rejected_count} candidate finding(s) failed independent assurance "

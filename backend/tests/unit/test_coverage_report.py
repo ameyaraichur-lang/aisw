@@ -112,6 +112,15 @@ def test_failed_tasks_are_listed() -> None:
     assert any("FAILED" in x for x in body["limitations"])
 
 
+def test_warnings_of_a_succeeded_task_are_disclosed() -> None:
+    w = [f"W{i}" for i in range(7)]
+    t = [{"adapter_id": "url_smoke", "target": "u", "status": "SUCCEEDED", "warnings": w}]
+    _, body, _ = build_report(inputs(tasks=t))
+    assert body["limitations"] == [
+        "Task url_smoke on u succeeded with warnings: W0; W1; W2; W3; W4 (and 2 more)."
+    ]
+
+
 def test_report_hash_is_deterministic_and_content_bound() -> None:
     a = build_report(inputs())[0].report_hash
     assert a == build_report(inputs())[0].report_hash
