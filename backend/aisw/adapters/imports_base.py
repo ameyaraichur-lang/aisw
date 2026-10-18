@@ -3,7 +3,8 @@
 Input is UNTRUSTED. Rules every import adapter inherits:
 * the file arrives only through ``job.read_import`` (tenant/project/kind/hash verified by the
   gateway); there is no path, URL or file handle to abuse
-* XML is parsed with DTDs, entities and external references forbidden (no XXE / entity bombs);
+* XML is parsed with DTDs (bar a bare ``<!DOCTYPE name>``), entities and external references
+  forbidden (no XXE / entity bombs);
   JSON is depth-limited by the parser; CSV rows and field sizes are capped
 * anything outside the signed scope is DROPPED (never ingested) and only counted
 * an unsupported or tampered format fails closed with a stable code; it is never half-trusted
@@ -13,6 +14,7 @@ Input is UNTRUSTED. Rules every import adapter inherits:
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -34,6 +36,7 @@ from aisw.gateway.registry import (
 
 MAX_RECORDS = 20_000
 MAX_TEXT = 300
+BARE_DOCTYPE = re.compile(r"<!DOCTYPE\s+[A-Za-z_][\w.:-]*\s*>")
 
 
 class ImportParseError(Exception):
@@ -54,9 +57,14 @@ def clean(value: Any, limit: int = MAX_TEXT) -> str:
 
 
 def parse_xml(text: str) -> Any:
-    """Parse untrusted XML with DTD/entity/external-reference handling disabled."""
+    """Parse untrusted XML with DTD/entity/external-reference handling disabled. The one DTD form
+    accepted is a bare ``<!DOCTYPE name>`` (no internal subset, no external id), which declares
+    nothing and which Nmap writes into every XML report."""
+    bare = text.count("<!DOCTYPE") == 1 and BARE_DOCTYPE.search(text) is not None
     try:
-        return SafeET.fromstring(text, forbid_dtd=True, forbid_entities=True, forbid_external=True)
+        return SafeET.fromstring(
+            text, forbid_dtd=not bare, forbid_entities=True, forbid_external=True
+        )
     except defusedxml.DefusedXmlException as exc:
         raise ImportParseError("XML_FORBIDDEN_CONSTRUCT") from exc
     except SafeET.ParseError as exc:

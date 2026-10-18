@@ -386,6 +386,38 @@ def test_nmap_import_open_ports_as_observations() -> None:
     }  # closed ports are not listed
 
 
+NMAP_PROLOGUE = (
+    '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE nmaprun>\n'
+    '<?xml-stylesheet href="file:///usr/share/nmap/nmap.xsl" type="text/xsl"?>\n'
+    "<!-- Nmap 7.95 scan initiated as: nmap -sT -T2 -->\n"
+)
+
+
+def test_nmap_xml_as_nmap_writes_it_with_its_bare_doctype_is_accepted() -> None:
+    body = gold("nmap.xml").split("?>", 1)[1]
+    out = run(
+        NMAP, NMAP_PROLOGUE + body, kind="cidr", selector="10.20.0.0/24",
+        scope=cidr_scope("10.20.0.0/24"),
+    )  # fmt: skip
+    assert out.status == "SUCCEEDED" and len(out.raw["hosts"]) == 3
+
+
+@pytest.mark.parametrize(
+    "doctype",
+    [
+        "<!DOCTYPE nmaprun>\n<!DOCTYPE x [<!ENTITY e 'AAAA'>]>",
+        "<!DOCTYPE nmaprun [<!ENTITY e 'AAAA'>]>",
+        '<!DOCTYPE nmaprun SYSTEM "http://169.254.169.254/evil.dtd">',
+    ],
+    ids=["second-declaring-doctype", "internal-subset", "external-id"],
+)
+def test_only_a_bare_doctype_is_tolerated(doctype: str) -> None:
+    text = f'<?xml version="1.0"?>{doctype}<nmaprun args="nmap -sT x">&e;</nmaprun>'
+    out = run(NMAP, text)
+    assert out.status == "FAILED" and out.errors == ["XML_FORBIDDEN_CONSTRUCT"]
+    assert "AAAA" not in str(out.raw)
+
+
 @pytest.mark.parametrize(
     "args",
     [
