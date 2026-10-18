@@ -45,6 +45,8 @@ cd backend && .venv/bin/python ../tools/live_assess.py --ai                  # a
 cd backend && .venv/bin/python ../tools/live_assess.py example-com --ai      # one
 ```
 
+To watch a run while it happens, open **Mission Control** (`/mission`, signed in as sam). Each project is an orbit of its assets, coloured by the worst accepted finding. Probe and evidence pulses fire only for recorded run events. The event stream and the pipeline strip update while a run is in flight, and "Replay last run" plays back the newest run's recorded events. The 3D view is decorative (`aria-hidden`); the tracked-asset list and the event log carry the same facts. It is lazily loaded with three.js (MIT) and falls back to text without WebGL. Under reduced motion it draws one still frame.
+
 Scenarios: `example-com` (passive URL probe, port 443), `local-portal` (this stack's console and API on loopback), `workstation` (an Nmap import of this machine) and `base-images` (a Trivy import of the product's container base images). Only add a target someone with authority over it has approved in writing.
 
 Scanner output goes in `data/dev-stack/scans/`. Nmap must use the bounded profile the importer accepts; anything else is refused with `SCAN_PROFILE_VIOLATION`:

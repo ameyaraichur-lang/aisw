@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { RequirePermission } from './components/Guard'
 import { Shell } from './components/Shell'
@@ -23,6 +24,8 @@ import { EvaluationLab } from './pages/Evaluation'
 import { CoverageLedgerPage } from './pages/Coverage'
 import { Wizard } from './pages/Wizard'
 
+const MissionControl = lazy(() => import('./pages/MissionControl').then((m) => ({ default: m.MissionControl })))
+
 export default function App() {
   const { status } = useSession()
   if (status === 'loading') return <p role="status" style={{ padding: '2rem' }}>Loading session…</p>
@@ -33,6 +36,7 @@ export default function App() {
     <Routes>
       <Route element={<Shell />}>
         <Route index element={<CommandCenter />} />
+        <Route path="mission" element={<Suspense fallback={<p role="status">Loading Mission Control…</p>}><MissionControl /></Suspense>} />
         <Route path="projects" element={<Projects />} />
         <Route path="integrations" element={<Integrations />} />
         <Route path="assessments" element={<Assessments />} />

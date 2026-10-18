@@ -1,5 +1,6 @@
 export interface Item { to: string; label: string; need?: string | string[]; planned?: string }
 export const NAV: Item[] = [
+  { to: '/mission', label: 'Mission Control' },
   { to: '/', label: 'Command Center' },
   { to: '/projects', label: 'Projects & Environments' },
   { to: '/integrations', label: 'Integrations & Collectors' },

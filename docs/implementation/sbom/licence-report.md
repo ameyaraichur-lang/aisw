@@ -2,7 +2,7 @@
 
 Engineering gate, not legal advice. Source: `backend/uv.lock` + installed Python metadata, `web/package-lock.json`. **Not Syft/ScanCode**; native libraries inside wheels are not inventoried.
 
-Components: 76 Python, 112 npm; 35 are runtime (shipped) dependencies, the rest are build/test tooling.
+Components: 76 Python, 120 npm; 36 are runtime (shipped) dependencies, the rest are build/test tooling.
 
 ## Needs review (recorded acceptance required)
 

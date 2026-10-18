@@ -39,7 +39,7 @@ test('no WCAG 2.2 AA violations on the main screens', async ({ page, request }) 
   await scan(page, 'sign-in')
 
   await signIn(page, 'alice')
-  for (const path of ['/', '/projects', '/integrations', '/assessments', '/assessments/new', '/assets', '/architecture',
+  for (const path of ['/', '/mission', '/projects', '/integrations', '/assessments', '/assessments/new', '/assets', '/architecture',
     `/assessments/${runId}/timeline`, `/assessments/${runId}/coverage`, `/assessments/${runId}/findings`, `/assessments/${runId}/analysis`, `/architecture?run=${ok}`, `/assessments/${runId}/controls`, `/findings`, '/controls', '/retention']) {
     await page.goto(path)
     await expect(page.locator('main h1')).toBeVisible()

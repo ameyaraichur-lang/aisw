@@ -39,7 +39,7 @@ export function Shell() {
           ) : null}
         </ul>
       </nav>
-      <main id="main" className="main"><Outlet /></main>
+      <main id="main" className={loc.pathname === '/mission' ? 'main main--wide' : 'main'}><Outlet /></main>
     </div>
   )
 }
