@@ -53,6 +53,8 @@ Scanner output goes in `data/dev-stack/scans/`. Nmap must use the bounded profil
 
 ```bash
 nmap -sT -Pn -T3 --top-ports 100 --max-retries 2 -oX data/dev-stack/scans/nmap-workstation.xml 127.0.0.1 <this machine's LAN address>
-trivy image --format json --output data/dev-stack/scans/trivy-python.json python:3.12.11-slim-bookworm
-trivy image --format json --output data/dev-stack/scans/trivy-nginx.json nginxinc/nginx-unprivileged:1.29.0-alpine
+trivy image --image-src remote --format json --output data/dev-stack/scans/trivy-python.json python:3.12.15-alpine3.24
+trivy image --image-src remote --format json --output data/dev-stack/scans/trivy-nginx.json nginxinc/nginx-unprivileged:1.30.6-alpine
 ```
+
+Use the base images named in `deploy/docker/*.Dockerfile`; `--image-src remote` reads them from the registry, so Docker is not needed. Move older `trivy-*.json` files out of `scans/` first, because the scenario imports every file that matches. The scenario's inventory selector carries a hash of the expected images, so a new set of images gets its own inventory entry.
