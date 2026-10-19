@@ -2,7 +2,7 @@
 
 Start: `cd backend && AISW_WORKER_DATABASE_URL=<dsn for role aisw_worker> uv run python -m aisw.orchestrator` **(unverified live)**. The DSN comes from your secret provider; never paste it into a ticket or log.
 
-How it behaves (all tested): tasks are claimed with a lease (default 5 minutes) and a fencing token; a crashed worker's task becomes claimable when the lease expires; each task has at most 3 attempts; retries use exponential backoff (2 s base, doubling) with jitter; a worker that lost its lease cannot write. A run only advances when all its tasks are terminal.
+How it behaves (all tested, including worker processes killed at random: `docs/implementation/soak.md`): tasks are claimed with a lease (`AISW_WORKER_LEASE_SECONDS`, default 300; keep it above the slowest adapter call) and a fencing token; a crashed worker's task becomes claimable when the lease expires; each task has at most 3 attempts; retries use exponential backoff (2 s base, doubling) with jitter; a worker that lost its lease cannot write. A run only advances when all its tasks are terminal.
 
 | Symptom | Check | Action |
 |---|---|---|

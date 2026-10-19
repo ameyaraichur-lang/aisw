@@ -22,7 +22,9 @@ class Fact(StrictModel):
 
 
 class NarrativeSubject(StrictModel):
-    purpose: Literal["scenario", "recommendation"]
+    # verification: Agent 4's questions for an owner to confirm one exposure finding.
+    # executive: Agent 8's plain-language summary of the whole run.
+    purpose: Literal["scenario", "recommendation", "verification", "executive"]
     subject_ref: Slug
     title: NonEmpty
     tier: Literal["P0", "P1", "P2", "P3"] | None

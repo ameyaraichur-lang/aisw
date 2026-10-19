@@ -15,7 +15,8 @@ from __future__ import annotations
 import json
 import random
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -37,13 +38,27 @@ from aisw.gateway.gateway import GatewayDenied, ToolGateway, ToolRequest
 from aisw.gateway.registry import AdapterOutput, AdapterRegistry
 from aisw.llm.client import DisabledModelClient, ModelClient
 from aisw.llm.gateway import LlmGateway, NarrativeResult
+from aisw.llm.routing import BudgetedClient, TokenBudget
 from aisw.llm.schema import NarrativeSubject
+from aisw.llm.triggers import DEFAULT_VERSION as DEFAULT_TRIGGER_VERSION
+from aisw.llm.triggers import Decision as TriggerDecision
+from aisw.llm.triggers import TriggerPolicy
+from aisw.llm.triggers import load as load_triggers
+from aisw.llm.validation import (
+    ValidationGateway,
+    ValidationPacket,
+    ValidationResult,
+    apply_dissent,
+)
 from aisw.orchestrator import analysis
 from aisw.orchestrator.events import append_event
+from aisw.policy import mappings
 from aisw.policy.engine import PackRegistry, PolicyEvaluator, PolicyPack
+from aisw.policy.exceptions import Grant, effect_at
 from aisw.policy.results import RuleResult, dedupe_key, finding_id, rollup
 from aisw.policy.rubric import builtin as builtin_rubric
 from aisw.reporting.coverage import build_ledger
+from aisw.reporting.gaps import control_gaps
 from aisw.reporting.report import ReportInputs, build_report
 
 _SELECT_RUN = "SELECT * FROM assessment_runs WHERE run_id=:r"
@@ -54,7 +69,10 @@ CAP_ONLY_DENIALS = {"PERMIT_RENEWAL_LIMIT", "PERMIT_LIFETIME_EXCEEDED", "PERMIT_
 GAP_PREFIXES = frozenset(
     {"AMBIGUOUS_IDENTITY", "OUT_OF_SCOPE_RECORDS_DROPPED", "PERMISSION_DENIED", "STALE_RECORD",
      "OWNER_UNKNOWN", "DUPLICATE_CANDIDATE", "CONFLICTING_RECORDS", "UNSUPPORTED_SERVICE",
-     "AGENT_DISCONNECTED", "FEED_STALE", "SCAN_INCOMPLETE", "RULES_NOT_CHECKED"}
+     "AGENT_DISCONNECTED", "FEED_STALE", "SCAN_INCOMPLETE", "RULES_NOT_CHECKED", "UNMODELLED_RULE",
+     "ORDER_DEPENDENT_RULES", "CHAIN_POLICY_MISSING", "PLATFORM_DEFAULTS_SKIPPED",
+     "MFA_STATE_NOT_IN_DIRECTORY_EXPORT", "ADMIN_MEMBERSHIP_NOT_IN_CREDENTIAL_REPORT",
+     "EXPORT_TRUNCATED", "NOT_ACTIVE_SKIPPED", "UNCREDENTIALED_SCAN", "NO_SCAN_RESULTS"}
 )  # fmt: skip
 ADVANCEABLE = (
     "AUTHORIZED",
@@ -84,7 +102,18 @@ class Worker:
     model: ModelClient = field(default_factory=DisabledModelClient)
     ai_scenario_narratives: bool = True
     ai_recommendation_narratives: bool = True
+    ai_verification_questions: bool = True  # Agent 4 (ADR-024)
+    ai_executive_summary: bool = True  # Agent 8 (ADR-024)
     model_timeout: float = 60.0
+    # Agent validation pass (ADR-021): off unless the container turns it on from settings.
+    ai_validation: bool = False
+    run_token_budget: int = 0  # live tokens one run may spend on the model; 0 means no limit
+    avp_trigger_version: str = DEFAULT_TRIGGER_VERSION
+    avp_trigger_policy: TriggerPolicy | None = None  # an explicit policy wins over the version
+    validation_model: ModelClient | None = None  # defaults to ``model``
+    validation_batch: int = 12
+    validation_max_items: int = 60
+    validation_concurrency: int = 4
     rubric_version: str = "1.0.0"
     catalog_version: str = "1.0.0"
     # Agent 0 hook: extends a still-valid permit shortly before it expires (None = never renew).
@@ -115,9 +144,11 @@ class Worker:
                 row = (
                     conn.execute(
                         text(
-                            "SELECT * FROM run_tasks WHERE (status='QUEUED' AND available_at <= :n) "
-                            "OR (status='RUNNING' AND locked_until < :n) "
-                            "ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1"
+                            "SELECT * FROM run_tasks t WHERE ((status='QUEUED' AND available_at <= :n "
+                            "AND NOT EXISTS (SELECT 1 FROM run_tasks d WHERE d.run_id=t.run_id "
+                            "AND t.depends_on ? d.task_id::text AND d.status IN ('QUEUED','RUNNING'))) "
+                            "OR (status='RUNNING' AND locked_until < :n)) "
+                            "ORDER BY created_at FOR UPDATE OF t SKIP LOCKED LIMIT 1"
                         ),
                         {"n": now},
                     )
@@ -308,6 +339,18 @@ class Worker:
             )  # fmt: skip
             expected = set(task["expected_assets"])
             warnings.extend(batch.warnings)
+            if task["depends_on"]:  # an inventory that did not finish leaves hosts unresolved
+                warnings.extend(
+                    f"INVENTORY_DEPENDENCY_{r[1]}:{r[0]}"
+                    for r in conn.execute(
+                        text(
+                            "SELECT task_id::text, status FROM run_tasks WHERE run_id=:r "
+                            "AND task_id::text IN (SELECT jsonb_array_elements_text(CAST(:d AS jsonb))) "
+                            "AND status NOT IN ('SUCCEEDED','PARTIAL') ORDER BY task_id"
+                        ),
+                        {"r": run_id, "d": json.dumps(task["depends_on"])},
+                    )
+                )
             known = [
                 KnownAsset(r[0], r[1], r[2])
                 for r in conn.execute(
@@ -529,7 +572,7 @@ class Worker:
             if state == "CORRELATION":
                 analysis.correlation_phase(
                     conn, run, rubric=builtin_rubric(self.rubric_version), now=self.clock(),
-                    freshness=self.freshness,
+                    freshness=self.freshness, evidence=self.evidence,
                 )  # fmt: skip
                 self._set_state(conn, run, "ARCHITECTURE_ANALYSIS")
                 return True
@@ -538,10 +581,21 @@ class Worker:
                     conn, run, catalog=builtin_catalog(self.catalog_version),
                     scenario_ai=self.ai_scenario_narratives,
                     recommendation_ai=self.ai_recommendation_narratives,
+                    verification_ai=self.ai_verification_questions,
+                    executive_ai=self.ai_executive_summary,
                 )  # fmt: skip
-                if not pending:
+                packets = (
+                    analysis.validation_packets(
+                        conn, run, batch=self.validation_batch, max_items=self.validation_max_items,
+                        policy=self._triggers(), now=self.clock(),
+                    )
+                    if self.ai_validation
+                    else []
+                )  # fmt: skip
+                if not pending and not packets:
                     self._set_state(conn, run, "ASSURANCE")
                     return True
+                spent = analysis.tokens_used(conn, run_id) if self.run_token_budget else 0
             elif state == "ASSURANCE":
                 self._assurance_phase(conn, run)
                 self._report_phase(conn, run)
@@ -550,17 +604,41 @@ class Worker:
                 return False
         # Model calls happen OUTSIDE the run-row lock and any transaction: a slow or dead model can
         # never hold the run hostage, and a crash here simply repeats this idempotent step.
-        gateway = LlmGateway(self.model, timeout=self.model_timeout)
+        model, reviewer_model = self.model, self.validation_model or self.model
+        if self.run_token_budget:  # one allowance for every call this run makes, in any thread
+            budget = TokenBudget(self.run_token_budget, used=spent)
+            model, reviewer_model = (
+                BudgetedClient(model, budget),
+                BudgetedClient(reviewer_model, budget),
+            )
+        gateway = LlmGateway(model, timeout=self.model_timeout)
         results: list[tuple[NarrativeSubject, NarrativeResult]] = [
             (s, gateway.narrate(s)) for s in pending
         ]
+        validations: list[tuple[ValidationPacket, ValidationResult]] = []
+        late: list[TriggerDecision] = []
+        if packets:
+            more, late = analysis.narrative_packets(
+                results, batch=self.validation_batch, max_items=self.validation_max_items,
+                policy=self._triggers(),
+            )  # fmt: skip
+            packets += more
+            reviewer = ValidationGateway(reviewer_model, timeout=self.model_timeout)
+            with ThreadPoolExecutor(max_workers=self.validation_concurrency) as pool:
+                validations = list(zip(packets, pool.map(reviewer.validate, packets), strict=True))
         with tenant_connection(self.engine, tenant) as conn:
             run = self._run(conn, run_id, lock=True)
             if run["state"] != "ARCHITECTURE_ANALYSIS":
                 return False  # another worker finished this step first
-            analysis.store_narratives(conn, run, results, self.clock())
+            now = self.clock()
+            analysis.store_narratives(conn, run, results, now)
+            analysis.store_validations(conn, run, validations, now)
+            analysis.record_triggers(conn, run, self._triggers(), late, now)
             self._set_state(conn, run, "ASSURANCE")
         return True
+
+    def _triggers(self) -> TriggerPolicy:
+        return self.avp_trigger_policy or load_triggers(self.avp_trigger_version)
 
     def _after_dispatch(self, conn: Connection, run: dict[str, Any]) -> bool:
         tasks = conn.execute(
@@ -624,7 +702,6 @@ class Worker:
             ).all()
         }
         results: list[RuleResult] = []
-        asset_results: dict[str, list[PolicyOutcome]] = {}
         seen_assets: set[str] = set()
         for _task_id, asset_id, status, _reason, attrs in status_rows:
             if status != "SCANNED" or asset_id in seen_assets:
@@ -637,7 +714,11 @@ class Worker:
                 else:
                     res = RuleResult(asset_id, rule, PolicyOutcome(o[2]), o[3], o[4], o[5])
                 results.append(res)
-                asset_results.setdefault(asset_id, []).append(res.outcome)
+
+        results, lapsed = self._apply_exceptions(conn, run, pack, results, obs)
+        asset_results: dict[str, list[PolicyOutcome]] = {}
+        for res in results:
+            asset_results.setdefault(res.asset_id, []).append(res.outcome)
 
         # controls
         for ctrl in sorted({r.control_id for r in pack.rules}):
@@ -680,7 +761,8 @@ class Worker:
                 severity_source=f"policy:{pack.key}", confidence="MEDIUM",
                 outcome=PolicyOutcome.FAIL, affected_assets=[res.asset_id],
                 evidence_refs=[res.evidence_ref], control_mappings=mappings,
-                assumptions=["Runtime exposure and business impact are not verified"],
+                assumptions=["Runtime exposure and business impact are not verified",
+                             *lapsed.get((res.asset_id, res.rule.rule_id), [])],
                 policy_version=pack.key, first_observed=o[6], last_observed=o[6],
             )  # fmt: skip
             conn.execute(
@@ -718,6 +800,49 @@ class Worker:
                 {"t": tenant, "r": run_id, "s": ledger.segment,
                  "b": json.dumps(ledger.model_dump(mode="json"))},
             )  # fmt: skip
+
+    def _apply_exceptions(
+        self, conn: Connection, run: dict[str, Any], pack: PolicyPack, results: list[RuleResult],
+        obs: dict[tuple[str, str], Any],
+    ) -> tuple[list[RuleResult], dict[tuple[str, str], list[str]]]:  # fmt: skip
+        """A FAIL covered by an exception in force when it was observed becomes EXCEPTION (ADR-033)."""
+        grants: dict[str, list[Grant]] = {}
+        for i, key, approved, expires, revoked in conn.execute(
+            text("SELECT exception_id, stable_dedupe_key, decided_at, expires_at, revoked_at "
+                 "FROM finding_exceptions WHERE project_id=:p AND status IN ('APPROVED','REVOKED')"),
+            {"p": str(run["project_id"])},
+        ):  # fmt: skip
+            grants.setdefault(key, []).append(Grant(i, approved, expires, revoked))
+        out: list[RuleResult] = []
+        lapsed: dict[tuple[str, str], list[str]] = {}
+        for res in results:
+            hit = None
+            if res.outcome is PolicyOutcome.FAIL and res.evidence_ref is not None:
+                at = obs[(res.asset_id, res.rule.rule_id)][6]
+                hit = effect_at(
+                    grants.get(dedupe_key(pack, res.rule.rule_id, res.asset_id), []), at
+                )
+            if hit is None:
+                out.append(res)
+                continue
+            grant, effect = hit
+            conn.execute(
+                text("INSERT INTO exception_applications (tenant_id, run_id, exception_id, rule_id, "
+                     "asset_id, effect, observed_at, expires_at) VALUES (:t, :r, :e, :rule, :a, :ef, "
+                     ":at, :x) ON CONFLICT DO NOTHING"),
+                {"t": run["tenant_id"], "r": run["run_id"], "e": grant.exception_id,
+                 "rule": res.rule.rule_id, "a": res.asset_id, "ef": effect, "at": at,
+                 "x": grant.expires_at},
+            )  # fmt: skip
+            if effect == "APPLIED":
+                out.append(replace(res, outcome=PolicyOutcome.EXCEPTION))
+            else:
+                out.append(res)
+                lapsed.setdefault((res.asset_id, res.rule.rule_id), []).append(
+                    f"Exception {grant.exception_id} expired at {grant.expires_at.isoformat()}; "
+                    "the finding is reported again"
+                )
+        return out, lapsed
 
     # ---- assurance ------------------------------------------------------------------------
     def _assurance_phase(self, conn: Connection, run: dict[str, Any]) -> None:
@@ -759,29 +884,19 @@ class Worker:
             text("SELECT finding_id, body FROM findings WHERE run_id=:r ORDER BY finding_id"),
             {"r": run_id},
         ).all()
+        ai_verdicts = analysis.load_ai_verdicts(conn, run_id)
         for fid, body in rows:
-            res = assess_finding(Finding.model_validate(body), ctx)
-            conn.execute(
-                text(
-                    "INSERT INTO assurance_results (tenant_id, run_id, item_ref, verdict, "
-                    "defect_codes, missing_refs, stale_refs, validation_version, validated_at) "
-                    "VALUES (:t, :r, :i, :v, CAST(:d AS jsonb), CAST(:m AS jsonb), "
-                    "CAST(:s AS jsonb), :ver, :at) ON CONFLICT DO NOTHING"
-                ),
-                {
-                    "t": tenant, "r": run_id, "i": res.item_ref, "v": res.verdict.value,
-                    "d": json.dumps(res.defect_codes), "m": json.dumps(res.missing_refs),
-                    "s": json.dumps(res.stale_refs), "ver": res.validation_version,
-                    "at": res.validated_at,
-                },
-            )  # fmt: skip
+            res = apply_dissent(
+                assess_finding(Finding.model_validate(body), ctx), ai_verdicts.get(f"finding:{fid}")
+            )
+            analysis.store_assurance_result(conn, tenant, run_id, res, run["assurance_revision"])
             conn.execute(
                 text("UPDATE findings SET assurance_verdict=:v WHERE run_id=:r AND finding_id=:f"),
                 {"v": res.verdict.value, "r": run_id, "f": fid},
             )
         analysis.assurance_analysis(
             conn, run, ctx, rubric=builtin_rubric(self.rubric_version),
-            catalog=builtin_catalog(self.catalog_version),
+            catalog=builtin_catalog(self.catalog_version), ai_verdicts=ai_verdicts,
         )  # fmt: skip
 
     # ---- report ---------------------------------------------------------------------------
@@ -842,6 +957,18 @@ class Worker:
                                      "title": body["title"]})  # fmt: skip
             else:
                 rejected += 1  # REJECT or never assessed: never authoritative
+        exceptions = [
+            {"exception_id": i, "effect": ef, "rule_id": rule, "asset_id": a, "title": title,
+             "observed_at": at.isoformat(), "expires_at": x.isoformat(), "approved_by": by,
+             "reason": why}
+            for i, ef, rule, a, at, x, title, by, why in conn.execute(
+                text("SELECT a.exception_id, a.effect, a.rule_id, a.asset_id, a.observed_at, "
+                     "a.expires_at, e.title, e.decided_by, e.reason FROM exception_applications a "
+                     "JOIN finding_exceptions e ON e.exception_id = a.exception_id "
+                     "WHERE a.run_id=:r ORDER BY a.effect, a.rule_id, a.asset_id"),
+                {"r": run_id},
+            )
+        ]  # fmt: skip
         evidence = [
             {"ref": r, "hash": h}
             for r, h in conn.execute(
@@ -850,26 +977,42 @@ class Worker:
             )
         ]
         now = self.clock()
+        catalog = mappings.builtin()
+        revision = run["assurance_revision"]
+        previous = conn.execute(
+            text("SELECT report_id FROM reports WHERE run_id=:r AND revision < :v "
+                 "ORDER BY revision DESC LIMIT 1"), {"r": run_id, "v": revision},
+        ).scalar()  # fmt: skip
         bundle, body, html = build_report(
             ReportInputs(
-                tenant_id=tenant, project_id=project, run_id=run_id,
+                tenant_id=tenant, project_id=project, run_id=run_id, revision=revision,
+                supersedes=previous,
                 manifest_hash=run["manifest_hash"], manifest_version=manifest_version,
                 policy_version=pack.key, pack_hash=pack.pack_hash, tasks=tasks, ledgers=ledgers,
                 controls=controls, accepted=accepted, needs_review=needs_review,
                 rejected_count=rejected, evidence=evidence, run_partial=run["partial"],
-                generated_at=now, notice=pack.report_notice,
+                generated_at=now, notice=pack.report_notice, exceptions=exceptions,
+                control_gaps=control_gaps(
+                    pack, {c["control_id"]: c["outcome"] for c in controls}, catalog,
+                    {k: v["status"] for k, v in mappings.latest_reviews(conn, catalog).items()}),
                 **analysis.report_extras(conn, run),
             )
         )  # fmt: skip
         conn.execute(
             text(
                 "INSERT INTO reports (report_id, tenant_id, project_id, run_id, body, html, "
-                "report_hash, generated_at) VALUES (:id, :t, :p, :r, CAST(:b AS jsonb), :h, :rh, "
-                ":n) ON CONFLICT (run_id) DO NOTHING"
+                "report_hash, generated_at, revision, supersedes) VALUES (:id, :t, :p, :r, "
+                "CAST(:b AS jsonb), :h, :rh, :n, :v, :sup) ON CONFLICT (run_id, revision) DO NOTHING"
             ),
             {"id": bundle.report_id, "t": tenant, "p": project, "r": run_id,
-             "b": json.dumps(body), "h": html, "rh": bundle.report_hash, "n": now},
+             "b": json.dumps(body), "h": html, "rh": bundle.report_hash, "n": now,
+             "v": revision, "sup": previous},
         )  # fmt: skip
+        if previous is not None:
+            conn.execute(
+                text("UPDATE reports SET approval_state='SUPERSEDED' WHERE run_id=:r "
+                     "AND revision < :v AND approval_state='PENDING'"), {"r": run_id, "v": revision},
+            )  # fmt: skip
         partial = run["partial"] or not bundle.coverage_complete
         append_event(
             conn, tenant_id=tenant, run_id=run_id, now=now,

@@ -262,9 +262,7 @@ def test_scanner_imports_resolve_onto_cmdb_assets_and_the_stray_host_stays_separ
     sl: Slice,
 ) -> None:
     pid = project(sl)
-    import_run(
-        sl, pid, ["cmdb_import"]
-    )  # inventory baseline first (dependency ordering is not modelled)
+    import_run(sl, pid, ["cmdb_import"])  # an inventory baseline from an earlier run
     run_id = import_run(
         sl, pid, ["greenbone_import", "nmap_import", "openscap_import", "wazuh_import"]
     )
@@ -337,6 +335,53 @@ def test_scanner_imports_resolve_onto_cmdb_assets_and_the_stray_host_stays_separ
         ]
     }
     assert len(segs) == 4  # one ledger per adapter on the same target: none silently overwritten
+
+
+def test_one_run_imports_the_inventory_before_the_scanners_that_resolve_against_it(
+    sl: Slice,
+) -> None:
+    pid = project(sl)
+    run_id = import_run(sl, pid, ["nmap_import", "greenbone_import", "cmdb_import"])
+    tasks = {a: (t, d) for t, a, d in sl.sql(
+        "SELECT task_id::text, adapter_id, depends_on FROM run_tasks WHERE run_id=:r", r=run_id)}  # fmt: skip
+    cmdb = tasks["cmdb_import"][0]
+    assert tasks["cmdb_import"][1] == []
+    assert tasks["nmap_import"][1] == [cmdb] and tasks["greenbone_import"][1] == [cmdb]
+    events = sl.call(
+        "GET", f"/api/v1/assessments/{run_id}/events", "alice", params={"limit": 500}
+    ).json()["events"]
+    queued = {e["payload"]["agent_id"]: e["payload"]["dependencies"]
+              for e in events if e["type"] == "task.queued"}  # fmt: skip
+    assert queued == {"cmdb_import": [], "nmap_import": [cmdb], "greenbone_import": [cmdb]}
+    started = [e["payload"]["agent_id"] for e in events if e["type"] == "task.started"]
+    assert started[0] == "cmdb_import"
+    obs = {(a, r): v for a, r, v in sl.sql(
+        "SELECT asset_id, rule_id, observed_value FROM observations WHERE run_id=:r", r=run_id)}  # fmt: skip
+    assert obs["host-1", "vuln.max_cvss"] == 9.8 and obs["host-3", "net.open_ports"] == [3389]
+    assert sl.sql(
+        "SELECT match_confidence FROM assets WHERE asset_id='host-1' AND project_id=:p", p=pid
+    ) == [("HIGH",)]
+    warnings = [w for (ws,) in sl.sql("SELECT warnings FROM run_tasks WHERE run_id=:r", r=run_id)
+                for w in ws]  # fmt: skip
+    assert not [w for w in warnings if w.startswith("INVENTORY_DEPENDENCY_")]
+
+
+def test_a_failed_inventory_import_is_named_on_the_tasks_that_needed_it(sl: Slice) -> None:
+    pid = project(sl)
+    run_id = import_run(
+        sl, pid, ["cmdb_import", "nmap_import"], overrides={"cmdb_import": "not,a\ncmdb"}
+    )
+    rows = {a: (t, st, w) for t, a, st, w in sl.sql(
+        "SELECT task_id::text, adapter_id, status, warnings FROM run_tasks WHERE run_id=:r",
+        r=run_id)}  # fmt: skip
+    cmdb_id, cmdb_status, _ = rows["cmdb_import"]
+    assert cmdb_status == "FAILED"
+    _, nmap_status, nmap_warnings = rows["nmap_import"]
+    assert nmap_status in ("SUCCEEDED", "PARTIAL")  # the scan evidence is still collected
+    assert f"INVENTORY_DEPENDENCY_FAILED:{cmdb_id}" in nmap_warnings
+    assert sl.sql(
+        "SELECT count(*) FROM assets WHERE project_id=:p AND match_confidence<>'LOW'", p=pid
+    ) == [(0,)]  # with no inventory, no scanned host is promoted to a known asset
 
 
 def test_ambiguous_identity_is_named_and_never_guessed(sl: Slice) -> None:

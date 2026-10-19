@@ -1,0 +1,42 @@
+{
+  "version": "1.0.0",
+  "note": "M9 targets (ADR-045). Nothing here is authorised: each target needs an authorisation block, and the live-validation sign-off must approve this exact file before tools or people act on it. Expectations are control outcomes on the target; an empty set means observe only, never a pass.",
+  "targets": [
+    {
+      "id": "example-com-passive-smoke",
+      "kind": "url",
+      "selector": "https://example.com/",
+      "method": "platform",
+      "adapter": "url_smoke",
+      "policy_version": "url-smoke-baseline:1.0.0",
+      "allowed_ports": [443],
+      "authorisation": null,
+      "expect": {"US-1": "PASS", "US-2": "PASS", "US-4": "PASS"},
+      "note": "One GET with at most 3 redirects. Expectations are public knowledge (publicly trusted certificate, TLS 1.2 or newer, answers /); confirm before approving. Headers are observed, not expected."
+    },
+    {
+      "id": "scanme-nmap-bounded",
+      "kind": "host",
+      "selector": "scanme.nmap.org",
+      "method": "operator_import",
+      "adapter": "nmap_import",
+      "policy_version": "import-baseline:1.0.0",
+      "operator_command": "nmap -Pn -sT --top-ports 100 --max-rate 5 --max-retries 1 -oX scanme.xml scanme.nmap.org",
+      "authorisation": null,
+      "expect": {},
+      "note": "Re-check https://nmap.org/book/legal-issues.html and the scanme terms (a few scans a day, no heavy scanning) before approving. The operator runs the command by hand and imports scanme.xml with vantage 'untrusted'."
+    },
+    {
+      "id": "juice-shop-zap-baseline",
+      "kind": "url",
+      "selector": "http://juice-shop.invalid:3000/",
+      "method": "operator_import",
+      "adapter": "zap_import",
+      "policy_version": "import-baseline:1.0.0",
+      "operator_command": "zap-baseline.py -t <your Juice Shop URL> -x zap.xml",
+      "authorisation": null,
+      "expect": {},
+      "note": "Only against a Juice Shop instance you own and run yourself. Replace the selector with its URL and record the answer key (known issues) in expect before approving."
+    }
+  ]
+}

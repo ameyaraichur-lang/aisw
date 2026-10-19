@@ -2,7 +2,7 @@
 
 A customer-hosted, **read-only**, **evidence-first** infrastructure security assessment platform, built from the *Agentic Infrastructure Security Warden Proof Blueprint v2.1 (open-source)* and its public-URL test profile.
 
-> **Status: proof-of-concept build, milestones M0–M8 complete, M9 (live validation) not started.**
+> **Status: proof-of-concept build, milestones M0–M8 complete, M9 (live validation) harness built, no live target authorised or run.**
 > It has only ever run against **synthetic fixtures and a local test server**. It has **not** scanned any real host, used any real scanner output, or run a real language model. It is not production-ready (no real sign-in yet) and it is **not a security certification tool**. See [What is prepared and what is not](#what-is-prepared-and-what-is-not) before relying on anything here.
 
 ## Contents
@@ -93,7 +93,7 @@ flowchart LR
     A5[Agent 5: risk rubric and scenarios]
     A6[Agent 6: draft recommendations]
     A7[Agent 7: independent assurance]
-    LLM[Optional LLM gateway: loopback only, no tools]
+    LLM[Optional LLM gateway: loopback or opt-in Astra, no tools]
   end
   DB[(PostgreSQL: forced RLS, audit chain)]
   EV[(Evidence store: content-addressed, write-once)]
@@ -114,14 +114,14 @@ flowchart LR
 | # | Agent | Kind | Built as |
 |---|---|---|---|
 | 0 | Scope & Authorization Gate | gate | Signed manifests (Ed25519), expiring permits with guarded renewal |
-| 1 | Discovery & Reconciliation | adapter | CMDB import + identity resolution; unknown stays unknown |
-| 2 | Host & OS configuration | adapter | fixture, Greenbone, OpenSCAP, Wazuh importers |
-| 3 | Cloud posture | adapter | Prowler importer |
-| 4 | Network, perimeter & web | adapter | Nmap and ZAP importers, passive URL smoke |
+| 1 | Discovery & Reconciliation | adapter | CMDB, NetBox and ServiceNow imports + identity resolution; unknown stays unknown |
+| 2 | Host & OS configuration | adapter | fixture, Greenbone, OpenSCAP, Wazuh, Nessus, Tenable, Qualys and Trivy importers |
+| 3 | Cloud posture | adapter | Prowler, kubescape, AD/LDAP and AWS IAM credential report importers |
+| 4 | Network, perimeter & web | adapter | Nmap, ZAP and firewall (security group, iptables) importers, passive URL smoke |
 | 5 | Exposure & correlation | deterministic | Versioned risk rubric `1.0.0`; observed-only same-asset scenarios |
 | 6 | Architecture & modernization | deterministic | Draft recommendations from a **sample** pattern catalog |
 | 7 | Independent assurance | deterministic | Recomputes risk; validates findings, scenarios, recommendations, narratives |
-| 8 | Reporting & ticket drafts | deterministic | Report from accepted items only; ticket drafts (off by default, never sent) |
+| 8 | Reporting & ticket drafts | deterministic | Report from accepted items only; ticket drafts (off by default), sent to Jira or ServiceNow only by a second approver when delivery is enabled |
 
 ## What is prepared and what is not
 
@@ -137,34 +137,51 @@ flowchart LR
 | Tool gateway, `net_guard` (SSRF/rebinding/redirects) | ✅ | Zero-dispatch asserted for every rejected case |
 | Durable worker (leases, fencing, bounded retries, backoff) | ✅ | Crash, repeated crash, late worker, retry storm tests |
 | Evidence ingest (redact, hash, write-once) | ✅ | Secrets never reach disk, DB or report |
-| Policy evaluation (JSON packs, pinned and hashed) | 🟡 | Python evaluator behind an interface; OPA not installed |
-| Passive URL smoke adapter | 🟡 | Proven against a **local server only** |
-| Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; real tool versions unverified. API upload only (no UI) |
-| Risk rubric, scenarios, recommendations, Agent 7 | 🟡 | Rubric weights and the architecture catalog are **samples** awaiting policy-owner approval |
-| LLM gateway (disabled by default, loopback only, no tools, grounding validator) | 🟡 | Tested with a **scripted stub only**; no model has ever run |
-| Operator console (all main screens), SSE with cursor replay, accessibility | ✅ | Axe WCAG 2.2 AA automated on every main screen; no manual screen-reader test |
+| Policy evaluation (JSON packs, pinned and hashed; OPA/Rego, [ADR-031](docs/adr/ADR-031-opa-policy-engine.md)) | 🟡 | Python and OPA engines held equivalent by tests; Rego domain rules are proposals awaiting review |
+| Framework mappings and Control Matrix ([ADR-032](docs/adr/ADR-032-framework-mappings.md)) | 🟡 | NIST CSF 2.0, CIS v8.1, 800-53 Rev. 5, ISO 27001, ATT&CK; each mapping is a proposal until a policy owner approves it |
+| Finding review and exceptions ([ADR-033](docs/adr/ADR-033-finding-review-and-exceptions.md)) | ✅ | Confirm, reject, reopen, request exception; a second person approves; an expired exception reports the FAIL again |
+| Assurance Console, AI validation trigger policy and model-call ledger ([ADR-036](docs/adr/ADR-036-avp-trigger-policy-and-assurance-console.md)) | 🟡 | Engine-vs-AI disagreement queue resolved by a human with a reason; the trigger policy is a sample awaiting policy-owner sign-off |
+| Modernization Roadmap and scenario chain view ([ADR-035](docs/adr/ADR-035-roadmap-waves-and-chain-view.md)) | ✅ | Waves follow the rubric tier only; work without a tier is left unscheduled rather than guessed |
+| Report exports: PDF and Word, control-gap matrix, architecture delta ([ADR-038](docs/adr/ADR-038-report-exports-gap-matrix-and-delta.md)) | ✅ | Built from the hashed report only; a draft is marked on every page; the gap matrix never says "compliant" |
+| Maple Trust estate (60 synthetic hosts), answer key, scorecard and Evaluation Lab ([ADR-039](docs/adr/ADR-039-maple-trust-estate-and-evaluation-lab.md)) | 🟡 | Every §7.2 target measured from what a run recorded ([results](docs/implementation/eval-targets.md)); **synthetic** estate only, no owner-supplied answer key yet |
+| Ticket rendering and two-person delivery to Jira or ServiceNow ([ADR-037](docs/adr/ADR-037-itsm-ticket-rendering-and-delivery.md)) | 🟡 | Off by default; a retry finds the ticket instead of duplicating it. Tested against a loopback fake only; real delivery awaits the `itsm-delivery` sign-off |
+| Asset Explorer | ✅ | Reconciled assets with sourced ownership, latest posture per rule and accepted findings; relationships are not modelled, so none is shown |
+| Coverage Ledger | ✅ | Tenant-wide, from each project's latest finished run: gaps grouped by kind with the assets named, inventory the run did not target, and projects never assessed |
+| Passive URL smoke adapter | 🟡 | Proven against a local server. On 2026-10-18 it also ran against example.com, through a TLS-inspecting proxy, so the certificate controls were not assessed ([live runs](docs/implementation/live-validation/2026-10-18-live-runs.md)) |
+| Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; Nmap XML has also read real Nmap 7.992 output. Other real tool versions unverified. Files are uploaded on the launch review step or through the API |
+| More importers ([ADR-034](docs/adr/ADR-034-config-inventory-vulnerability-imports.md)): firewall, kubescape, AD/LDAP, AWS IAM, NetBox, ServiceNow, Nessus, Tenable, Qualys, Trivy | 🟡 | Feed the Rego pack and `image-baseline`; **synthetic** fixtures, plus real Trivy 0.76.0 reports of the product's base images. Other real tool versions unverified |
+| Risk rubric, scenarios, recommendations, Agent 7 | 🟡 | Rubric weights and the architecture catalog are **samples** awaiting policy-owner approval, labelled in reports and the console; see the [sign-off register](docs/implementation/signoffs.md) |
+| LLM gateway (disabled by default, loopback only, no tools, grounding validator) | 🟡 | The local-model path is tested with a **scripted stub only**; no local model has run (Astra: next row) |
+| Astra (Azure OpenAI) provider, opt-in ([ADR-020](docs/adr/ADR-020-astra-remote-model-provider.md)) | 🟡 | Controls tested with an in-memory transport. **Run live on synthetic fixtures** (gpt-6-astra, gpt-5.4, gpt-4.1-mini) on 2026-10-16, and on the redacted findings of four real targets on 2026-10-18 under a scoped product-owner approval |
+| AI validation pass over Agents 1–7 ([ADR-021](docs/adr/ADR-021-agent-validation-pass.md)) | 🟡 | One-way: a dissent holds an item for review, nothing else. Tested with a scripted model and run live on Astra (synthetic, including the prompt-injection fixture). Quality on real estates not measured |
+| Operator console (all main screens), SSE with cursor replay, accessibility | ✅ | Axe WCAG 2.2 AA and structural rules automated on every main screen; the manual screen-reader pass is a [checklist](docs/runbooks/accessibility-screen-reader.md) awaiting sign-off |
+| Mission Control live view and HUD theme ([ADR-047](docs/adr/ADR-047-mission-control-and-hud-theme.md)) | ✅ | 3D estate view that animates only recorded events, live event stream, pipeline strip; text alternatives, reduced motion and a no-WebGL fallback; three.js (MIT) loaded only on that page |
 | Report export controls (audited, watermark, drafts restricted) | ✅ | |
-| Evidence retention (dry-run, hash-pinned execute, holds, **soft purge**) | 🟡 | API only; no scheduler or UI; final deletion is a manual act |
-| SBOM (CycloneDX) and licence gate | 🟡 | Lockfile-based, **not Syft/ScanCode** |
-| Threat model, 7 runbooks, generated scorecard, mutation log | ✅ | Runbook steps not exercised on a deployed system |
+| Evidence retention (dry-run, hash-pinned execute, holds, **soft purge**) | 🟡 | Evidence Retention page and a daily scheduled check; automatic soft purge is opt-in and off; final deletion is a manual act |
+| SBOM (CycloneDX) and licence gate | 🟡 | Lockfile-based, cross-checked against Syft image scans and ScanCode in CI ([ADR-043](docs/adr/ADR-043-syft-scancode-and-gitleaks.md)); green on the first CI run (all 35 runtime components confirmed). Base-image OS packages are not in the lockfile SBOM |
+| Threat model, 12 runbooks, generated scorecard, mutation log | ✅ | Runbook steps not exercised on a deployed system |
+| Generic OIDC sign-in through the BFF ([ADR-026](docs/adr/ADR-026-oidc-sign-in-through-the-bff.md)) | 🟡 | PKCE, nonce, signed session cookies, CSRF, revocation; tested against a **local mock IdP only**, no real tenant registered |
+| Manifest signing through a Transit KMS, rotation drill ([ADR-027](docs/adr/ADR-027-kms-signing-and-rotation.md)) | 🟡 | Drill passes against a **local emulator only**; no real KMS provisioned |
+| Egress: scan zones, IdP host binding, generated firewall rules ([ADR-028](docs/adr/ADR-028-egress-allow-list.md)) | 🟡 | App-level checks enforced; nftables/iptables rules generated and drift-tested, **never loaded on a real host** |
+| Deployment: images, compose, systemd, bootstrap, doctor ([ADR-029](docs/adr/ADR-029-deployment-packaging.md), [`deploy/`](deploy/README.md)) | 🟡 | API and worker proven as **live processes** against Postgres (run to REPORT_READY); images **built and checked in CI** (non-root, security headers, compose valid) but **never deployed**; units **never loaded** |
 
 ### Not prepared
 
 | Area | State | Why / what is needed |
 |---|---|---|
-| **Live validation (M9)**: `example.com` smoke, `scanme.nmap.org` bounded Nmap, ZAP on your own Juice Shop | ⛔ | Needs your explicit authorisation for each target |
-| Real scanner execution (Nmap, ZAP, Greenbone, Wazuh, Prowler) | ⛔ | Not in the MVP; only imports and the passive URL probe exist |
-| **Production sign-in (OIDC/Keycloak)** | ⛔ | Only the dev identity picker; the app refuses it outside dev/test. **Not deployable to production** |
-| Signing-key custody and rotation (OpenBao/HSM) | ⛔ | Local key file only; no tested rotation procedure |
-| Egress firewall enforcement | ⛔ | Application-layer checks only; runbook describes it |
-| A real language model, or a **remote** model such as Azure OpenAI | ⛔ | The platform only accepts a loopback model endpoint; a remote client needs a design change and your approval |
-| Docker/compose deployment, container images, CI proof | ❓ | `deploy/` is empty; the CI workflow is written but has never run on a runner |
-| Asset/relationship explorer UI, graph reasoning, attack paths | ⛔ | Reconciliation runs in the backend; no explorer UI |
-| Import upload UI; task dependency ordering between imports | ⛔ | Import the CMDB first through the API |
-| Retention UI/scheduler; ticket delivery (drafts only, by design) | ⛔ | |
+| **Live validation (M9)**: `example.com` smoke, `scanme.nmap.org` bounded Nmap, ZAP on your own Juice Shop | ⛔ | Harness and authorisation gate built and proven on loopback ([ADR-045](docs/adr/ADR-045-live-validation-harness.md)); needs your explicit authorisation for each target |
+| Real scanner execution (Nmap, ZAP, Greenbone, Wazuh, Prowler) | ⛔ | Not in the MVP; only imports and the passive URL probe exist. On 2026-10-18 Nmap and Trivy were run by hand and their reports imported |
+| A real language model run on real evidence | 🟡 | Astra reviewed and narrated the redacted findings of four real targets on 2026-10-18, under a scoped product-owner approval; quality was not scored. Wider use needs the data-handling sign-off (ADR-020). No local model has been run |
+| CI proof ([ADR-030](docs/adr/ADR-030-ci-on-github-actions.md)) | ✅ | All six GitHub Actions jobs green on the [first run](https://github.com/ameyaraichur-lang/aisw/actions/runs/39111965433) (2026-10-18) and on the [latest](https://github.com/ameyaraichur-lang/aisw/actions/runs/39143185443) (`ad31c81`): 1553 backend and 42 end-to-end tests, images, Syft, ScanCode, gitleaks |
+| Graph reasoning, attack paths | ✅ | Reachability from host firewall rules and declared-vantage scans; internet-to-asset routes ([ADR-041](docs/adr/ADR-041-reachability-and-attack-paths.md)); cloud security groups are a caveat only |
+| Estate relationship map | ⛔ | Asset Explorer lists assets; no map view |
+| Import upload UI; task dependency ordering between imports | ✅ | Inventory imports run first in the same run (migration 0019) |
+| Retention UI/scheduler | ✅ | Daily timer; auto soft purge needs the identical plan twice, a day apart |
+| Per-project roles | ✅ | Project grants add operator, approver, reviewer or report-reader rights on one project ([ADR-040](docs/adr/ADR-040-per-project-role-grants.md)) |
 | Real customer environment (CMDB, cloud account, on-prem zones) | ⛔ | Everything is fixtures; customer integration is a separate authorised phase |
-| OPA, object-lock evidence storage, multi-node soak testing | ⛔ | |
-| Legal review of licences (LGPL `psycopg`) | ⛔ | Recorded as pending |
+| Object-lock evidence storage, witnessed audit anchors | 🟡 | Write-once replica and signed hourly anchors with dev/test emulators ([ADR-042](docs/adr/ADR-042-write-once-evidence-and-audit-anchors.md)); production backends await sign-off |
+| Multi-node soak testing | 🟡 | Worker processes killed at random on one machine, nothing lost or duplicated ([ADR-044](docs/adr/ADR-044-multi-worker-soak.md), [results](docs/implementation/soak.md)); separate hosts and DoS sizing not done |
+| Legal review of licences (LGPL `psycopg`) | ⛔ | Recorded PENDING in the [sign-off register](docs/implementation/signoffs.md) with owner and next step |
 
 ## Milestones
 
@@ -179,7 +196,7 @@ flowchart LR
 | M6 | Import adapters, Agent 1 reconciliation, registry hardening | `0ff106a` |
 | M7 | Risk rubric, Agents 5–7, bounded LLM gateway (stub), workbench UI | `9fa075c` |
 | M8 | Permit renewal, retention, export controls, SBOM/licence gate, threat model, runbooks, scorecard | `2850882` |
-| M9 | Live external validation | **not started** |
+| M9 | Live external validation | harness built; first real targets run outside it on 2026-10-18 ([record](docs/implementation/live-validation/2026-10-18-live-runs.md)); the plan's targets await authorisation |
 
 Each milestone was committed only after its gate passed, and each was reviewed before the next began.
 
@@ -233,19 +250,23 @@ Code size: roughly 10.7k lines of backend source, 9.2k lines of backend tests, 3
 
 The full threat model (20 threats, controls, tests, residual risk) is in [`docs/architecture/threat-model.md`](docs/architecture/threat-model.md). The most important open gaps:
 
-- **No production authentication.** Only the dev picker exists.
-- **Signing key is a local file** with no tested rotation or revocation.
-- **Egress is not firewalled by the software.** The gateway is the only egress path in code; host-level enforcement is a runbook item.
+- **Sign-in is tested against a mock IdP only.** OIDC through the BFF (ADR-026) has not met a real identity provider.
+- **KMS signing is tested against an emulator.** Rotation and revocation are drilled (ADR-027) but no real KMS has been used.
+- **Egress firewall rules are generated, not proven on a host.** The gateway is the only egress path in code; the host rules (ADR-028) are unverified on a real machine.
 - **Redaction and grounding checks are pattern-based**, so unknown secret formats or unidentified prose claims can slip through.
-- **Real-world behaviour is unverified:** real CAs/IPv6/proxies for the URL probe, real scanner output versions, real model quality.
+- **Real-world behaviour is unverified:** the URL probe against a public CA (IPv6-only, HTTP/2-only and proxy handling are tested on loopback), real scanner output versions, real model quality.
 
 ## AI / LLM
 
-AI is **off by default** and nothing depends on it. When enabled, a model may write a short, clearly labelled explanation of a scenario or recommendation. It receives only a whitelisted projection of validated findings (never raw evidence), has **no tools**, and every identifier it mentions (CVE, control, IP, URL, port, risk tier, asset) must already exist in its input or the whole narrative is rejected. A model outage, timeout or rejection leaves the report identical. The endpoint must be loopback; enabling requires a model id **and** its reviewed weights licence. No weights are bundled or downloaded, and only a scripted stub has been used. See [`docs/adr/ADR-018`](docs/adr/ADR-018-analysis-agents-and-llm-gateway.md) and [`docs/runbooks/ai-enablement.md`](docs/runbooks/ai-enablement.md).
+AI is **off by default** and nothing depends on it. When enabled, a model may write a short, clearly labelled explanation of a scenario or recommendation. It receives only a whitelisted projection of validated findings (never raw evidence), has **no tools**, and every identifier it mentions (CVE, control, IP, URL, port, risk tier, asset) must already exist in its input or the whole narrative is rejected. A model outage, timeout or rejection leaves the report identical. By default the endpoint must be loopback and enabling requires a model id **and** its reviewed weights licence. No weights are bundled or downloaded, and only a scripted stub has been used. See [`docs/adr/ADR-018`](docs/adr/ADR-018-analysis-agents-and-llm-gateway.md) and [`docs/runbooks/ai-enablement.md`](docs/runbooks/ai-enablement.md).
+
+**Astra (Azure OpenAI), opt-in.** Setting `AISW_MODEL_PROVIDER=astra` switches the same gateway to the Astra Responses API. It needs the deployment name (`AISW_MODEL_ID`), an `https` endpoint on an Azure OpenAI host, the API key from your secret provider, and `AISW_ASTRA_DATA_APPROVAL_REF`, which records who approved sending redacted findings off-host. The settings are listed in [`.env.example`](.env.example). Requests carry no tools and set `store: false`, and the same grounding validator and Agent 7 decide what is accepted. See [`docs/adr/ADR-020`](docs/adr/ADR-020-astra-remote-model-provider.md).
+
+**AI validation of agent outcomes.** With AI on, a second deployment (`AISW_ASTRA_VALIDATION_DEPLOYMENT`, e.g. `gpt-5.4`) reviews what Agents 1–7 produced and returns one verdict per item. Its reply is grounded like a narrative. A `DISSENT` holds the item for human review; nothing the reviewer says can approve, re-score or add anything. Results appear on the run's Analysis tab and in the report. See [`docs/adr/ADR-021`](docs/adr/ADR-021-agent-validation-pass.md).
 
 ## Supply chain and licences
 
-`tools/sbom.py` writes a CycloneDX SBOM and licence report to [`docs/implementation/sbom/`](docs/implementation/sbom/) from `uv.lock`, `package-lock.json` and installed metadata, and applies an allow/review/deny policy. It is **not** Syft or ScanCode, and does not see native libraries inside wheels. Items needing attention:
+`tools/sbom.py` writes a CycloneDX SBOM and licence report to [`docs/implementation/sbom/`](docs/implementation/sbom/) from `uv.lock`, `package-lock.json` and installed metadata, and applies an allow/review/deny policy. It does not see native libraries inside wheels or OS packages; CI cross-checks it against Syft and ScanCode (ADR-043). Items needing attention:
 
 - `psycopg` / `psycopg-binary` are **LGPL-3.0** and ship at runtime. Used unmodified as separate packages; a named legal reviewer must confirm before any external distribution.
 - Several MPL-2.0 packages (accessibility and build tooling) are dev/test only and not shipped.
@@ -259,9 +280,9 @@ This is an engineering gate, not legal advice.
 backend/    FastAPI services (aisw/), Alembic migrations (0001-0006), tests, e2e test server
 web/        React/TypeScript console, Playwright specs, README screenshot capture
 schemas/    JSON Schemas exported from the contracts
-docs/       plan, status matrix, ADRs 001-019, threat model, runbooks, SBOM and licence report, scorecard, screenshots
-tools/      secret scan, schema export, SBOM, scorecard, stale-Postgres cleanup
-deploy/     reserved (empty: no Docker locally)
+docs/       plan, status matrix, ADRs 001-043, threat model, runbooks, SBOM and licence report, scorecard, screenshots
+tools/      secret scan, schema export, SBOM and its Syft/ScanCode cross-check, scorecard, stale-Postgres cleanup
+deploy/     images, compose, systemd units, egress rule examples; install runbook in deploy/README.md
 ```
 
 | Read | For |
@@ -269,18 +290,18 @@ deploy/     reserved (empty: no Docker locally)
 | [`docs/implementation/development-plan.md`](docs/implementation/development-plan.md) | The approved plan and milestone gates |
 | [`docs/implementation/status.md`](docs/implementation/status.md) | Per-capability honesty matrix |
 | [`docs/implementation/scorecard.md`](docs/implementation/scorecard.md) | Results generated from actual test output |
-| [`docs/adr/`](docs/adr/README.md) | 19 architecture decisions |
+| [`docs/adr/`](docs/adr/README.md) | 20 architecture decisions |
 | [`docs/architecture/threat-model.md`](docs/architecture/threat-model.md) | Threats, controls, residual risk |
 | [`docs/runbooks/`](docs/runbooks/README.md) | Operating the worker, permits and keys, retention, AI, incidents, release |
 | [`docs/implementation/reconnaissance.md`](docs/implementation/reconnaissance.md) | Toolchain facts and lessons learned per milestone |
 
-Configuration is fail-closed (`backend/aisw/core/config.py`): read-only mode, scope manifest required, active scans need approval, AI and ticket creation off, dev auth stub only in dev/test. `.env.example` lists variable **names only**; never commit real values.
+Configuration is fail-closed (`backend/aisw/core/config.py`): read-only mode, scope manifest required, active scans need approval, AI, ticket creation and ticket delivery off, dev auth stub only in dev/test. `.env.example` lists variable **names only**; never commit real values.
 
 ## Roadmap
 
-1. **M9 live validation**, only with your explicit authorisation per target: (a) passive smoke of `example.com`, (b) one bounded Nmap run on `scanme.nmap.org` after re-checking its terms, (c) ZAP baseline then active against your own Juice Shop. Each step needs an approved manifest and produces an evidence package.
-2. **Before any real use:** OIDC sign-in, key custody and rotation, egress firewall, a Docker/compose deployment, a real CI run, approval of the risk rubric and architecture catalog by the policy owner, legal review of licences.
-3. **Optional:** a remote-model client (for example Azure OpenAI) behind an explicit allow-list, key from the environment and your data-handling approval; asset explorer UI; import upload UI; retention UI.
+1. **M9 live validation**, only with your explicit authorisation per target: (a) passive smoke of `example.com`, (b) one bounded Nmap run on `scanme.nmap.org` after re-checking its terms, (c) ZAP baseline then active against your own Juice Shop. Each step needs an approved manifest and produces an evidence package. The targets, their authorisation windows and the expected outcomes live in [`docs/implementation/live-validation/plan.json`](docs/implementation/live-validation/plan.json); `python -m aisw.validation.live preflight` refuses every target until the `live-validation` sign-off approves that exact file ([ADR-045](docs/adr/ADR-045-live-validation-harness.md)).
+2. **Before any real use:** register a real IdP client, provision a real KMS key and run the drill, load the egress rules on the hosts, a first install from `deploy/README.md`, the policy owner's decisions (risk rubric, architecture catalog, baselines, framework mappings), legal review of licences, and the data approval before Astra sees real evidence. Each is a PENDING entry in the [sign-off register](docs/implementation/signoffs.md).
+3. **Engineering:** base-image OS packages in the SBOM, signed release artefacts, importers for the remaining policy facts, and reachability through cloud security groups. This repository is the plan of record, with rev 3 items adopted one at a time ([ADR-046](docs/adr/ADR-046-plan-of-record.md)). The full list of pending work is in [`docs/implementation/pending-plan.md`](docs/implementation/pending-plan.md).
 
 ---
 *AISW produces assessment reports from recorded evidence. A report is not a certification and does not prove an estate is secure.*

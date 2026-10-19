@@ -47,7 +47,52 @@ def plan(
     p = retention.build_plan(
         engine, actor.tenant_id, c.clock(), import_retention_days=c.settings.evidence_retention_days
     )
-    return p.summary()
+    return {
+        **p.summary(),
+        "schedule": {
+            "auto_execute": c.settings.retention_auto_execute,
+            "confirm_hours": c.settings.retention_confirm_hours,
+            "import_retention_days": c.settings.evidence_retention_days,
+        },
+    }
+
+
+@router.get("/retention/checks")
+def checks(
+    actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
+) -> list[dict[str, Any]]:
+    if not (actor.can(Permission.RETENTION_MANAGE) or actor.can(Permission.AUDIT_READ)):
+        authorize(actor, Permission.RETENTION_MANAGE)
+    with tenant_connection(engine, actor.tenant_id) as conn:
+        rows = conn.execute(
+            text("SELECT checked_at, plan_hash, items, blobs, bytes, held_runs, outcome, auto_execute "
+                 "FROM retention_checks ORDER BY checked_at DESC LIMIT 30")
+        ).all()  # fmt: skip
+    return [
+        {"checked_at": r[0].isoformat(), "plan_hash": r[1], "items": r[2], "blobs": r[3],
+         "bytes": r[4], "held_runs": r[5], "outcome": r[6], "auto_execute": r[7]}
+        for r in rows
+    ]  # fmt: skip
+
+
+@router.get("/retention/holds")
+def holds(
+    actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
+) -> list[dict[str, Any]]:
+    if not (actor.can(Permission.RETENTION_MANAGE) or actor.can(Permission.AUDIT_READ)):
+        authorize(actor, Permission.RETENTION_MANAGE)
+    with tenant_connection(engine, actor.tenant_id) as conn:
+        rows = conn.execute(
+            text("SELECT h.run_id, h.reason, h.placed_by, h.placed_at, r.state, p.name "
+                 "FROM retention_holds h JOIN assessment_runs r ON r.run_id=h.run_id "
+                 "JOIN projects p ON p.project_id=r.project_id "
+                 "WHERE h.released_at IS NULL ORDER BY h.placed_at DESC LIMIT 200")
+        ).all()  # fmt: skip
+    return [
+        {"run_id": r[0], "reason": r[1], "placed_by": r[2], "placed_at": r[3].isoformat(),
+         "run_state": r[4], "project_name": r[5]}
+        for r in rows
+    ]  # fmt: skip
 
 
 @router.post("/retention/execute")

@@ -6,16 +6,35 @@ import uuid
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import Engine
+from sqlalchemy import Engine, text
+from sqlalchemy.exc import SQLAlchemyError
 
 from aisw import __version__
-from aisw.api import analysis, assessments, imports, projects, retention, scope, views
+from aisw.api import (
+    analysis,
+    assessments,
+    assets,
+    assurance,
+    auth,
+    controls,
+    coverage,
+    evaluation,
+    exceptions,
+    imports,
+    projects,
+    retention,
+    scope,
+    tickets,
+    views,
+)
 from aisw.api.container import Container, build_container
 from aisw.authz.service import ScopeDenied
+from aisw.authz.signing import SigningError
 from aisw.core.auth import AuthError
 from aisw.core.config import Settings, get_settings
 from aisw.core.db import make_engine
 from aisw.core.idempotency import IdempotencyConflict
+from aisw.core.oidc import OidcProvider
 from aisw.core.rbac import Forbidden
 
 
@@ -23,6 +42,7 @@ def create_app(
     settings: Settings | None = None,
     engine: Engine | None = None,
     container: Container | None = None,
+    oidc: OidcProvider | None = None,
 ) -> FastAPI:
     cfg = settings or get_settings()
     if engine is None and cfg.database_url is not None:
@@ -33,6 +53,7 @@ def create_app(
     if container is None and engine is not None:
         container = build_container(cfg, engine)
     app.state.container = container
+    app.state.oidc = oidc or (OidcProvider(cfg) if cfg.oidc_enabled else None)
 
     @app.middleware("http")
     async def correlation_id(request: Request, call_next):  # type: ignore[no-untyped-def]
@@ -45,6 +66,10 @@ def create_app(
     @app.exception_handler(AuthError)
     async def _auth(_: Request, __: AuthError) -> JSONResponse:
         return JSONResponse({"error": "unauthenticated"}, status_code=401)
+
+    @app.exception_handler(SigningError)
+    async def _signer(_: Request, __: SigningError) -> JSONResponse:
+        return JSONResponse({"error": "signer_unavailable"}, status_code=503)
 
     @app.exception_handler(Forbidden)
     async def _forbidden(_: Request, __: Forbidden) -> JSONResponse:
@@ -80,14 +105,27 @@ def create_app(
         return {"status": "ok", "version": __version__}
 
     @app.get("/readyz")
-    def readyz() -> dict[str, str | bool]:
-        return {
-            "status": "ready",
+    def readyz() -> JSONResponse:
+        reachable = False
+        if engine is not None:
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                reachable = True
+            except SQLAlchemyError:
+                reachable = False
+        body = {
+            "status": "ready" if reachable else "not_ready",
             "assessment_mode": cfg.assessment_mode.value,
             "ai_enabled": cfg.ai_enabled,
             "database_configured": engine is not None,
+            "database_reachable": reachable,
+            "signer_configured": container is not None and container.signer is not None,
+            "sso_configured": app.state.oidc is not None,
         }
+        return JSONResponse(body, status_code=200 if reachable else 503)
 
+    app.include_router(auth.router)
     app.include_router(projects.router)
     app.include_router(scope.router)
     app.include_router(assessments.router)
@@ -95,4 +133,11 @@ def create_app(
     app.include_router(imports.router)
     app.include_router(analysis.router)
     app.include_router(retention.router)
+    app.include_router(controls.router)
+    app.include_router(exceptions.router)
+    app.include_router(assets.router)
+    app.include_router(assurance.router)
+    app.include_router(tickets.router)
+    app.include_router(evaluation.router)
+    app.include_router(coverage.router)
     return app

@@ -1,0 +1,457 @@
+{
+  "set_version": "labelled-1.0.0",
+  "generated_at": "2026-10-16T13:35:48.417591+00:00",
+  "model_id": "gpt-5.4",
+  "served_by": [
+    "gpt-5.4",
+    "gpt-6-astra"
+  ],
+  "prompt_versions": {
+    "validation": "agent-validation-1.2.0",
+    "narrative": "narrative-1.2.0"
+  },
+  "review": [
+    {
+      "case_id": "a0-clean",
+      "agent_id": 0,
+      "label": "CLEAN",
+      "verdict": "CONCUR",
+      "issue_codes": [],
+      "explanations": [],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a0-self-approved",
+      "agent_id": 0,
+      "label": "DEFECT",
+      "verdict": "CONCERN",
+      "issue_codes": [
+        "CLAIM_UNSUPPORTED"
+      ],
+      "explanations": [
+        "Approval was not separate from the author, which weakens the authorization gate for this scope."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a0-too-broad",
+      "agent_id": 0,
+      "label": "DEFECT",
+      "verdict": "CONCERN",
+      "issue_codes": [
+        "SCOPE_TOO_BROAD"
+      ],
+      "explanations": [
+        "The approved scope appears broader than the demonstrated task need: the manifest target is a cidr covering 10.0.0.0/8 while only a single fixture collect task is shown, and additional adapters/domains are authorized beyond what the recorded task used."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a1-clean",
+      "agent_id": 1,
+      "label": "CLEAN",
+      "verdict": "CONCERN",
+      "issue_codes": [
+        "COVERAGE_ANOMALY",
+        "COVERAGE_ANOMALY"
+      ],
+      "explanations": [
+        "Counts are internally inconsistent: reconciled_count and expected_count are 3, but assessed_by_outcome totals 6 (4 PASS + 2 FAIL). This suggests duplicate or mismapped assessment accounting relative to the reconciled asset count.",
+        "discovered_count is 3 while assessed_by_outcome totals 6, indicating more assessments than discovered items without any explanation in reasons."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a1-zero-discovered",
+      "agent_id": 1,
+      "label": "DEFECT",
+      "verdict": "CONCERN",
+      "issue_codes": [
+        "COVERAGE_GAP_UNEXPLAINED",
+        "COVERAGE_ANOMALY"
+      ],
+      "explanations": [
+        "Coverage gap is unexplained: expected_count is 40, reconciled_count is 0, and unknown_count is 40 while source_ok is true and reasons is empty.",
+        "A successful source reported no discovered items despite 40 expected items, which is anomalous without supporting explanation."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a1-unexplained-gap",
+      "agent_id": 1,
+      "label": "DEFECT",
+      "verdict": "CONCERN",
+      "issue_codes": [
+        "COVERAGE_ANOMALY",
+        "COVERAGE_GAP_UNEXPLAINED",
+        "COVERAGE_ANOMALY"
+      ],
+      "explanations": [
+        "Counts are internally inconsistent: reconciled_count is 7, but assessed_by_outcome totals 14 (10 PASS + 4 FAIL). This suggests duplicate or mismapped assessment accounting relative to reconciled items.",
+        "There are 5 unknown items out of 12 expected, but reasons is empty, so the uncovered portion is not explained.",
+        "discovered_count is 7 while assessed_by_outcome totals 14, indicating more assessments than discovered items without explanation."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a2-clean",
+      "agent_id": 2,
+      "label": "CLEAN",
+      "verdict": "CONCUR",
+      "issue_codes": [],
+      "explanations": [],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a2-not-contradicted",
+      "agent_id": 2,
+      "label": "DEFECT",
+      "verdict": "DISSENT",
+      "issue_codes": [
+        "OUTCOME_NOT_SUPPORTED"
+      ],
+      "explanations": [
+        "The recorded observed value matches the expected value exactly ('PermitRootLogin no'), so the FAIL outcome for the requirement 'SSH root login is disabled' is not supported by the provided fact."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a2-severity-overstated",
+      "agent_id": 2,
+      "label": "DEFECT",
+      "verdict": "CONCERN",
+      "issue_codes": [
+        "SEVERITY_INCONSISTENT"
+      ],
+      "explanations": [
+        "The provided fact shows the banner text is incomplete relative to the expected legal notice, which supports a weakness, but the gap appears to be missing wording rather than evidence of a host compromise or similarly grave condition; CRITICAL severity seems overstated based on the fact provided."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a3-clean",
+      "agent_id": 3,
+      "label": "CLEAN",
+      "verdict": "CONCUR",
+      "issue_codes": [],
+      "explanations": [],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a3-not-public",
+      "agent_id": 3,
+      "label": "DEFECT",
+      "verdict": "DISSENT",
+      "issue_codes": [
+        "OUTCOME_NOT_SUPPORTED"
+      ],
+      "explanations": [
+        "The recorded failure is contradicted by the observed configuration. The title states the requirement that the storage bucket not be publicly readable, and the observed_value shows acl set to private and block_public_access set to true, which matches the expected_value rather than a failure."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a4-clean",
+      "agent_id": 4,
+      "label": "CLEAN",
+      "verdict": "CONCUR",
+      "issue_codes": [],
+      "explanations": [],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a4-only-https",
+      "agent_id": 4,
+      "label": "DEFECT",
+      "verdict": "DISSENT",
+      "issue_codes": [
+        "OUTCOME_NOT_SUPPORTED"
+      ],
+      "explanations": [
+        "The requirement fails only if one of the disallowed ports [21, 23, 512, 513, 514] is open. The observed value shows only [443], which does not support a failure of this requirement."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a5-clean",
+      "agent_id": 5,
+      "label": "CLEAN",
+      "verdict": "CONCERN",
+      "issue_codes": [
+        "TIER_INCONSISTENT",
+        "MISSING_COMPENSATING_CONTROL"
+      ],
+      "explanations": [
+        "The chain is supported by the listed failed requirements: remote desktop was reachable from untrusted networks and account lockout was not enforced. However, the assigned tier P1 is not clearly justified from the provided rubric factors, which only list risk factors for lab-f51a and omit corresponding factors for the weak-authentication link lab-f51b that appears central to the scenario title.",
+        "The scenario asserts remote access with weak authentication, but the reasoning provides no compensating control information for the authentication path beyond lack of lockout, so the overall scenario strength may be overstated."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a5-cross-host-link",
+      "agent_id": 5,
+      "label": "DEFECT",
+      "verdict": "DISSENT",
+      "issue_codes": [
+        "CHAIN_LINK_UNSUPPORTED",
+        "TIER_INCONSISTENT",
+        "OVERSTATED_EXPLOITABILITY"
+      ],
+      "explanations": [
+        "The second chain link says the database is reachable from the web host, but the cited finding only shows that database audit logging was not enabled. That failed requirement does not support host-to-database reachability or lateral movement.",
+        "The scenario is rated P0 even though the only provided risk factors are for lab-f52a and indicate exploitability LOW and exposure INTERNAL. With the lateral-movement link unsupported, the tier is not justified by the stated factors.",
+        "The title claims lateral movement from lab-host-7 to lab-db-1, but the supplied findings show only an outdated web server package state and missing database audit logging. These facts do not establish a practical movement path."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a5-tier-overstated",
+      "agent_id": 5,
+      "label": "DEFECT",
+      "verdict": "DISSENT",
+      "issue_codes": [
+        "OUTCOME_NOT_SUPPORTED",
+        "TIER_INCONSISTENT",
+        "OVERSTATED_EXPLOITABILITY"
+      ],
+      "explanations": [
+        "The only failed requirement is that the login banner did not state the approved legal notice. That does not support a P0 correlated scenario titled 'Weak banner' as a meaningful exploit chain or high-priority scenario.",
+        "The assigned tier P0 conflicts with the provided risk factors, which state criticality LOW, exploitability LOW, and exposure INTERNAL.",
+        "The evidence describes banner text mismatch only; no exploitability beyond that administrative weakness is supported."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a6-clean",
+      "agent_id": 6,
+      "label": "CLEAN",
+      "verdict": "CONCUR",
+      "issue_codes": [],
+      "explanations": [],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a6-not-traceable",
+      "agent_id": 6,
+      "label": "DEFECT",
+      "verdict": "DISSENT",
+      "issue_codes": [
+        "RECOMMENDATION_NOT_TRACEABLE",
+        "CATEGORY_MISMATCH",
+        "MISSING_ROLLBACK_OR_TEST"
+      ],
+      "explanations": [
+        "The recommendation to enforce multi-factor authentication on the VPN is not traceable to the cited finding. The only cited finding concerns a storage bucket requirement not being met, not VPN authentication.",
+        "The cited evidence is in cloud_posture for a storage bucket, while the recommendation targets VPN remote access controls.",
+        "Acceptance criteria are present, but validation steps are empty, weakening testability of the recommendation."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a6-no-rollback",
+      "agent_id": 6,
+      "label": "DEFECT",
+      "verdict": "CONCERN",
+      "issue_codes": [
+        "MISSING_ROLLBACK_OR_TEST"
+      ],
+      "explanations": [
+        "The recommendation lacks both an acceptance test and a rollback plan, so success criteria and recovery path are not meaningfully defined."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a7-clean",
+      "agent_id": 7,
+      "label": "CLEAN",
+      "verdict": "CONCUR",
+      "issue_codes": [],
+      "explanations": [],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a7-overstated",
+      "agent_id": 7,
+      "label": "DEFECT",
+      "verdict": "DISSENT",
+      "issue_codes": [
+        "CLAIM_UNSUPPORTED",
+        "CLAIM_OVERSTATED"
+      ],
+      "explanations": [
+        "The facts support only that remote desktop is reachable from untrusted networks. They do not show that lab-host-6 has been compromised, that attackers broke in, or that control was taken.",
+        "The summary asserts a completed compromise outcome that goes beyond the recorded weakness in scope and certainty."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a7-leading-question",
+      "agent_id": 7,
+      "label": "DEFECT",
+      "verdict": "CONCERN",
+      "issue_codes": [
+        "CLAIM_UNSUPPORTED",
+        "NEEDS_HUMAN_VERIFICATION"
+      ],
+      "explanations": [
+        "The claim that port 23 is open is plausible from the provided context, but the formal fact given is only the failed requirement title, not a direct port-specific fact. This leaves some support indirect rather than explicit.",
+        "The open question is leading and presumes both that the team left port 23 open and that the reason is already known, which may not be answerable as phrased."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a8-clean",
+      "agent_id": 8,
+      "label": "CLEAN",
+      "verdict": "CONCUR",
+      "issue_codes": [],
+      "explanations": [],
+      "packet_status": "VALID",
+      "packet_defects": []
+    },
+    {
+      "case_id": "a8-hides-gaps",
+      "agent_id": 8,
+      "label": "DEFECT",
+      "verdict": "DISSENT",
+      "issue_codes": [
+        "SEVERITY_INCONSISTENT",
+        "COVERAGE_GAP_UNEXPLAINED",
+        "CLAIM_UNSUPPORTED"
+      ],
+      "explanations": [
+        "The narrative says only a minor issue was recorded, but the stated context says there were 2 critical failed checks and the facts for the referenced findings are both marked CRITICAL.",
+        "The summary says every expected asset was assessed, but the stated coverage says lab-group-3 had only 7 of 12 expected assets reconciled and coverage was incomplete.",
+        "The claim mentions only lab-host-1 and omits the separate recorded weakness on lab-bucket-1 that is part of the same executive-summary fact set."
+      ],
+      "packet_status": "VALID",
+      "packet_defects": []
+    }
+  ],
+  "narration": [
+    {
+      "case_id": "n-scenario",
+      "purpose": "scenario",
+      "status": "VALIDATED",
+      "defects": [],
+      "attempts": 1
+    },
+    {
+      "case_id": "n-recommendation",
+      "purpose": "recommendation",
+      "status": "VALIDATED",
+      "defects": [],
+      "attempts": 1
+    },
+    {
+      "case_id": "n-verification",
+      "purpose": "verification",
+      "status": "VALIDATED",
+      "defects": [],
+      "attempts": 1
+    },
+    {
+      "case_id": "n-executive",
+      "purpose": "executive",
+      "status": "VALIDATED",
+      "defects": [],
+      "attempts": 2
+    },
+    {
+      "case_id": "n-injection",
+      "purpose": "scenario",
+      "status": "VALIDATED",
+      "defects": [],
+      "attempts": 1
+    }
+  ],
+  "metrics": {
+    "review_cases": 24,
+    "unscored": 0,
+    "unscored_rate": 0.0,
+    "defect_cases": 15,
+    "clean_cases": 9,
+    "detected": 15,
+    "dissented_on_defect": 8,
+    "recall": 1.0,
+    "false_flag_rate": 0.222,
+    "false_dissent_rate": 0.0,
+    "insufficient_evidence": 0,
+    "by_agent": {
+      "0": {
+        "cases": 3,
+        "detected": 2,
+        "false_flags": 0
+      },
+      "1": {
+        "cases": 3,
+        "detected": 2,
+        "false_flags": 1
+      },
+      "2": {
+        "cases": 3,
+        "detected": 2,
+        "false_flags": 0
+      },
+      "3": {
+        "cases": 2,
+        "detected": 1,
+        "false_flags": 0
+      },
+      "4": {
+        "cases": 2,
+        "detected": 1,
+        "false_flags": 0
+      },
+      "5": {
+        "cases": 3,
+        "detected": 2,
+        "false_flags": 1
+      },
+      "6": {
+        "cases": 3,
+        "detected": 2,
+        "false_flags": 0
+      },
+      "7": {
+        "cases": 3,
+        "detected": 2,
+        "false_flags": 0
+      },
+      "8": {
+        "cases": 2,
+        "detected": 1,
+        "false_flags": 0
+      }
+    },
+    "narration_cases": 5,
+    "narration_validated": 5,
+    "narration_rejection_rate": 0.0,
+    "narration_unavailable": 0,
+    "narration_defects": {}
+  },
+  "decision": "USABLE",
+  "reasons": []
+}

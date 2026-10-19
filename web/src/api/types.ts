@@ -8,10 +8,15 @@ export interface Me {
   actor_id: string
   roles: string[]
   permissions: string[]
+  /** Extra roles and permissions held on single projects (beyond the tenant-wide ones). */
+  project_roles: Record<string, string[]>
+  project_permissions: Record<string, string[]>
 }
+export interface ProjectRoleGrant { grant_id: string; actor_id: string; role: string; reason: string; granted_by: string; granted_at: string }
 export interface AuthMode {
-  mode: 'dev_stub' | 'none'
+  mode: 'dev_stub' | 'oidc' | 'none'
   users: { name: string; tenant_id: string; roles: string[] }[]
+  sso?: boolean
 }
 export interface Project {
   project_id: string
@@ -35,6 +40,20 @@ export interface Connector {
   target_kinds: string[]
   profiles: { profile_id: string; profile_class: 'READ_ONLY' | 'ACTIVE' }[]
   read_only: boolean
+  kind: 'live' | 'import'
+  import_kinds: string[]
+  formats: string[]
+  declares_vantage?: boolean
+}
+export interface ImportFile {
+  import_id: string
+  kind: string
+  filename: string
+  content_hash: string
+  size_bytes: number
+  redacted: boolean
+  uploaded_by: string
+  uploaded_at: string
 }
 export interface PolicyPackInfo {
   key: string
@@ -42,6 +61,8 @@ export interface PolicyPackInfo {
   description: string
   rules: number
   framework: { name: string; version: string }
+  needs_opa: boolean
+  runnable: boolean
 }
 export interface ManifestSummary {
   manifest_id: string
@@ -89,6 +110,7 @@ export interface RunListItem {
 }
 export interface RunStatus {
   run_id: string
+  project_id: string
   state: string
   last_phase: string | null
   reason: string | null
@@ -153,10 +175,67 @@ export interface FindingRow {
   project_name: string
   authoritative: boolean
 }
+export type MappingStatus = 'APPROVED' | 'NEEDS_REVIEW' | 'REJECTED'
+export interface FrameworkMapping {
+  key: string
+  framework: string
+  version: string
+  control_id: string
+  title: string
+  status: MappingStatus
+  reviewed_by: string | null
+  reviewed_at: string | null
+  reason: string | null
+}
+export interface ControlMatrix {
+  policy_version: string
+  pack_framework: { name: string; version: string }
+  run_id: string | null
+  final: boolean
+  catalog_version: string
+  notice: string
+  frameworks: { framework: string; version: string; name: string }[]
+  controls: { control_id: string; rules: { rule_id: string; title: string; severity: string }[]; outcome: string | null; mappings: FrameworkMapping[] }[]
+  summary: Record<MappingStatus, number>
+  can_review: boolean
+}
+export type ReviewAction = 'CONFIRM' | 'REJECT' | 'REOPEN' | 'REQUEST_EXCEPTION'
+export interface ReviewEntry { action: string; from: string; to: string; reason: string; actor: string; at: string; exception_id: string | null }
+export type ExceptionState = 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'REJECTED' | 'REVOKED'
+export interface ExceptionItem {
+  exception_id: string
+  project_id: string
+  project_name?: string
+  rule_id: string
+  asset_id: string
+  title: string
+  source_run_id: string
+  source_finding_id: string
+  reason: string
+  requested_by: string
+  requested_at: string
+  expires_at: string
+  status: string
+  state: ExceptionState
+  days_left: number | null
+  decided_by: string | null
+  decided_at: string | null
+  decision_reason: string | null
+  revoked_by: string | null
+  revoked_at: string | null
+  revoke_reason: string | null
+}
+export interface ExceptionList { as_of: string; max_days: number; counts: Record<ExceptionState, number>; items: ExceptionItem[]; can_decide: boolean }
 export interface FindingDetail {
   finding: Finding
   assurance_verdict: string
   authoritative: boolean
+  framework_mappings: FrameworkMapping[]
+  lifecycle: string
+  review_history: ReviewEntry[]
+  review_actions: ReviewAction[]
+  exception: ExceptionItem | null
+  exception_max_days: number
   evidence: {
     evidence_ref: string
     content_hash: string
@@ -202,7 +281,9 @@ export interface RiskInfo {
   missing_evidence: string[]
   rationale: string
   assurance_verdict: string | null
+  rubric_signoff?: SignoffStatus
 }
+export type SignoffStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'UNRECORDED'
 export interface Narrative {
   summary: string
   claims: { text: string; finding_ids: string[]; asset_ids: string[] }[]
@@ -216,7 +297,7 @@ export interface Scenario {
   asset_id: string
   title: string
   finding_ids: string[]
-  chain: { finding_id: string; evidence_ref: string; basis: string; note: string | null }[]
+  chain: { finding_id: string; evidence_ref: string; basis: string; note: string | null; title?: string; severity?: string; category?: string }[]
   tier: string | null
   basis: 'COMPLETE' | 'NEEDS_POLICY_REVIEW'
   confidence: string
@@ -226,6 +307,22 @@ export interface Scenario {
   assurance_verdict: string | null
   authoritative: boolean
   narrative: Narrative | null
+  path?: ReachEdge[]
+}
+export interface ReachEdge {
+  edge_id: string
+  src: string
+  dst: string
+  basis: 'OBSERVED' | 'CONFIGURED'
+  ports: [number, number][] | null
+  via: string
+  evidence_ref: string
+  note: string | null
+}
+export interface Reachability {
+  edges: ReachEdge[]
+  caveats: string[]
+  exposure: Record<string, { level: 'VERIFIED' | 'CONFIGURED'; edges: string[] }>
 }
 export interface Recommendation {
   recommendation_id: string
@@ -266,12 +363,37 @@ export interface AgentInfo {
   read_only: boolean
   ai_capable: boolean
   ai_active: boolean
+  ai_validated: boolean
 }
 export interface AgentsResponse {
   agents: AgentInfo[]
-  ai: { enabled: boolean; model_id: string | null; model_license: string | null; endpoint_local_only: boolean; tools_available_to_model: boolean; may_decide: boolean }
+  ai: { enabled: boolean; model_id: string | null; model_license: string | null; provider: 'ollama' | 'astra' | null; endpoint_local_only: boolean; tools_available_to_model: boolean; may_decide: boolean; validation_enabled: boolean; validation_model: string | null }
   ticket_drafts_enabled: boolean
+  ticket_delivery: { enabled: boolean; target: 'jira' | 'servicenow' | null }
   rubric_version: string
+  signoffs: { rubric: SignoffStatus; catalog: SignoffStatus }
+}
+export type AiVerdict = 'CONCUR' | 'CONCERN' | 'DISSENT' | 'INSUFFICIENT_EVIDENCE' | 'NO_VERDICT' | 'VALIDATOR_INVALID' | 'UNAVAILABLE'
+export interface AiValidationItem {
+  target_ref: string
+  agent_id: number
+  agent_name: string
+  verdict: AiVerdict
+  effect: 'HOLD_FOR_REVIEW' | 'REVIEW_ITEM' | 'ANNOTATION' | 'NONE'
+  issues: { code: string; explanation: string; evidence_refs: string[] }[]
+  human_questions: string[]
+  validator_confidence: 'LOW' | 'MEDIUM' | 'HIGH' | null
+  defects: string[]
+  model_id: string | null
+  prompt_version: string
+  ai_generated: true
+  resolution: AiResolution | null
+}
+export type AiDecision = 'OVERRULE' | 'UPHOLD'
+export interface AiResolution { decision: AiDecision; reason: string; decided_by: string; decided_at: string }
+export interface AiValidations {
+  summary: { total: number; by_verdict: Record<string, number>; by_agent: Record<string, number>; held_for_review: number; unavailable: number; overruled: number; upheld: number; models: string[] }
+  items: AiValidationItem[]
 }
 export interface TicketDraft {
   outbox_id: string
@@ -279,12 +401,56 @@ export interface TicketDraft {
   delivered: false
   payload: { summary: string; description: string; labels: string[]; delivery: string }
 }
+export type ItsmTarget = 'jira' | 'servicenow'
+export type TicketStatus = 'DRAFT' | 'SENDING' | 'SENT' | 'FAILED'
+export interface OutboxRow {
+  outbox_id: string
+  run_id: string
+  recommendation_id: string
+  status: TicketStatus
+  payload: TicketDraft['payload']
+  created_by: string
+  created_at: string
+  delivered: boolean
+  target: ItsmTarget | null
+  attempts: number
+  external_ref: string | null
+  external_url: string | null
+  last_error: string | null
+  sent_by: string | null
+  sent_at: string | null
+}
+export interface RenderedTicket {
+  outbox_id: string
+  target: ItsmTarget
+  correlation_key: string
+  payload: Record<string, unknown>
+  delivery_enabled: boolean
+  configured_target: ItsmTarget | null
+  sent: boolean
+}
 export interface ReportList {
   report_id: string
   approval_state: string
   report_hash: string
   generated_at: string
   coverage_complete: boolean
+  revision: number
+  supersedes: string | null
+}
+/** Agent 8 summary for leadership: AI-written, shown only when Independent Assurance accepted it. */
+export interface ExecutiveSummary {
+  summary: string
+  claims: { text: string; finding_ids: string[]; asset_ids: string[] }[]
+  model_id: string | null
+  prompt_version: string
+  ai_generated: true
+}
+/** Agent 4 questions for the asset owner about an accepted finding. AI-written; nothing was tested. */
+export interface VerificationQuestions {
+  questions: string[]
+  model_id: string | null
+  ai_generated: true
 }
 export interface ReportBody {
   title: string
@@ -299,7 +465,8 @@ export interface ReportBody {
   policy_versions: string[]
   scope_manifest_hash: string
   generated_at: string
-  findings: (Finding & { risk?: RiskInfo })[]
+  findings: (Finding & { risk?: RiskInfo; verification_questions?: VerificationQuestions })[]
+  executive_summary?: ExecutiveSummary
   scenarios?: Scenario[]
   recommendations?: Recommendation[]
   ai?: { mode: string; narratives_total?: number; narratives_accepted?: number; not_shown?: number }
@@ -326,6 +493,7 @@ export interface Overview {
     high: number
     pending_review_critical_high: number
   }
+  exceptions: { pending: number; active: number; expiring_30d: number; expired: number }
   connectors: { adapter_id: string; enabled: boolean; permission_ok: boolean }[]
 }
 export interface AuditItem {
@@ -340,4 +508,245 @@ export interface AuditItem {
 export interface Page<T> {
   items: T[]
   total: number
+}
+export interface AssuranceOverview {
+  assurance: Record<string, Record<string, number>>
+  defects: { code: string; count: number }[]
+  ai_validation: Record<string, number>
+  open_dissent: number
+  triggers: { agent_id: number; agent_name: string; triggered: number; skipped: number }[]
+}
+export interface Disagreement {
+  run_id: string
+  project_name: string
+  agent_id: number
+  agent_name: string
+  target_ref: string
+  ai_verdict: string
+  effect: string
+  issues: { code: string; explanation: string }[]
+  human_questions: string[]
+  validator_confidence: string | null
+  model_id: string | null
+  prompt_version: string
+  created_at: string
+  engine_verdict: string | null
+  engine_defects: string[]
+  run_state: string
+  ai_generated: true
+  resolution: { decision: 'OVERRULE' | 'UPHOLD'; reason: string; decided_by: string; decided_at: string } | null
+  resolvable: boolean
+}
+export interface TriggerPolicyView {
+  version: string
+  status: string
+  sha256: string
+  signoff: string
+  priority: { agent_id: number; agent_name: string }[]
+  agents: { agent_id: number; agent_name: string; why: string; rules: string[] }[]
+  ai_validation_enabled: boolean
+  decisions: { agent_id: number; agent_name: string; target_ref: string; triggered: boolean; rule: string; policy_version: string }[]
+}
+export interface ModelCallRow {
+  run_id: string
+  project_name: string
+  purpose: string
+  subject_ref: string
+  model_id: string | null
+  prompt_version: string
+  status: string
+  attempts: number
+  defects: string[]
+  input_tokens: number | null
+  output_tokens: number | null
+  latency_ms: number | null
+  replayed: boolean
+  input_hash: string
+  output_hash: string | null
+  created_at: string
+}
+export interface ModelCallLedger extends Page<ModelCallRow> {
+  totals: { calls: number; input_tokens: number; output_tokens: number; latency_ms: number; replayed: number; unmetered: number; not_validated: number }
+}
+export interface RoadmapCard {
+  recommendation_id: string
+  title: string | null
+  status: Recommendation['status']
+  risk_tier: string | null
+  catalog_ref: string | null
+  current_state: string | null
+  target_pattern: string | null
+  affected_assets: string[]
+  effort: { value: string | null; is_estimate: boolean }
+  depends_on: string[]
+  reason: string
+}
+export interface Roadmap {
+  run_id: string
+  waves: { wave: number; label: string; items: RoadmapCard[] }[]
+  unrated: RoadmapCard[]
+  awaiting_validation: RoadmapCard[]
+  rejected: RoadmapCard[]
+  edges: { from: string; to: string; basis: string; assets: string[] }[]
+  not_authoritative: number
+  rules: string[]
+  catalog_signoff: string
+}
+export interface AssetRow {
+  project_id: string
+  project_name: string
+  asset_id: string
+  asset_type: string
+  native_ids: Record<string, unknown>
+  attrs: Record<string, unknown>
+  environment: string | null
+  owner: string | null
+  owner_source: string | null
+  criticality: string | null
+  criticality_source: string | null
+  technology: string | null
+  match_confidence: 'HIGH' | 'MEDIUM' | 'LOW'
+  first_seen: string
+  last_seen: string
+  last_run_id: string
+}
+export interface AssetList extends Page<AssetRow> {
+  types: { asset_type: string; count: number; owner_unknown: number; low_confidence: number }[]
+}
+export interface AssetDetail extends AssetRow {
+  posture: { rule_id: string; outcome: string; observed: unknown; expected: unknown; observed_at: string; run_id: string; source: string }[]
+  runs: { run_id: string; segment: string; status: string; reason: string | null; at: string }[]
+  findings: { run_id: string; finding_id: string; severity: string; lifecycle: string; title: string }[]
+  findings_visible: boolean
+  relationships: null
+}
+
+export type MetricStatus = 'MET' | 'NOT_MET' | 'MEASURED' | 'NOT_MEASURED'
+export interface Metric {
+  metric: string
+  label: string
+  target: string
+  status: MetricStatus
+  value: number | null
+  display: string
+  detail: Record<string, unknown>
+}
+export interface Scorecard {
+  run_id: string
+  policy_version: string
+  fixture_set: string | null
+  answer_key: { key_id: string; note: string } | null
+  metrics: Metric[]
+  summary: Record<MetricStatus, number>
+}
+export interface TrendRow {
+  run_id: string
+  project_id: string
+  state: string
+  created_at: string
+  fixture_set: string | null
+  answer_key: string | null
+  summary: Record<MetricStatus, number>
+  metrics: Record<string, { status: MetricStatus; value: number | null }>
+}
+export interface AnswerKeyInfo {
+  key_id: string
+  fixture_set: string
+  policy_version: string
+  note: string
+  cmdb_expected_assets: string[]
+  known_issues: number
+  known_clean: number
+}
+
+export interface CoverageGap {
+  kind: string
+  label: string
+  count: number
+  items: { asset_id: string | null; detail: string | null }[]
+}
+export interface LedgerSegment {
+  segment: string
+  expected: number
+  discovered: number
+  reconciled: number
+  excluded: number
+  unsupported: number
+  unknown: number
+  source_ok: boolean
+  complete: boolean
+  assessed_by_outcome: Record<string, number>
+  last_success_at: string | null
+  age_days: number | null
+  gaps: CoverageGap[]
+}
+export interface LedgerProject {
+  project_id: string
+  name: string
+  environment: string
+  run: { run_id: string; state: string; created_at: string; partial: boolean }
+  complete: boolean
+  segments: LedgerSegment[]
+  untargeted_inventory: { kind: string; selector: string }[]
+  totals: Record<'expected' | 'discovered' | 'reconciled' | 'unsupported' | 'unknown', number>
+}
+export interface CoverageLedgerView {
+  as_of: string
+  basis: string
+  projects: LedgerProject[]
+  never_assessed: { project_id: string; name: string; environment: string; inventory_entries: number }[]
+  summary: Record<'projects' | 'assessed' | 'never_assessed' | 'complete' | 'incomplete', number>
+}
+
+export interface RetentionItem { kind: 'EVIDENCE' | 'IMPORT'; ref: string; content_hash: string; size_bytes: number; run_id: string | null }
+export interface RetentionPlan {
+  as_of: string
+  plan_hash: string
+  items: RetentionItem[]
+  blobs: number
+  bytes: number
+  kept_shared: string[]
+  held_runs: string[]
+  mode: string
+  schedule: { auto_execute: boolean; confirm_hours: number; import_retention_days: number }
+}
+export interface RetentionCheck {
+  checked_at: string
+  plan_hash: string
+  items: number
+  blobs: number
+  bytes: number
+  held_runs: number
+  outcome: 'NOTHING_DUE' | 'DUE' | 'AWAITING_CONFIRMATION' | 'EXECUTED' | 'PLAN_CHANGED'
+  auto_execute: boolean
+}
+export interface RetentionHold { run_id: string; reason: string; placed_by: string; placed_at: string; run_state: string; project_name: string }
+export interface RetentionAction {
+  kind: string
+  ref: string
+  content_hash: string
+  size_bytes: number
+  quarantined: boolean
+  executed_by: string
+  executed_at: string
+  reason: string
+  plan_hash: string
+}
+
+export interface AnchorState {
+  ok: boolean
+  checked: number
+  latest_seq: number | null
+  latest_at: string | null
+  witness_id: string | null
+  problems: string[]
+  witness_configured: boolean
+}
+
+export interface AuditVerify {
+  ok: boolean
+  checked: number
+  broken_at_seq: number | null
+  reason: string | null
+  anchors: AnchorState
 }

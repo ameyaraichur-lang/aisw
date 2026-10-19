@@ -65,7 +65,9 @@ class ScopeGate:
         inventory: Inventory,
         policy: GatePolicy | None = None,
         resolver: Resolver = system_resolver,
+        egress_zones: tuple[str, ...] = (),
     ) -> None:
+        self.egress_zones = egress_zones
         self.registry = registry
         self.inventory = inventory
         self.policy = policy or GatePolicy()
@@ -220,6 +222,7 @@ class ScopeGate:
                 allowed_ports=body.allowed_ports,
                 internal_ranges=body.internal_range_authorization,
                 resolver=self.resolver,
+                egress_zones=self.egress_zones,
             )
         except NetGuardError as exc:
             block(exc.code, t.selector)

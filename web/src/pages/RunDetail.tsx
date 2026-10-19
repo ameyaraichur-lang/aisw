@@ -1,15 +1,15 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link, NavLink, Navigate, Route, Routes, useParams } from 'react-router-dom'
-import { api, ApiError, apiText } from '../api/client'
-import { useControls, useCoverage, useReportBody, useReports, useRunFindings, useRunRecommendations, useRunScenarios, useRunStatus, useTasks } from '../api/hooks'
-import type { ControlRow, TaskView } from '../api/types'
+import { api, ApiError, apiBlob, apiText } from '../api/client'
+import { useAiValidations, useControls, useCoverage, useReportBody, useReports, useRunFindings, useRunReachability, useRunRecommendations, useRunScenarios, useRunStatus, useTasks } from '../api/hooks'
+import type { AiDecision, ControlRow, TaskView } from '../api/types'
 import { useSession } from '../auth/useSession'
 import { RecommendationBody, RecommendationHeader, ScenarioCard } from '../components/analysis'
 import { Badge, Banner, ConfirmDialog, CopyButton, DataState, PageHeader, Pagination, ShortHash } from '../components/ui'
-import { fmtTime } from '../lib/format'
+import { describePorts, fmtTime } from '../lib/format'
 import { deriveStages, describeEvent, tasksFinished } from '../lib/events'
-import { OUTCOME_DISPLAY, RUN_STATE_DISPLAY, SEVERITY_DISPLAY, TASK_STATUS_DISPLAY, VERDICT_DISPLAY, display, type PolicyOutcome } from '../lib/status'
+import { AI_VERDICT_DISPLAY, OUTCOME_DISPLAY, RUN_STATE_DISPLAY, SEVERITY_DISPLAY, TASK_STATUS_DISPLAY, VERDICT_DISPLAY, display, type PolicyOutcome } from '../lib/status'
 import { useRunStream } from '../lib/useRunStream'
 
 const STAGE_BADGE = {
@@ -109,6 +109,7 @@ function Timeline({ runId, stream }: { runId: string; stream: ReturnType<typeof 
           <Badge d={stream.status === 'live' ? { icon: '●', label: 'Live', tone: 'ok' } : stream.status === 'ended' ? { icon: '■', label: 'Stream complete', tone: 'neutral' } : { icon: '…', label: stream.status, tone: 'warn' }} />
           {latest ? <span>Latest: {describeEvent(latest)}</span> : <span className="muted">Waiting for the first event…</span>}
         </p>
+        {stream.stalls ? <p className="hint" data-testid="stream-stalls">The live stream went silent {stream.stalls === 1 ? 'once' : `${stream.stalls} times`} (no data, not even a heartbeat) and was reopened from the last event.</p> : null}
         {fin ? <p className="muted">{fin.done} of {fin.total} task(s) finished</p> : null}
         <h2>Stages</h2>
         <ol className="stages" aria-label="Run stages">
@@ -191,7 +192,7 @@ function Coverage({ runId }: { runId: string }) {
           </div>
           {d.segments.map((c) => c.reasons && c.reasons.length ? (
             <section key={c.segment} className="panel" aria-label={`Gaps in ${c.segment}`}>
-              <h3>Named gaps in <code>{c.segment}</code></h3>
+              <h2>Named gaps in <code>{c.segment}</code></h2>
               <ul>{c.reasons.map((r) => <li key={r}><code>{r}</code></li>)}</ul>
             </section>
           ) : null)}
@@ -244,6 +245,51 @@ function RunFindings({ runId }: { runId: string }) {
   )
 }
 
+const CAVEAT_TEXT: Record<string, string> = {
+  UPSTREAM_FILTERING_NOT_EVALUATED: 'Filtering upstream of each host (perimeter, NAT, cloud network rules) was not evaluated.',
+  SCAN_VANTAGE_NOT_STATED: 'scan(s) did not state where they ran from, so their open ports say nothing about the internet.',
+  SECURITY_GROUP_ATTACHMENTS_UNKNOWN: 'security group rule(s) were read, but which instances they attach to is not known.',
+  EVIDENCE_UNREADABLE: 'raw evidence file(s) failed the integrity check and were not used.',
+}
+
+function caveatText(code: string) {
+  const [name, detail] = [code.split(':')[0], code.split(':').slice(1).join(':')]
+  const text = CAVEAT_TEXT[name]
+  if (!text) return code
+  return /^\d+$/.test(detail) ? `${detail} ${text}` : text
+}
+
+function ReachabilityPanel({ runId }: { runId: string }) {
+  const q = useRunReachability(runId)
+  return (
+    <section aria-labelledby="re-h">
+      <h2 id="re-h">Reachability</h2>
+      <p className="hint">Read from host firewall configuration and from scans whose launcher declared they ran from an untrusted network. No traffic was sent.</p>
+      <DataState q={q} label="reachability" isEmpty={(d) => d.edges.length === 0 && d.caveats.length === 0} empty={<p className="muted">No firewall configuration or declared-vantage scan in this run, so exposure comes from finding categories only.</p>}>
+        {(d) => (
+          <>
+            {d.caveats.length ? <Banner tone="warn" title="Not modelled"><ul>{d.caveats.map((c) => <li key={c}>{caveatText(c)}</li>)}</ul></Banner> : null}
+            <table className="table" aria-label="Reachability edges" data-testid="reach-edges">
+              <thead><tr><th scope="col">From</th><th scope="col">To</th><th scope="col">Ports</th><th scope="col">Basis</th><th scope="col">Source</th></tr></thead>
+              <tbody>
+                {d.edges.map((e) => (
+                  <tr key={e.edge_id}>
+                    <td>{e.src}</td>
+                    <td><Link to={`/assets?q=${encodeURIComponent(e.dst)}`}>{e.dst}</Link>{d.exposure[e.dst] && e.src === 'internet' ? <span className="chip">{d.exposure[e.dst].level === 'VERIFIED' ? 'exposure verified' : 'exposure configured'}</span> : null}</td>
+                    <td>{describePorts(e.ports)}</td>
+                    <td>{e.basis.toLowerCase()}</td>
+                    <td><code>{e.via}</code>{e.note ? <div className="muted">{e.note}</div> : null}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </DataState>
+    </section>
+  )
+}
+
 function Analysis({ runId }: { runId: string }) {
   const sc = useRunScenarios(runId)
   const rc = useRunRecommendations(runId)
@@ -251,10 +297,11 @@ function Analysis({ runId }: { runId: string }) {
     <>
       <section aria-labelledby="sc-h">
         <h2 id="sc-h">Correlated scenarios</h2>
-        <DataState q={sc} label="scenarios" isEmpty={(d) => d.length === 0} empty={<p className="muted">No scenario was built: it takes two or more recorded weaknesses on the same asset. Nothing is inferred beyond what was observed.</p>}>
-          {(d) => <>{d.map((x) => <ScenarioCard key={x.scenario_id} s={x} />)}</>}
+        <DataState q={sc} label="scenarios" isEmpty={(d) => d.length === 0} empty={<p className="muted">No scenario was built: it takes two or more recorded weaknesses on the same asset, or one weakness on an asset a recorded route reaches from the internet. Nothing is inferred beyond what was observed.</p>}>
+          {(d) => <>{d.map((x) => <ScenarioCard key={x.scenario_id} s={x} runId={runId} />)}</>}
         </DataState>
       </section>
+      <ReachabilityPanel runId={runId} />
       <section aria-labelledby="rc-h">
         <h2 id="rc-h">Draft recommendations</h2>
         <p className="hint">For planning only. Decisions are recorded in <Link to={`/architecture?run=${runId}`}>Architecture &amp; Modernization</Link>; nothing is executed.</p>
@@ -274,7 +321,103 @@ function Analysis({ runId }: { runId: string }) {
           )}
         </DataState>
       </section>
+      <AiValidationPanel runId={runId} />
     </>
+  )
+}
+
+function AiValidationPanel({ runId }: { runId: string }) {
+  const projectId = useRunStatus(runId).data?.project_id
+  const q = useAiValidations(runId)
+  const { can } = useSession()
+  const qc = useQueryClient()
+  const [filter, setFilter] = useState<'attention' | 'all'>('attention')
+  const [pending, setPending] = useState<{ ref: string; decision: AiDecision; holds: boolean } | null>(null)
+  const [reason, setReason] = useState('')
+  const resolve = useMutation({
+    mutationFn: (p: { ref: string; decision: AiDecision }) =>
+      api(`/assessments/${runId}/ai-validations/resolutions`, { method: 'POST', body: { target_ref: p.ref, decision: p.decision, reason: reason.trim() } }),
+    onSuccess: () => { setPending(null); setReason(''); void qc.invalidateQueries({ queryKey: ['run', runId] }) },
+  })
+  const open = (ref: string, decision: AiDecision, holds: boolean) => { resolve.reset(); setReason(''); setPending({ ref, decision, holds }) }
+  const err = resolve.error instanceof ApiError ? resolve.error : null
+  return (
+    <section aria-labelledby="av-h">
+      <h2 id="av-h">AI validation of agent outcomes</h2>
+      <p className="hint">An AI reviewer re-read each agent&apos;s outcomes against the facts they rest on. It is advisory: a dissent holds an item for human review, nothing else. It cannot approve, change a severity or add a finding.</p>
+      <DataState q={q} label="AI validation" isEmpty={(d) => d.summary.total === 0} empty={<p className="muted">No AI validation for this run: AI assist was off, or validation is disabled.</p>}>
+        {(d) => {
+          const attention = d.items.filter((i) => i.verdict !== 'CONCUR')
+          const shown = filter === 'all' ? d.items : attention
+          return (
+            <>
+              <p className="row" role="status">
+                {Object.entries(d.summary.by_verdict).map(([v, n]) => <span key={v}><Badge d={display(AI_VERDICT_DISPLAY, v)} /> {n}</span>)}
+                <span className="muted">Model: {d.summary.models.join(', ') || 'unknown'}</span>
+              </p>
+              {d.summary.held_for_review > 0 ? <Banner tone="warn" title="Held for review">The AI reviewer dissented on {d.summary.held_for_review} item(s). Accepted items among them are not authoritative until a human resolves them.</Banner> : null}
+              {d.summary.overruled || d.summary.upheld ? <p className="muted">Human decisions: {d.summary.overruled} overruled (assurance re-ran and a new report revision was issued), {d.summary.upheld} upheld.</p> : null}
+              <fieldset className="row">
+                <legend className="sr-only">Show</legend>
+                <label><input type="radio" name="av-filter" checked={filter === 'attention'} onChange={() => setFilter('attention')} /> Needs attention ({attention.length})</label>
+                <label><input type="radio" name="av-filter" checked={filter === 'all'} onChange={() => setFilter('all')} /> All ({d.items.length})</label>
+              </fieldset>
+              {shown.length === 0 ? <p className="muted">The AI reviewer concurred with every outcome.</p> : (
+                <div className="table-wrap">
+                  <table>
+                    <caption>AI-generated review (advisory)</caption>
+                    <thead><tr><th scope="col">Agent</th><th scope="col">Item</th><th scope="col">Verdict</th><th scope="col">Why</th><th scope="col">Human decision</th></tr></thead>
+                    <tbody>{shown.map((i) => (
+                      <tr key={i.target_ref}>
+                        <td>{i.agent_id}. {i.agent_name}</td>
+                        <td><code>{i.target_ref}</code></td>
+                        <td><Badge d={display(AI_VERDICT_DISPLAY, i.verdict)} />{i.validator_confidence ? <span className="muted"> ({i.validator_confidence.toLowerCase()} confidence)</span> : null}</td>
+                        <td>
+                          {i.issues.length ? <ul className="list-plain">{i.issues.map((x, n) => <li key={n}><code>{x.code}</code> {x.explanation}</li>)}</ul> : null}
+                          {i.human_questions.length ? <ul className="list-plain">{i.human_questions.map((x, n) => <li key={n}>Question: {x}</li>)}</ul> : null}
+                          {!i.issues.length && !i.human_questions.length && i.defects.length ? <span className="muted">{i.defects.join(', ')}</span> : null}
+                        </td>
+                        <td>
+                          {i.resolution ? (
+                            <span><Badge d={i.resolution.decision === 'OVERRULE' ? { icon: '↺', label: 'Overruled', tone: 'neutral' } : { icon: '✓', label: 'Upheld', tone: 'warn' }} /> by {i.resolution.decided_by}: {i.resolution.reason}</span>
+                          ) : i.verdict === 'DISSENT' && can('report:approve', projectId) ? (
+                            <span className="row">
+                              <button type="button" className="btn" onClick={() => open(i.target_ref, 'OVERRULE', i.effect === 'HOLD_FOR_REVIEW')}>Overrule</button>
+                              <button type="button" className="btn" onClick={() => open(i.target_ref, 'UPHOLD', i.effect === 'HOLD_FOR_REVIEW')}>Uphold</button>
+                            </span>
+                          ) : i.verdict === 'DISSENT' ? <span className="muted">Awaiting a reviewer</span> : null}
+                        </td>
+                      </tr>))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )
+        }}
+      </DataState>
+      <ConfirmDialog
+        open={pending !== null}
+        title={pending?.decision === 'OVERRULE' ? 'Overrule this AI dissent?' : 'Uphold this AI dissent?'}
+        confirmLabel={pending?.decision === 'OVERRULE' ? 'Overrule' : 'Uphold'}
+        busy={resolve.isPending}
+        confirmDisabled={!reason.trim()}
+        onConfirm={() => { if (pending) resolve.mutate(pending) }}
+        onCancel={() => setPending(null)}
+      >
+        <p>
+          {pending && !pending.holds
+            ? 'This dissent did not hold anything back: it is a review note for the scope. Your decision is recorded; the report does not change.'
+            : pending?.decision === 'OVERRULE'
+            ? 'Independent assurance re-runs without this dissent and a new report revision replaces the unapproved one. The item is only accepted if its evidence still holds.'
+            : 'The item stays held for review. Your decision is recorded; the report does not change.'}
+        </p>
+        <p><code>{pending?.ref}</code></p>
+        <label htmlFor="av-reason">Reason (required, recorded in the audit log)</label>
+        <textarea id="av-reason" value={reason} maxLength={1000} rows={3} onChange={(e) => setReason(e.target.value)} />
+        {err ? <Banner tone="bad" role="alert" title={err.status === 403 ? 'You cannot resolve this dissent' : 'Decision refused'}>{err.message}</Banner> : null}
+      </ConfirmDialog>
+    </section>
   )
 }
 
@@ -302,6 +445,7 @@ export function ControlsTable({ runId }: { runId: string }) {
 }
 
 function ReportTab({ runId }: { runId: string }) {
+  const projectId = useRunStatus(runId).data?.project_id
   const reports = useReports(runId)
   const { can } = useSession()
   const first = reports.data?.[0]
@@ -314,10 +458,16 @@ function ReportTab({ runId }: { runId: string }) {
     onSuccess: () => { setConfirm(false); void qc.invalidateQueries({ queryKey: ['run', runId] }) },
   })
   const load = async () => setHtml(await apiText(`/reports/${first!.report_id}?format=html`))
-  const download = async (fmt: 'json' | 'html') => {
-    const text = await apiText(`/reports/${first!.report_id}?format=${fmt}&download=1`, fmt === 'json' ? 'application/json' : 'text/html')
-    const url = URL.createObjectURL(new Blob([text], { type: fmt === 'json' ? 'application/json' : 'text/html' }))
-    const a = document.createElement('a'); a.href = url; a.download = `${first!.report_id}.${fmt}`; a.click(); URL.revokeObjectURL(url)
+  const [dlError, setDlError] = useState<string | null>(null)
+  const download = async (fmt: 'json' | 'html' | 'pdf' | 'docx') => {
+    setDlError(null)
+    try {
+      const blob = await apiBlob(`/reports/${first!.report_id}?format=${fmt}&download=1`)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a'); a.href = url; a.download = `${first!.report_id}.${fmt}`; a.click(); URL.revokeObjectURL(url)
+    } catch (e) {
+      setDlError(e instanceof ApiError && e.status === 403 ? 'Only an approved report can be downloaded, unless you can approve reports.' : `Download failed: ${String(e)}`)
+    }
   }
   if (reports.isError)
     return reports.error instanceof ApiError && reports.error.status === 403 ? <Banner tone="warn" role="alert" title="Access denied">Reports require the report-reader or reviewer role.</Banner> : <Banner tone="bad" role="alert" title="Could not load reports">{String(reports.error)}</Banner>
@@ -329,6 +479,7 @@ function ReportTab({ runId }: { runId: string }) {
       <p className="row">
         {first.approval_state === 'APPROVED' ? <Badge d={{ icon: '✓', label: 'Approved', tone: 'ok' }} /> : <Badge d={{ icon: '◐', label: 'Awaiting review', tone: 'warn' }} />}
         <span>Report hash <ShortHash value={first.report_hash} /> generated {fmtTime(first.generated_at)}</span>
+        {first.revision > 1 ? <span data-testid="report-revision">Revision {first.revision}; supersedes <code>{first.supersedes}</code> (now marked superseded and no longer approvable)</span> : null}
       </p>
       <DataState q={body} label="report">
         {(b) => (
@@ -341,9 +492,25 @@ function ReportTab({ runId }: { runId: string }) {
               <dt>Coverage</dt><dd>{b.coverage_complete ? 'complete' : 'INCOMPLETE'}</dd>
               <dt>Policy / scope</dt><dd><code>{b.policy_versions.join(', ')}</code>; scope hash <ShortHash value={b.scope_manifest_hash} /></dd>
             </dl>
-            <h3>Limitations</h3>
+            {b.executive_summary ? (
+              <section aria-labelledby="exec-h" data-testid="executive-summary">
+                <h2 id="exec-h">Executive summary <Badge d={{ icon: '✦', label: 'AI-written', tone: 'neutral' }} /></h2>
+                <p>{b.executive_summary.summary}</p>
+                <p className="muted">Written by model {b.executive_summary.model_id ?? 'unknown'}. Every claim was checked against accepted findings; the findings are authoritative.</p>
+              </section>
+            ) : null}
+            <h2>Limitations</h2>
             {b.limitations.length ? <ul>{b.limitations.map((l, i) => <li key={i}>{l}</li>)}</ul> : <p className="muted">None recorded.</p>}
-            {b.pending_review.length ? (<><h3>Pending review (not authoritative)</h3><ul>{b.pending_review.map((p) => <li key={p.finding_id}><Badge d={display(SEVERITY_DISPLAY, p.severity)} /> {p.title}</li>)}</ul></>) : null}
+            {b.findings.some((f) => f.verification_questions) ? (
+              <section aria-labelledby="vq-h" data-testid="verification-questions">
+                <h2 id="vq-h">Questions for asset owners <Badge d={{ icon: '✦', label: 'AI-written', tone: 'neutral' }} /></h2>
+                <p className="muted">Answering these confirms or refutes a recorded exposure. Nothing was tested to produce them.</p>
+                <ul>{b.findings.filter((f) => f.verification_questions).map((f) => (
+                  <li key={f.finding_id}>{f.title}<ul>{f.verification_questions!.questions.map((q, n) => <li key={n}>{q}</li>)}</ul></li>
+                ))}</ul>
+              </section>
+            ) : null}
+            {b.pending_review.length ? (<><h2>Pending review (not authoritative)</h2><ul>{b.pending_review.map((p) => <li key={p.finding_id}><Badge d={display(SEVERITY_DISPLAY, p.severity)} /> {p.title}</li>)}</ul></>) : null}
           </>
         )}
       </DataState>
@@ -351,9 +518,12 @@ function ReportTab({ runId }: { runId: string }) {
         <button type="button" className="btn" onClick={() => void load()}>Preview HTML report</button>
         <button type="button" className="btn" onClick={() => void download('json')}>Download JSON</button>
         <button type="button" className="btn" onClick={() => void download('html')}>Download HTML</button>
-        {can('report:approve') && first.approval_state === 'PENDING' ? <button type="button" className="btn btn--primary" onClick={() => setConfirm(true)}>Approve report</button> : null}
+        <button type="button" className="btn" onClick={() => void download('pdf')}>Download PDF</button>
+        <button type="button" className="btn" onClick={() => void download('docx')}>Download Word (DOCX)</button>
+        {can('report:approve', projectId) && first.approval_state === 'PENDING' ? <button type="button" className="btn btn--primary" onClick={() => setConfirm(true)}>Approve report</button> : null}
       </div>
       {err ? <Banner tone="bad" role="alert" title={err.status === 403 ? 'You cannot approve this report' : 'Approval refused'}>{err.message}</Banner> : null}
+      {dlError ? <Banner tone="warn" role="alert" title="Not downloaded">{dlError}</Banner> : null}
       {html ? <iframe className="report" title="Report preview" sandbox="" srcDoc={html} /> : null}
       <ConfirmDialog open={confirm} title="Approve this report?" confirmLabel="Approve" busy={approve.isPending} onConfirm={() => approve.mutate()} onCancel={() => setConfirm(false)}>
         <p>Approval is bound to report hash <ShortHash value={first.report_hash} />. It does not certify the assessed estate.</p>

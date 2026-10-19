@@ -205,11 +205,19 @@ class _Quiet(ThreadingHTTPServer):
         pass  # failed handshakes and aborted clients are expected in these tests
 
 
+class _Quiet6(_Quiet):
+    address_family = socket.AF_INET6
+
+
 def start_server(
-    cert: Cert | None = None, *, tls_max: ssl.TLSVersion | None = None, **kw: Any
+    cert: Cert | None = None,
+    *,
+    tls_max: ssl.TLSVersion | None = None,
+    bind: str = "127.0.0.1",
+    **kw: Any,
 ) -> Server:
     srv = Server(port=0, scheme="https" if cert else "http", tls_max=tls_max, **kw)
-    httpd = _Quiet(("127.0.0.1", 0), _handler(srv))
+    httpd = (_Quiet6 if ":" in bind else _Quiet)((bind, 0), _handler(srv))
     srv.port = httpd.server_address[1]
     if cert:
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -219,6 +227,62 @@ def start_server(
         httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
     srv._httpd = httpd
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return srv
+
+
+# An empty SETTINGS frame then GOAWAY(PROTOCOL_ERROR) on stream 0: how an HTTP/2-only server
+# (prior knowledge, or TLS that ignores a missing h2 ALPN) answers an HTTP/1.1 request.
+H2_REFUSAL = (
+    bytes.fromhex("000000040000000000")
+    + bytes.fromhex("000008070000000000")
+    + (bytes.fromhex("0000000000000001"))
+)
+
+
+@dataclass
+class RawServer:
+    """A bare TCP listener: answers every connection with ``reply`` and records what it received."""
+
+    port: int
+    received: list[bytes] = field(default_factory=list)
+    alpn: list[str | None] = field(default_factory=list)
+    _sock: socket.socket | None = None
+
+    def stop(self) -> None:
+        if self._sock:
+            self._sock.close()
+
+
+def start_raw_server(
+    reply: bytes, cert: Cert | None = None, *, alpn: list[str] | None = None
+) -> RawServer:
+    ls = socket.socket()
+    ls.bind(("127.0.0.1", 0))
+    ls.listen()
+    srv = RawServer(port=ls.getsockname()[1], _sock=ls)
+    ctx = None
+    if cert:
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.load_cert_chain(cert.cert_path, cert.key_path)
+        if alpn:
+            ctx.set_alpn_protocols(alpn)
+
+    def serve() -> None:
+        while True:
+            try:
+                conn, _ = ls.accept()
+            except OSError:
+                return
+            with contextlib.suppress(OSError, ssl.SSLError):
+                ch: socket.socket = ctx.wrap_socket(conn, server_side=True) if ctx else conn
+                if isinstance(ch, ssl.SSLSocket):
+                    srv.alpn.append(ch.selected_alpn_protocol())
+                ch.settimeout(2)
+                srv.received.append(ch.recv(4096))
+                ch.sendall(reply)
+                ch.close()
+
+    threading.Thread(target=serve, daemon=True).start()
     return srv
 
 
@@ -254,4 +318,7 @@ def loopback_only() -> Iterator[list[tuple[str, int]]]:
         socket.socket.connect = real_connect  # type: ignore[method-assign]
 
 
-__all__ = ["BODY_MARKER", "Cert", "Server", "bundle", "loopback_only", "make_cert", "start_server"]
+__all__ = [
+    "BODY_MARKER", "H2_REFUSAL", "Cert", "RawServer", "Server", "bundle", "loopback_only",
+    "make_cert", "start_raw_server", "start_server",
+]  # fmt: skip

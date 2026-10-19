@@ -35,6 +35,13 @@ def test_defaults_are_fail_closed() -> None:
         {"log_redaction_enabled": False},
         {"dev_auth_stub": True},  # env defaults to prod
         {"ai_enabled": True},  # no approved model_id
+        {
+            "ai_enabled": True,
+            "model_provider": "astra",
+            "model_id": "d",
+        },  # no endpoint/key/approval
+        {"astra_endpoint": "https://attacker.example"},  # remote host outside the Azure allow-list
+        {"model_provider": "openai"},  # unknown provider
         {"assessment_mode": "read_write"},
         {"unknown_flag": True},
     ],

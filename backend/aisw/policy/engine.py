@@ -8,20 +8,59 @@ same ``PolicyEvaluator`` interface and must pass the same tests when OPA is intr
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Mapping
 from importlib import resources
 from typing import Any, Literal, Protocol
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from aisw.contracts.base import NonEmpty, Slug, StrictModel, canonical_hash
 from aisw.contracts.domain import ControlMapping
 from aisw.contracts.enums import PolicyOutcome, Severity
 
 
+def _is_number(v: Any) -> bool:
+    return isinstance(v, int | float) and not isinstance(v, bool)
+
+
+def json_equal(a: Any, b: Any) -> bool:
+    """Equality as JSON (and Rego) define it: true is not 1, numbers compare by value."""
+    if _is_number(a) and _is_number(b):
+        return bool(a == b)
+    if type(a) is not type(b):
+        return False
+    if isinstance(a, list):
+        return len(a) == len(b) and all(json_equal(x, y) for x, y in zip(a, b, strict=True))
+    if isinstance(a, dict):
+        return a.keys() == b.keys() and all(json_equal(a[k], b[k]) for k in a)
+    return bool(a == b)
+
+
+RULE_NAME = re.compile(r"[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*")
+
+
 class Check(StrictModel):
-    op: Literal["equals", "gte", "lte", "in", "disjoint"]
+    """``rego`` names a domain rule (``<domain>.<rule>``) that only the OPA engine can run."""
+
+    op: Literal["equals", "gte", "lte", "in", "disjoint", "rego"]
     value: Any
+
+    @model_validator(mode="after")
+    def _typed(self) -> Check:
+        if self.op in {"gte", "lte"} and not _is_number(self.value):
+            raise ValueError(f"{self.op} needs a numeric value")
+        if self.op in {"in", "disjoint"} and not isinstance(self.value, list):
+            raise ValueError(f"{self.op} needs a list value")
+        if self.op == "rego":
+            v = self.value
+            if not (
+                isinstance(v, dict) and set(v) <= {"rule", "params"}
+                and isinstance(v.get("rule"), str) and RULE_NAME.fullmatch(v["rule"])
+                and isinstance(v.get("params", {}), dict)
+            ):  # fmt: skip
+                raise ValueError('rego needs {"rule": "<domain>.<rule>", "params": {...}}')
+        return self
 
 
 class PackRule(StrictModel):
@@ -42,21 +81,22 @@ class PackRule(StrictModel):
         if observed is None:
             return PolicyOutcome.UNKNOWN  # evidence insufficient: never pass, never fail
         op, expected = self.check.op, self.check.value
-        try:
-            if op == "equals":
-                return PolicyOutcome.PASS if observed == expected else PolicyOutcome.FAIL
-            if op == "in":
-                return PolicyOutcome.PASS if observed in expected else PolicyOutcome.FAIL
-            if op == "disjoint":  # observed list shares nothing with the pack's list
-                if not isinstance(observed, list):
-                    return PolicyOutcome.ERROR
-                return PolicyOutcome.FAIL if set(observed) & set(expected) else PolicyOutcome.PASS
-            if isinstance(observed, bool) or not isinstance(observed, int | float):
-                return PolicyOutcome.ERROR  # check could not execute on this value type
-            ok = observed >= expected if op == "gte" else observed <= expected
-            return PolicyOutcome.PASS if ok else PolicyOutcome.FAIL
-        except TypeError:
-            return PolicyOutcome.ERROR
+        if op == "rego":
+            return PolicyOutcome.ERROR  # a domain rule needs the OPA engine (ADR-031)
+        if op == "equals":
+            return PolicyOutcome.PASS if json_equal(observed, expected) else PolicyOutcome.FAIL
+        if op == "in":
+            hit = any(json_equal(observed, e) for e in expected)
+            return PolicyOutcome.PASS if hit else PolicyOutcome.FAIL
+        if op == "disjoint":  # observed list shares nothing with the pack's list
+            if not isinstance(observed, list):
+                return PolicyOutcome.ERROR
+            shared = any(json_equal(o, e) for o in observed for e in expected)
+            return PolicyOutcome.FAIL if shared else PolicyOutcome.PASS
+        if not _is_number(observed):
+            return PolicyOutcome.ERROR  # check could not execute on this value type
+        ok = observed >= expected if op == "gte" else observed <= expected
+        return PolicyOutcome.PASS if ok else PolicyOutcome.FAIL
 
 
 class Framework(StrictModel):
@@ -77,6 +117,10 @@ class PolicyPack(StrictModel):
         return f"{self.pack_id}:{self.version}"
 
     @property
+    def needs_opa(self) -> bool:
+        return any(r.check.op == "rego" for r in self.rules)
+
+    @property
     def pack_hash(self) -> str:
         return canonical_hash(self.model_dump(mode="json"))
 
@@ -88,6 +132,8 @@ class PolicyPack(StrictModel):
 
 
 class PolicyEvaluator(Protocol):
+    runs_rego: bool
+
     def applicable_rules(self, pack: PolicyPack, attrs: Mapping[str, Any]) -> list[PackRule]: ...
 
     def evaluate_observation(
@@ -96,6 +142,8 @@ class PolicyEvaluator(Protocol):
 
 
 class PythonRuleEvaluator:
+    runs_rego = False
+
     def applicable_rules(self, pack: PolicyPack, attrs: Mapping[str, Any]) -> list[PackRule]:
         return [r for r in pack.rules if r.applies(attrs)]
 

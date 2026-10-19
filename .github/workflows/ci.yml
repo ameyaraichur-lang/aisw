@@ -1,29 +1,71 @@
+# AISW CI (ADR-030). Actions are pinned to full commit SHAs; bump them deliberately.
+# Nothing here reaches a real target: tests use embedded Postgres, a mock IdP, a KMS emulator
+# and loopback servers only. No secrets are used.
 name: ci
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  UV_VERSION: "0.12.13"
+  NODE_VERSION: "24"
+
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    name: Backend gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     defaults: { run: { working-directory: backend } }
+    env:
+      OPA_VERSION: "1.21.2"
+      OPA_SHA256: 830ab11f61ffec760b5e19db0d7ad02bf037e13f5ef4d665faeaf17632177527
+      AISW_REQUIRE_OPA: "1"  # the engine-equivalence tests must run, not skip
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - run: uv sync
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: { persist-credentials: false }
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        with: { version: "${{ env.UV_VERSION }}", working-directory: backend, enable-cache: true }
+      - name: Install OPA (pinned, checksum verified)
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/opa" "https://github.com/open-policy-agent/opa/releases/download/v${OPA_VERSION}/opa_linux_amd64_static"
+          echo "${OPA_SHA256}  $RUNNER_TEMP/opa" | sha256sum -c -
+          chmod 0755 "$RUNNER_TEMP/opa" && echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Rego gates
+        run: |
+          opa check --strict aisw/policy/rego
+          opa fmt --list --fail aisw/policy/rego
+          opa test aisw/policy/rego --coverage --threshold 95 --format json > /dev/null
+      - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run mypy
+      - run: uv run mypy aisw tests
       - run: uv run pytest -q
       - run: uv run pip-audit
       - run: uv run python ../tools/export_schemas.py --check
-      - run: uv run python ../tools/sbom.py --check  # SBOM + licence gate (unverified on a runner: Python metadata may differ by platform)
+      # SBOM + licence gate (Python metadata may differ by platform; first runner result pending)
+      - run: uv run python ../tools/sbom.py --check
+      - run: uv run python ../tools/signoffs.py --check
+      - name: Key rotation drill (emulator)
+        run: uv run python ../tools/key_rotation_drill.py --emulator --rotate
+
   web:
-    runs-on: ubuntu-latest
+    name: Web gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     defaults: { run: { working-directory: web } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 24 }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm run check:types
@@ -31,19 +73,138 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm audit --omit=dev
-  repo-hygiene:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: python3 tools/secret_scan.py .
+
   e2e:
-    runs-on: ubuntu-latest
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-node@v4
-        with: { node-version: 24 }
-      - run: cd backend && uv sync
-      - run: cd web && npm ci
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: { persist-credentials: false }
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        with: { version: "${{ env.UV_VERSION }}", working-directory: backend, enable-cache: true }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: uv sync --frozen
+        working-directory: backend
+      - run: npm ci
+        working-directory: web
       # Uses the runner's Google Chrome (channel: chrome); no browser download.
-      - run: cd web && npx playwright test
+      - run: npx playwright test
+        working-directory: web
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with: { name: playwright-results, path: web/test-results, retention-days: 7 }
+
+  deploy:
+    name: Images, compose and Syft SBOMs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      SYFT_VERSION: "1.54.1"
+      SYFT_SHA256: c069905b391cc4c20a5ba65ad5c10be2a7ba074f8ea6ad203e24d14e303dad47
+      SYFT_CHECK_FOR_APP_UPDATE: "false"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: { persist-credentials: false }
+      - name: Build images
+        run: |
+          docker build -f deploy/docker/backend.Dockerfile -t aisw-backend:ci .
+          docker build -f deploy/docker/web.Dockerfile -t aisw-web:ci .
+      - name: Backend image runs as uid 10001 with migrations beside the package
+        run: |
+          test "$(docker run --rm --entrypoint id aisw-backend:ci -u)" = 10001
+          docker run --rm --entrypoint python aisw-backend:ci -c \
+            "from aisw.bootstrap import MIGRATIONS; assert (MIGRATIONS / 'versions').is_dir(), MIGRATIONS"
+          docker run --rm aisw-backend:ci aisw.doctor --help > /dev/null
+          docker run --rm --entrypoint python aisw-backend:ci -c \
+            "import psycopg, pydantic_core, aisw.api.app; from cryptography.hazmat.primitives.asymmetric import ed25519; ed25519.Ed25519PrivateKey.generate(); assert psycopg.pq.__impl__ == 'binary', psycopg.pq.__impl__"
+          test "$(docker run --rm --entrypoint stat aisw-backend:ci -c '%u:%a' /var/lib/aisw/evidence)" = "10001:700"
+      - name: Web image serves the console with security headers
+        run: |
+          docker run -d --name web --add-host api:127.0.0.1 -p 127.0.0.1:18080:8080 aisw-web:ci
+          for _ in $(seq 30); do curl -fsS http://127.0.0.1:18080/healthz && break; sleep 1; done
+          curl -fsSI http://127.0.0.1:18080/ | tee headers.txt
+          grep -qi '^content-security-policy:' headers.txt
+          grep -qi '^x-content-type-options: nosniff' headers.txt
+          test "$(docker exec web id -u)" = 101
+      - name: Compose file is valid
+        working-directory: deploy/compose
+        run: |
+          cp aisw.env.example aisw.env
+          ./make-secrets.sh
+          docker compose config --quiet
+      - name: Install Syft (pinned, checksum verified)
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/syft.tgz" "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          echo "${SYFT_SHA256}  $RUNNER_TEMP/syft.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/syft.tgz" -C "$RUNNER_TEMP" syft && echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Syft SBOMs of the images and the web lockfile; cross-check the lockfile SBOM (ADR-043)
+        run: |
+          mkdir -p sbom
+          syft scan docker:aisw-backend:ci -q -o cyclonedx-json=sbom/backend-image.cdx.json
+          syft scan docker:aisw-web:ci -q -o cyclonedx-json=sbom/web-image.cdx.json
+          syft scan dir:web -q --exclude './node_modules/**' -o cyclonedx-json=sbom/web-lockfile.cdx.json
+          python3 tools/sbom_crosscheck.py check --syft sbom/backend-image.cdx.json \
+            --syft sbom/web-image.cdx.json --syft sbom/web-lockfile.cdx.json --summary "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with: { name: syft-sboms, path: sbom, retention-days: 30, if-no-files-found: ignore }
+
+  licences:
+    name: Licence scan (ScanCode)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SCANCODE_VERSION: "32.5.0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: { persist-credentials: false }
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        with: { version: "${{ env.UV_VERSION }}", working-directory: backend, enable-cache: true }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: uv sync --frozen
+        working-directory: backend
+      - run: npm ci --ignore-scripts
+        working-directory: web
+      - name: Stage the licence files of runtime components
+        run: uv run --project backend python tools/sbom_crosscheck.py stage "$RUNNER_TEMP/licences"
+      - name: ScanCode licence detection (pinned; pluggy pinned for its plugin loader)
+        run: |
+          uvx --python 3.12 --from "scancode-toolkit-mini==${SCANCODE_VERSION}" --with pluggy==1.5.0 \
+            scancode --license --json-pp "$RUNNER_TEMP/scancode.json" -n 2 --quiet "$RUNNER_TEMP/licences"
+      - name: Cross-check runtime licences against the policy
+        run: |
+          python3 tools/sbom_crosscheck.py check --scancode "$RUNNER_TEMP/scancode.json" \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+  hygiene:
+    name: Secret scan and workflow audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GITLEAKS_VERSION: "8.30.1"
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: { persist-credentials: false, fetch-depth: 0 }
+      - name: gitleaks over the full history (pinned, checksum verified; ADR-043)
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/gitleaks.tgz" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/gitleaks.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" git --redact=100 --no-banner --exit-code 1 .
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        with: { version: "${{ env.UV_VERSION }}", ignore-empty-workdir: true }
+      - run: python3 tools/secret_scan.py .
+      - name: Workflow lint and security audit
+        run: |
+          uvx --from actionlint-py==1.7.12.25 actionlint
+          uvx zizmor==1.31.1 --offline .github/workflows

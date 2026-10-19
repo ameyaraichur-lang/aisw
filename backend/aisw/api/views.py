@@ -3,7 +3,7 @@ the UI hiding a control is never the security boundary."""
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
@@ -12,12 +12,19 @@ from sqlalchemy import Engine, text
 
 from aisw.api.assessments import TERMINAL_RUN, _run_or_404
 from aisw.api.container import Container
+from aisw.api.controls import effective, latest_reviews
 from aisw.api.deps import get_actor, get_engine
+from aisw.api.exceptions import FINAL_RUN as REVIEWABLE_RUN
+from aisw.api.exceptions import allowed_actions, current_exception, exception_json, review_history
 from aisw.core.auth import list_dev_users
 from aisw.core.config import Environment
 from aisw.core.db import tenant_connection
+from aisw.core.project_roles import project_of_run
 from aisw.core.rbac import ROLE_PERMISSIONS, ActorContext, Permission, authorize
+from aisw.orchestrator.analysis import current_assurance
 from aisw.orchestrator.stream import stream_events
+from aisw.policy import mappings, signoffs
+from aisw.policy.exceptions import state as exc_state
 from aisw.policy.results import finding_id as make_finding_id
 
 router = APIRouter(prefix="/api/v1")
@@ -34,16 +41,23 @@ def _c(request: Request) -> Container:
 @router.get("/auth/mode")
 def auth_mode(request: Request) -> dict[str, Any]:
     s = request.app.state.settings
+    sso = getattr(request.app.state, "oidc", None) is not None
     if s.dev_auth_stub and s.env in {Environment.DEV, Environment.TEST}:
-        return {"mode": "dev_stub", "users": list_dev_users()}
-    return {"mode": "none", "users": []}
+        return {"mode": "dev_stub", "users": list_dev_users(), "sso": sso}
+    return {"mode": "oidc" if sso else "none", "users": [], "sso": sso}
 
 
 @router.get("/me")
 def me(actor: ActorContext = Depends(get_actor)) -> dict[str, Any]:
     perms = sorted({p.value for r in actor.roles for p in ROLE_PERMISSIONS[r]})
+    project_permissions = {
+        pid: sorted({p.value for r in roles for p in ROLE_PERMISSIONS[r]} - set(perms))
+        for pid, roles in actor.project_roles
+    }
     return {"tenant_id": actor.tenant_id, "actor_id": actor.actor_id,
-            "roles": sorted(r.value for r in actor.roles), "permissions": perms}  # fmt: skip
+            "roles": sorted(r.value for r in actor.roles), "permissions": perms,
+            "project_roles": {pid: sorted(r.value for r in roles) for pid, roles in actor.project_roles},
+            "project_permissions": {k: v for k, v in project_permissions.items() if v}}  # fmt: skip
 
 
 @router.get("/connectors")
@@ -71,6 +85,8 @@ def connectors(
                 "kind": cap.kind,
                 "import_kinds": sorted(cap.import_kinds),
                 "formats": list(cap.formats),
+                "declares_vantage": cap.param_model is not None
+                and "vantage" in cap.param_model.model_fields,
                 "health": next(
                     (h.status for h in c.registry.health() if h.adapter_id == aid), "DISABLED"
                 ),
@@ -86,7 +102,8 @@ def policy_packs(
     authorize(actor, Permission.PROJECT_READ)
     return [
         {"key": k, "pack_hash": p.pack_hash, "description": p.description,
-         "rules": len(p.rules), "framework": p.framework.model_dump()}
+         "rules": len(p.rules), "framework": p.framework.model_dump(),
+         "needs_opa": p.needs_opa, "runnable": c.evaluator.runs_rego or not p.needs_opa}
         for k in c.packs.keys()  # noqa: SIM118 - PackRegistry.keys() is not a dict
         if (p := c.packs.get(k)) is not None
     ]  # fmt: skip
@@ -96,6 +113,7 @@ def policy_packs(
 def list_inventory(
     project_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> list[dict[str, Any]]:
+    actor = actor.on(project_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         try:
@@ -121,6 +139,7 @@ def list_manifests(
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
 ) -> list[dict[str, Any]]:
+    actor = actor.on(project_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         rows = conn.execute(
@@ -159,6 +178,7 @@ def list_runs(
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
 ) -> dict[str, Any]:
+    actor = actor.on(project_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         rows = conn.execute(
@@ -190,6 +210,7 @@ def list_runs(
 def run_tasks(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> list[dict[str, Any]]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)
@@ -215,6 +236,7 @@ def run_tasks(
 def run_controls(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> list[dict[str, Any]]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         run = _run_or_404(conn, run_id)
@@ -241,16 +263,18 @@ def finding_detail(
     engine: Engine = Depends(get_engine),
     c: Container = Depends(_c),
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.FINDING_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         run = _run_or_404(conn, run_id)
         row = conn.execute(
-            text("SELECT body, assurance_verdict FROM findings WHERE run_id=:r AND finding_id=:f"),
+            text("SELECT body, assurance_verdict, lifecycle, stable_dedupe_key FROM findings "
+                 "WHERE run_id=:r AND finding_id=:f"),
             {"r": run_id, "f": finding_id},
-        ).first()
+        ).first()  # fmt: skip
         if row is None:
             raise HTTPException(status_code=404, detail="not found")
-        body, verdict = row
+        body, verdict, lifecycle, dkey = row
         if verdict == "REJECT":
             authorize(actor, Permission.AUDIT_READ)  # rejected candidates: auditors only
         evidence = conn.execute(
@@ -270,18 +294,14 @@ def finding_detail(
             ),
             {"r": run_id, "a": body["affected_assets"], "refs": body["evidence_refs"]},
         ).all()
-        assurance = conn.execute(
-            text(
-                "SELECT verdict, defect_codes, missing_refs, stale_refs, validation_version, "
-                "validated_at FROM assurance_results WHERE run_id=:r AND item_ref=:i"
-            ),
-            {"r": run_id, "i": f"finding:{finding_id}"},
-        ).first()
+        assurance = current_assurance(conn, run_id, f"finding:{finding_id}")
         risk_row = conn.execute(
             text(
                 "SELECT r.rubric_version, r.tier, r.provisional_tier, r.basis, r.factors, "
                 "r.missing_evidence, r.rationale, a.verdict FROM risk_assessments r "
+                "JOIN assessment_runs ar ON ar.run_id = r.run_id "
                 "LEFT JOIN assurance_results a ON a.run_id=r.run_id AND a.item_ref='risk:' || r.finding_id "
+                "AND a.revision = ar.assurance_revision "
                 "WHERE r.run_id=:r AND r.finding_id=:f"
             ),
             {"r": run_id, "f": finding_id},
@@ -296,22 +316,35 @@ def finding_detail(
             )
             if finding_id in b["finding_ids"] and v == "ACCEPT"
         ]
+        reviews = latest_reviews(conn, mappings.builtin())
+        history = review_history(conn, run_id, finding_id)
+        exc = current_exception(conn, str(run["project_id"]), dkey)
     risk = (
         {"rubric_version": risk_row[0], "tier": risk_row[1], "provisional_tier": risk_row[2],
          "basis": risk_row[3], "factors": risk_row[4], "missing_evidence": risk_row[5],
-         "rationale": risk_row[6], "assurance_verdict": risk_row[7]}
+         "rationale": risk_row[6], "assurance_verdict": risk_row[7],
+         "rubric_signoff": signoffs.builtin().status_of(f"risk-rubric-{risk_row[0]}")}
         if risk_row else None
     )  # fmt: skip
     # a tier is shown as business risk only when it is complete AND independently reproduced
     business_risk = risk["tier"] if risk and risk["assurance_verdict"] == "ACCEPT" else None
     pack = c.packs.get(run["policy_version"])
     matched = None
+    framework_mappings: list[dict[str, Any]] = []
     if pack is not None:
         for o in obs:
             if make_finding_id(pack, o[1], o[0]) == finding_id:
                 matched = o
+        for m in body["control_mappings"]:
+            if m["framework"] == pack.framework.name:
+                framework_mappings += effective(mappings.builtin(), reviews, m["control_id"])
     return {
         "finding": body, "assurance_verdict": verdict, "authoritative": verdict == "ACCEPT",
+        "framework_mappings": framework_mappings,
+        "lifecycle": lifecycle, "review_history": history,
+        "review_actions": allowed_actions(actor, lifecycle, verdict, run["state"] in REVIEWABLE_RUN),
+        "exception": exception_json(exc, c.clock()) if exc else None,
+        "exception_max_days": c.settings.exception_max_days,
         "evidence": [
             {"evidence_ref": e[0], "content_hash": e[1], "source": e[2], "tool_version": e[3],
              "collected_at": e[4].isoformat(), "redacted": e[5], "media_type": e[6], "size_bytes": e[7],
@@ -427,12 +460,18 @@ def overview(
             for v, s, n in conn.execute(
                 text(
                     "SELECT assurance_verdict, severity, count(*) FROM findings "
-                    "WHERE lifecycle <> 'RESOLVED' AND severity IN ('CRITICAL','HIGH') "
+                    "WHERE lifecycle NOT IN ('RESOLVED','FALSE_POSITIVE','ACCEPTED') "
+                    "AND severity IN ('CRITICAL','HIGH') "
                     "AND assurance_verdict IN ('ACCEPT','NEEDS_REVIEW') GROUP BY 1,2"
                 )
             )
         }
+        exc_rows = conn.execute(
+            text("SELECT status, expires_at FROM finding_exceptions WHERE status IN ('REQUESTED','APPROVED')")
+        ).all()  # fmt: skip
     expected = sum(b["expected_count"] for b in ledgers)
+    soon = now + timedelta(days=30)
+    exc_states = [(exc_state(s, x, now), x) for s, x in exc_rows]
     return {
         "as_of": now.isoformat(),
         "runs": {"total": sum(by_state.values()), "by_state": by_state},
@@ -454,6 +493,12 @@ def overview(
             "open_critical_high_authoritative": sev.get(("ACCEPT", "CRITICAL"), 0) + sev.get(("ACCEPT", "HIGH"), 0),
             "critical": sev.get(("ACCEPT", "CRITICAL"), 0), "high": sev.get(("ACCEPT", "HIGH"), 0),
             "pending_review_critical_high": sev.get(("NEEDS_REVIEW", "CRITICAL"), 0) + sev.get(("NEEDS_REVIEW", "HIGH"), 0),
+        },
+        "exceptions": {
+            "pending": sum(1 for s, _ in exc_states if s == "PENDING"),
+            "active": sum(1 for s, _ in exc_states if s == "ACTIVE"),
+            "expiring_30d": sum(1 for s, x in exc_states if s == "ACTIVE" and x <= soon),
+            "expired": sum(1 for s, _ in exc_states if s == "EXPIRED"),
         },
         "connectors": [
             {"adapter_id": a, "enabled": cap.enabled, "permission_ok": cap.permission_ok}
@@ -495,6 +540,7 @@ def event_stream(
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
 ) -> StreamingResponse:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)

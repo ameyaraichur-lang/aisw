@@ -1,0 +1,201 @@
+{
+  "answer_key": {
+    "key_id": "maple-trust-1.0.0",
+    "note": "Synthetic ground truth for the Maple Trust fixture estate. Not a real organisation."
+  },
+  "fixture_set": "maple-trust",
+  "generated_at": "2026-10-16T19:34:09+00:00",
+  "metrics": [
+    {
+      "detail": {
+        "absent_flagged": 2,
+        "answer_key_agreement": {
+          "agree": 62,
+          "disagree": [],
+          "of": 62
+        },
+        "matched": 58,
+        "unaccounted": [],
+        "unexpected_flagged": 2
+      },
+      "display": "62 of 62 (100.0%)",
+      "label": "Asset reconciliation",
+      "metric": "asset_reconciliation",
+      "status": "MET",
+      "target": "\u2265 95% reconciled or explicitly unresolved",
+      "value": 1.0
+    },
+    {
+      "detail": {
+        "answer_key_agreement": {
+          "agree": 60,
+          "disagree": [],
+          "of": 60
+        },
+        "by_status": {
+          "ABSENT": 2,
+          "SCANNED": 55,
+          "UNREACHABLE": 2,
+          "UNSUPPORTED": 3
+        },
+        "without_status": []
+      },
+      "display": "62 of 62 (100.0%)",
+      "label": "Assessment status coverage",
+      "metric": "status_coverage",
+      "status": "MET",
+      "target": "100% of in-scope assets have a status",
+      "value": 1.0
+    },
+    {
+      "detail": {
+        "detected": 15,
+        "known_issues": 18,
+        "missed": [
+          {
+            "asset_id": "mt-app-09",
+            "reason": "NOT_ASSESSED: the collector returned no value for this check",
+            "rule_id": "audit.logging_enabled"
+          },
+          {
+            "asset_id": "mt-dns-03",
+            "reason": "UNKNOWN: the collector returned an empty value, so the check was undecided",
+            "rule_id": "audit.logging_enabled"
+          },
+          {
+            "asset_id": "mt-legacy-02",
+            "reason": "ASSET_UNREACHABLE",
+            "rule_id": "ssh.permit_root_login"
+          }
+        ]
+      },
+      "display": "15 of 18 (83.3%)",
+      "label": "Known-issue detection: recall",
+      "metric": "detection_recall",
+      "status": "MEASURED",
+      "target": "Measured when an answer key is provided",
+      "value": 0.8333
+    },
+    {
+      "detail": {
+        "false_positive": [
+          {
+            "asset_id": "mt-win-07",
+            "finding_id": "f-ee83152397b21d885f89",
+            "rule_id": "password.min_length"
+          }
+        ],
+        "findings": 16,
+        "true_positive": 15,
+        "unlabelled": []
+      },
+      "display": "15 of 16 (93.8%)",
+      "label": "Known-issue detection: precision",
+      "metric": "detection_precision",
+      "status": "MEASURED",
+      "target": "Measured when an answer key is provided",
+      "value": 0.9375
+    },
+    {
+      "detail": {
+        "rule": "every evidence ref is stored for this run and backs a recorded observation",
+        "untraceable": []
+      },
+      "display": "16 of 16 (100.0%)",
+      "label": "Finding traceability",
+      "metric": "finding_traceability",
+      "status": "MET",
+      "target": "100%",
+      "value": 1.0
+    },
+    {
+      "detail": {
+        "checked": "report text (except the fixed disclaimer) and every control-gap row",
+        "gap_rows_without_support": [],
+        "phrases": []
+      },
+      "display": "0",
+      "label": "Unsupported compliance claims",
+      "metric": "unsupported_compliance_claims",
+      "status": "MET",
+      "target": "0",
+      "value": 0
+    },
+    {
+      "detail": {
+        "blocked_tasks": 0,
+        "violations": []
+      },
+      "display": "0 successful, 0 blocked",
+      "label": "Scope enforcement / unauthorised change attempts",
+      "metric": "scope_enforcement",
+      "status": "MET",
+      "target": "0 successful",
+      "value": 0
+    },
+    {
+      "detail": {
+        "decision": "USABLE",
+        "generated_at": "2026-10-16T13:35:48.417591+00:00",
+        "model_id": "gpt-5.4",
+        "set_version": "labelled-1.0.0"
+      },
+      "display": "15 of 15 (100.0%)",
+      "label": "Astra validator catch-rate (seeded bad outcomes)",
+      "metric": "validator_catch_rate",
+      "status": "MET",
+      "target": "Proposed \u2265 90%",
+      "value": 1.0
+    },
+    {
+      "detail": {
+        "decision": "USABLE",
+        "generated_at": "2026-10-16T13:35:48.417591+00:00",
+        "model_id": "gpt-5.4",
+        "set_version": "labelled-1.0.0"
+      },
+      "display": "0.0 over 9 clean cases",
+      "label": "Astra false-dissent rate",
+      "metric": "validator_false_dissent",
+      "status": "MET",
+      "target": "Proposed \u2264 10%",
+      "value": 0.0
+    },
+    {
+      "detail": {
+        "compared_digest": "sha256:e0f17cfb1dd2224c78cbb5ad2eb062d0ddf37af22926f18621a9bb37432c2380",
+        "compared_with": "086babc0-ea3c-4da0-9074-b413b2a46e53",
+        "digest": "sha256:e0f17cfb1dd2224c78cbb5ad2eb062d0ddf37af22926f18621a9bb37432c2380"
+      },
+      "display": "Identical",
+      "label": "Reproducibility of the deterministic layer",
+      "metric": "reproducibility",
+      "status": "MET",
+      "target": "100%",
+      "value": 1.0
+    },
+    {
+      "detail": {
+        "calls": 0
+      },
+      "display": "No model calls in this run",
+      "label": "Astra cost/latency per run",
+      "metric": "model_cost_latency",
+      "status": "MEASURED",
+      "target": "Measured and reported",
+      "value": 0
+    }
+  ],
+  "policy_version": "fixture-baseline:1.0.0",
+  "run_id": "b4d6cf28-1839-4b88-b8c3-52ed5010ad27",
+  "runs": [
+    "086babc0-ea3c-4da0-9074-b413b2a46e53",
+    "b4d6cf28-1839-4b88-b8c3-52ed5010ad27"
+  ],
+  "summary": {
+    "MEASURED": 3,
+    "MET": 8,
+    "NOT_MEASURED": 0,
+    "NOT_MET": 0
+  }
+}

@@ -1,8 +1,9 @@
 // Thin fetch wrapper. The UI never talks to anything but the platform API (no scanners, no DB).
 // Dev identity token: held in sessionStorage ONLY for the dev stub (a seeded, non-secret name).
-// Production sign-in is OIDC through the BFF with an httpOnly cookie (planned); no real credential
-// is ever stored in the browser.
+// Real sign-in is OIDC through the BFF (ADR-026): the session is an httpOnly cookie the page cannot
+// read; the page only echoes the readable CSRF cookie on each request. No IdP token reaches the browser.
 const TOKEN_KEY = 'aisw.dev.identity'
+const CSRF_COOKIE = 'aisw_csrf'
 
 export class ApiError extends Error {
   status: number
@@ -29,9 +30,18 @@ export function setDevIdentity(name: string | null): void {
   if (name) sessionStorage.setItem(TOKEN_KEY, name)
   else sessionStorage.removeItem(TOKEN_KEY)
 }
+export function csrfToken(): string | null {
+  const m = document.cookie.match(new RegExp(`(?:^|;\\s*)${CSRF_COOKIE}=([^;]+)`))
+  return m ? decodeURIComponent(m[1]) : null
+}
 export function authHeaders(): Record<string, string> {
   const id = getDevIdentity()
-  return id ? { Authorization: `Bearer dev-${id}` } : {}
+  if (id) return { Authorization: `Bearer dev-${id}` }
+  const csrf = csrfToken()
+  return csrf ? { 'X-AISW-CSRF': csrf } : {}
+}
+export function ssoLoginUrl(returnTo: string): string {
+  return `/api/v1/auth/login?return_to=${encodeURIComponent(returnTo)}`
 }
 
 export async function api<T>(
@@ -75,4 +85,10 @@ export async function apiText(path: string, accept = 'text/html'): Promise<strin
   const res = await fetch(`/api/v1${path}`, { headers: { Accept: accept, ...authHeaders() } })
   if (!res.ok) throw new ApiError(res.status, null, res.statusText)
   return res.text()
+}
+
+export async function apiBlob(path: string): Promise<Blob> {
+  const res = await fetch(`/api/v1${path}`, { headers: authHeaders() })
+  if (!res.ok) throw new ApiError(res.status, null, res.statusText)
+  return res.blob()
 }

@@ -1,0 +1,15 @@
+[
+  {"asset": {"uuid": "0b1c2d3e-0000-4000-8000-000000000011", "hostname": "web-01", "fqdn": "web-01.corp.test", "ipv4": "10.20.0.11"},
+   "plugin": {"id": 900001, "name": "Synthetic Web Server Remote Code Execution", "cvss3_base_score": 9.8, "cve": ["CVE-2099-0001"]},
+   "severity": "critical", "state": "OPEN", "last_found": "2026-10-14T08:30:00Z"},
+  {"asset": {"uuid": "0b1c2d3e-0000-4000-8000-000000000011", "hostname": "web-01", "fqdn": "web-01.corp.test", "ipv4": "10.20.0.11"},
+   "plugin": {"id": 900004, "name": "Synthetic OpenSSH Old Version", "cvss3_base_score": 7.5, "cve": ["CVE-2099-0004"]},
+   "severity": "high", "state": "FIXED", "last_found": "2026-09-01T08:30:00Z"},
+  {"asset": {"uuid": "0b1c2d3e-0000-4000-8000-000000000012", "hostname": "db-01", "ipv4": ["10.20.0.12"]},
+   "plugin": {"id": 900002, "name": "Synthetic TLS Weak Cipher Suites", "cvss3_base_score": 5.3, "cve": []},
+   "severity": "medium", "state": "REOPENED", "last_found": "2026-10-14T08:30:00Z"},
+  {"asset": {"uuid": "0b1c2d3e-0000-4000-8000-000000000012", "hostname": "db-01", "ipv4": ["10.20.0.12"]},
+   "plugin": {"id": 19506, "name": "Nessus Scan Information"}, "severity": "info", "state": "OPEN"},
+  {"asset": {"uuid": "0b1c2d3e-0000-4000-8000-000000000099", "hostname": "stray-01", "ipv4": "10.99.0.5"},
+   "plugin": {"id": 900009, "name": "Stray Finding", "cvss3_base_score": 8.1}, "severity": "high", "state": "OPEN"}
+]

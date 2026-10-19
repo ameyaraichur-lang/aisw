@@ -9,7 +9,7 @@ import { RecommendationBody, RecommendationHeader } from '../components/analysis
 import { Banner, ConfirmDialog, DataState, PageHeader, Pagination } from '../components/ui'
 import { fmtTime } from '../lib/format'
 
-type Row = Recommendation & { run_id: string; project_name: string }
+type Row = Recommendation & { run_id: string; project_name: string; run_requested_by: string }
 type Decision = 'ACCEPT' | 'REJECT' | 'DEFER'
 const LABEL: Record<Decision, string> = { ACCEPT: 'Accept for planning', DEFER: 'Defer', REJECT: 'Reject' }
 
@@ -22,8 +22,14 @@ function AgentsPanel() {
           <h2 id="agents-h">Bounded agents</h2>
           <p className="hint">
             Every agent is read-only. AI is <strong>{d.ai.enabled ? 'enabled' : 'disabled'}</strong>
-            {d.ai.enabled ? <> (model <code>{d.ai.model_id}</code>, licence {d.ai.model_license}, local endpoint only)</> : null}
-            {'. '}A model never has tools and never decides: deterministic checks do. Risk rubric <code>{d.rubric_version}</code>.
+            {d.ai.enabled
+              ? d.ai.provider === 'astra'
+                ? <> (Astra deployment <code>{d.ai.model_id}</code>, remote Azure OpenAI endpoint; redacted findings leave this host under an approved data-handling decision)</>
+                : <> (model <code>{d.ai.model_id}</code>, licence {d.ai.model_license}, local endpoint only)</>
+              : null}
+            {d.ai.validation_enabled ? <>. Agent outcomes are reviewed by an AI validator (<code>{d.ai.validation_model}</code>) that can only hold items for human review</> : null}
+            {'. '}A model never has tools and never decides: deterministic checks do. Risk rubric <code>{d.rubric_version}</code>
+            {d.signoffs.rubric !== 'APPROVED' ? ' (sample, awaiting policy-owner approval)' : null}.
           </p>
           <div className="table-wrap">
             <table>
@@ -35,7 +41,10 @@ function AgentsPanel() {
                     <th scope="row">{a.agent_id}. {a.name}</th>
                     <td>{a.purpose}</td>
                     <td>{a.adapters.length ? a.adapters.join(', ') : '–'}</td>
-                    <td>{a.ai_active ? 'Explanations on' : a.ai_capable ? 'Off' : 'Not used'}</td>
+                    <td>
+                      {a.ai_active ? 'Explanations on' : a.ai_capable ? 'Off' : 'Not used'}
+                      {a.ai_validated ? <><br /><span className="muted">Outcomes reviewed by AI validator</span></> : null}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -48,7 +57,7 @@ function AgentsPanel() {
 }
 
 function Decide({ r, ticketsEnabled }: { r: Row; ticketsEnabled: boolean }) {
-  const { can } = useSession()
+  const { can, me } = useSession()
   const qc = useQueryClient()
   const [pending, setPending] = useState<Decision | null>(null)
   const [reason, setReason] = useState('')
@@ -65,6 +74,7 @@ function Decide({ r, ticketsEnabled }: { r: Row; ticketsEnabled: boolean }) {
   })
   const err = (decide.error ?? ticket.error) instanceof ApiError ? ((decide.error ?? ticket.error) as ApiError) : null
   const final = r.status === 'APPROVED_FOR_PLANNING' || r.status === 'REJECTED'
+  const launcher = me?.actor_id === r.run_requested_by
   if (!can('recommendation:decide')) {
     return <p className="hint">Deciding on recommendations needs the approver role. Your role can read them.</p>
   }
@@ -72,9 +82,10 @@ function Decide({ r, ticketsEnabled }: { r: Row; ticketsEnabled: boolean }) {
     <div>
       {r.decided_by ? <p className="hint">Decided by {r.decided_by} at {fmtTime(r.decided_at ?? '')}: {r.decision_reason}</p> : null}
       {err ? <Banner tone="bad" role="alert" title="Not done">{String((err.body as { detail?: string } | null)?.detail ?? err.message)}</Banner> : null}
+      {!final && launcher ? <p className="hint">You launched this run, so another approver accepts or rejects its recommendations.</p> : null}
       {!final ? (
         <p className="row">
-          {(['ACCEPT', 'DEFER', 'REJECT'] as Decision[]).map((d) => (
+          {(launcher ? ['DEFER'] as Decision[] : ['ACCEPT', 'DEFER', 'REJECT'] as Decision[]).map((d) => (
             <button key={d} type="button" className={d === 'ACCEPT' ? 'btn btn--primary' : 'btn'} onClick={() => setPending(d)}>{LABEL[d]}</button>
           ))}
         </p>
@@ -85,7 +96,7 @@ function Decide({ r, ticketsEnabled }: { r: Row; ticketsEnabled: boolean }) {
       {draft ? (
         <Banner tone="ok" title="Ticket draft saved (not sent)">
           <p>{draft.payload.summary}</p>
-          <p>Drafts stay in the outbox. Nothing is delivered to any ticketing system.</p>
+          <p>Drafts stay in the <Link to={`/tickets?run=${r.run_id}`}>Ticket Outbox</Link> until another approver sends them.</p>
         </Banner>
       ) : null}
       <ConfirmDialog
@@ -119,7 +130,9 @@ export function Architecture() {
         lead="Draft recommendations built from independently accepted findings and approved target patterns. They are for planning only: nothing here changes a system."
       />
       <AgentsPanel />
-      <Banner tone="info" title="Sample patterns">The target patterns come from a sample catalog that must be replaced with your approved reference architecture. Effort is never estimated by the platform.</Banner>
+      {agents.data?.signoffs.catalog === 'APPROVED'
+        ? null
+        : <Banner tone="info" title="Sample patterns">The target patterns come from a sample catalog that must be replaced with your approved reference architecture. Effort is never estimated by the platform.</Banner>}
       {run ? <p className="row"><span className="chip">Showing run {run.slice(0, 8)} only</span> <button type="button" className="btn" onClick={() => { setOffset(0); setSp(status ? { status } : {}) }}>Show all runs</button></p> : null}
       <fieldset>
         <legend>Filter</legend>

@@ -1,0 +1,29 @@
+# One-shot: migrate as the schema owner and enable the service roles (ADR-029).
+[Unit]
+Description=AISW database bootstrap (migrations, service roles)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=aisw
+Group=aisw
+WorkingDirectory=/opt/aisw/backend
+LoadCredential=aisw_migration_database_url:/etc/aisw/secrets/aisw_migration_database_url
+LoadCredential=pg_app_password:/etc/aisw/secrets/pg_app_password
+LoadCredential=pg_worker_password:/etc/aisw/secrets/pg_worker_password
+Environment=AISW_MIGRATION_DATABASE_URL_FILE=%d/aisw_migration_database_url
+ExecStart=/opt/aisw/backend/.venv/bin/python -m aisw.bootstrap --app-password-file %d/pg_app_password --worker-password-file %d/pg_worker_password
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=@system-service
+
+[Install]
+WantedBy=multi-user.target

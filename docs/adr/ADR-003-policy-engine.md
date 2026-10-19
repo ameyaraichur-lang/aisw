@@ -1,6 +1,6 @@
 # ADR-003: Policy engine
 
-**Status:** Accepted (M0, approved with development plan)
+**Status:** Accepted (M0). Delivered by ADR-031: OPA 1.21.2 runs the packaged Rego; the Python evaluator remains the default and must agree with it.
 
 ## Decision
 OPA (Rego bundles, pinned version/digest) behind a PolicyEvaluator interface; a Python rule evaluator is the interim implementation until the opa binary is installed.

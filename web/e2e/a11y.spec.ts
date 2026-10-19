@@ -3,16 +3,24 @@ import { expect, test, type Page } from '@playwright/test'
 import { approvedManifest, launch, resume, seedProject, signIn, signOut, untilState } from './helpers.ts'
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
+// Best-practice rules about page structure: what a screen-reader user navigates by.
+const STRUCTURE = ['page-has-heading-one', 'heading-order', 'landmark-one-main', 'landmark-unique',
+  'landmark-no-duplicate-main', 'landmark-banner-is-top-level', 'landmark-main-is-top-level', 'region',
+  'empty-heading', 'empty-table-header']
 
 async function scan(page: Page, label: string, exclude: string[] = []) {
   const t0 = Date.now()
   await page.waitForLoadState('domcontentloaded')
   await expect(page.locator('main, body').first()).toBeVisible()
+  await expect(page.locator('h1').first()).toBeVisible()
   let builder = new AxeBuilder({ page }).withTags(TAGS)
   for (const sel of exclude) builder = builder.exclude(sel)
   const r = await builder.analyze()
-  const summary = r.violations.map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(' | ')}`)
-  console.log(`axe ${label}: ${Date.now() - t0}ms, ${r.violations.length} violation(s)`)
+  let structure = new AxeBuilder({ page }).withRules(STRUCTURE)
+  for (const sel of exclude) structure = structure.exclude(sel)
+  const violations = [...r.violations, ...(await structure.analyze()).violations]
+  const summary = violations.map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(' | ')}`)
+  console.log(`axe ${label}: ${Date.now() - t0}ms, ${violations.length} violation(s)`)
   expect(summary, `${label}: ${summary.join('\n')}`).toEqual([])
 }
 
@@ -31,8 +39,8 @@ test('no WCAG 2.2 AA violations on the main screens', async ({ page, request }) 
   await scan(page, 'sign-in')
 
   await signIn(page, 'alice')
-  for (const path of ['/', '/projects', '/integrations', '/assessments', '/assessments/new', '/assets', '/architecture',
-    `/assessments/${runId}/timeline`, `/assessments/${runId}/coverage`, `/assessments/${runId}/findings`, `/assessments/${runId}/analysis`, `/architecture?run=${ok}`, `/assessments/${runId}/controls`, `/findings`, '/controls']) {
+  for (const path of ['/', '/mission', '/projects', '/integrations', '/assessments', '/assessments/new', '/assets', '/architecture',
+    `/assessments/${runId}/timeline`, `/assessments/${runId}/coverage`, `/assessments/${runId}/findings`, `/assessments/${runId}/analysis`, `/architecture?run=${ok}`, `/assessments/${runId}/controls`, `/findings`, '/controls', '/retention']) {
     await page.goto(path)
     await expect(page.locator('main h1')).toBeVisible()
     await scan(page, `alice ${path}`)
@@ -79,6 +87,9 @@ test('no WCAG 2.2 AA violations on the main screens', async ({ page, request }) 
   await page.goto('/audit')
   await expect(page.getByText('Audit chain verified')).toBeVisible()
   await scan(page, 'audit')
+  await page.goto('/retention')
+  await expect(page.locator('main h1')).toBeVisible()
+  await scan(page, 'erin /retention')
   await page.goto('/approvals')
   await scan(page, 'denied state')
 })

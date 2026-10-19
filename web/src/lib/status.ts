@@ -71,12 +71,53 @@ export const VERDICT_DISPLAY: Record<string, Display> = {
   REJECT: { icon: '✕', label: 'Rejected by assurance', tone: 'bad' },
 }
 
+// AI validator verdicts (ADR-021): advisory only; a dissent can hold an item, never approve one.
+export const AI_VERDICT_DISPLAY: Record<string, Display> = {
+  CONCUR: { icon: '✓', label: 'AI concurs', tone: 'ok' },
+  CONCERN: { icon: '!', label: 'AI concern (review note)', tone: 'warn' },
+  INSUFFICIENT_EVIDENCE: { icon: '?', label: 'AI: insufficient evidence', tone: 'warn' },
+  DISSENT: { icon: '✕', label: 'AI dissent: held for review', tone: 'bad' },
+  NO_VERDICT: { icon: '–', label: 'No AI verdict', tone: 'neutral' },
+  VALIDATOR_INVALID: { icon: '⊘', label: 'AI reply rejected (ungrounded)', tone: 'neutral' },
+  UNAVAILABLE: { icon: '○', label: 'AI validation unavailable', tone: 'neutral' },
+}
+
 export const RECOMMENDATION_STATUS_DISPLAY: Record<string, Display> = {
   DRAFT: { icon: '…', label: 'Draft: awaiting a human decision', tone: 'neutral' },
   NEEDS_REVIEW: { icon: '?', label: 'Deferred: needs owner input', tone: 'warn' },
   APPROVED_FOR_PLANNING: { icon: '✓', label: 'Accepted for planning (nothing was changed)', tone: 'ok' },
   REJECTED: { icon: '✕', label: 'Rejected', tone: 'bad' },
   IMPLEMENTED_PENDING_VALIDATION: { icon: '◐', label: 'Implemented, pending validation', tone: 'info' },
+}
+
+// Framework-mapping review state (ADR-032): a proposal until the policy owner decides.
+export const MAPPING_DISPLAY: Record<string, Display> = {
+  APPROVED: { icon: '✓', label: 'Approved', tone: 'ok' },
+  NEEDS_REVIEW: { icon: '?', label: 'Needs policy-owner review', tone: 'warn' },
+  REJECTED: { icon: '✕', label: 'Rejected', tone: 'bad' },
+}
+
+// Finding exceptions (ADR-033): a risk acceptance in force for a limited time.
+export const EXCEPTION_DISPLAY: Record<string, Display> = {
+  PENDING: { icon: '…', label: 'Awaiting approval', tone: 'warn' },
+  ACTIVE: { icon: '◇', label: 'In force', tone: 'info' },
+  EXPIRED: { icon: '⌛', label: 'Expired: reported again', tone: 'bad' },
+  REJECTED: { icon: '✕', label: 'Rejected', tone: 'neutral' },
+  REVOKED: { icon: '⊘', label: 'Revoked', tone: 'neutral' },
+}
+
+// Ticket outbox (ADR-037): a draft is sent once, by a second approver, and never edited after.
+export const TICKET_DISPLAY: Record<string, Display> = {
+  DRAFT: { icon: '…', label: 'Draft: not sent', tone: 'neutral' },
+  SENDING: { icon: '◐', label: 'Sending', tone: 'info' },
+  SENT: { icon: '✓', label: 'Sent', tone: 'ok' },
+  FAILED: { icon: '!', label: 'Not sent: last attempt failed', tone: 'warn' },
+}
+
+export const LIFECYCLE_LABEL: Record<string, string> = {
+  NEW: 'New', TRIAGED: 'Confirmed', FALSE_POSITIVE: 'False positive', REOPENED: 'Reopened',
+  EXCEPTION_PENDING: 'Exception requested', ACCEPTED: 'Risk accepted (exception)',
+  IN_REMEDIATION: 'In remediation', PENDING_VALIDATION: 'Pending validation', RESOLVED: 'Resolved',
 }
 
 export const TERMINAL_RUN_STATES = new Set(['CLOSED', 'FAILED', 'CANCELLED', 'EXPIRED', 'PARTIAL', 'REPORT_READY'])
@@ -91,4 +132,19 @@ export const MANIFEST_BADGE: Record<string, Display> = {
   APPROVED: { icon: '✓', label: 'Approved', tone: 'ok' },
   SUPERSEDED: { icon: '–', label: 'Superseded', tone: 'neutral' },
   REVOKED: { icon: '✕', label: 'Revoked', tone: 'bad' },
+}
+
+export const METRIC_DISPLAY: Record<string, Display> = {
+  MET: { icon: '✓', label: 'Target met', tone: 'ok' },
+  NOT_MET: { icon: '✕', label: 'Target not met', tone: 'bad' },
+  MEASURED: { icon: '◆', label: 'Measured (no threshold)', tone: 'info' },
+  NOT_MEASURED: { icon: '?', label: 'Not measured', tone: 'neutral' },
+}
+
+export const ANCHOR_PROBLEM_TEXT: Record<string, string> = {
+  ANCHORED_EVENT_CHANGED: 'An event covered by an anchor has changed since it was anchored.',
+  STATEMENT_MISMATCH: 'A stored anchor statement does not match its recorded hash.',
+  SIGNATURE_NOT_VERIFIED: 'An anchor signature could not be verified with the trusted keys.',
+  WITNESS_UNAVAILABLE: 'The witness that confirmed an anchor is not available to this server.',
+  WITNESS_MISMATCH: 'The witness does not confirm an anchor statement.',
 }

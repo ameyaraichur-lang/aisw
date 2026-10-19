@@ -45,4 +45,9 @@ def dedupe_key(pack: PolicyPack, rule_id: str, asset_id: str) -> str:
 
 
 def finding_id(pack: PolicyPack, rule_id: str, asset_id: str) -> str:
-    return "f-" + dedupe_key(pack, rule_id, asset_id).removeprefix("sha256:")[:20]
+    return finding_id_for(pack.pack_id, rule_id, asset_id)
+
+
+def finding_id_for(pack_id: str, rule_id: str, asset_id: str) -> str:
+    key = canonical_hash({"pack": pack_id, "rule": rule_id, "asset": asset_id})
+    return "f-" + key.removeprefix("sha256:")[:20]

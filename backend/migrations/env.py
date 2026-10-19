@@ -15,9 +15,11 @@ def run() -> None:
         with context.begin_transaction():
             context.run_migrations()
         return
-    url = os.environ.get("AISW_DATABASE_URL")
+    # The owner DSN. AISW_DATABASE_URL is the app role's DSN in a deployment, so a separate
+    # variable is preferred; the fallback keeps single-DSN development setups working.
+    url = os.environ.get("AISW_MIGRATION_DATABASE_URL") or os.environ.get("AISW_DATABASE_URL")
     if not url:
-        raise RuntimeError("AISW_DATABASE_URL must be set to run migrations")
+        raise RuntimeError("AISW_MIGRATION_DATABASE_URL must be set to run migrations")
     engine = create_engine(url)
     with engine.connect() as connection:
         context.configure(connection=connection, target_metadata=None)

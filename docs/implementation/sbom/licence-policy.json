@@ -45,9 +45,10 @@
     "axe-core": "MPL-2.0. Test-only accessibility tooling; not shipped.",
     "lightningcss": "MPL-2.0. Build-time CSS tooling pulled by the bundler; not shipped in the runtime image (only its output is).",
     "pgserver": "Licence metadata is missing in the package, so it is UNKNOWN to this gate. Development/test harness only (embedded PostgreSQL for tests); never shipped. Verify its upstream licence before any redistribution of the dev environment.",
-    "certifi": "MPL-2.0 (file-level copyleft). Pulled only by the test HTTP client (httpx); not shipped in the runtime image.",
+    "certifi": "MPL-2.0 (file-level copyleft). Pulled only by dev tooling (requests, used by pip-audit); not shipped in the runtime image.",
     "colorama": "Licence metadata is absent in the installed package, so it is UNKNOWN to this gate. Terminal-colour helper pulled by dev tooling only; not shipped. Upstream licence is believed to be BSD-3-Clause (not verified here).",
-    "tzdata": "Licence metadata unreadable (not installed on this platform). Pulled only on Windows (psycopg marker sys_platform == 'win32'), which is not a supported deployment platform; excluded from the runtime closure. Upstream licence is believed to be Apache-2.0 (not verified here). Re-check if Windows is ever supported."
+    "tzdata": "Licence metadata unreadable (not installed on this platform). Pulled only on Windows (psycopg marker sys_platform == 'win32'), which is not a supported deployment platform; excluded from the runtime closure. Upstream licence is believed to be Apache-2.0 (not verified here). Re-check if Windows is ever supported.",
+    "httpx2-jsfetch": "Licence metadata unreadable (not installed on this platform). Pulled only under Pyodide (httpx2 marker sys_platform == 'emscripten') by the test HTTP client; never installed on a supported platform and not shipped. Re-check if a browser-hosted Python is ever used."
   },
   "acceptance_prefixes": {
     "lightningcss-": "MPL-2.0 platform binaries of lightningcss: same position as lightningcss (build-time only)."

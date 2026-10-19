@@ -1,7 +1,7 @@
 """Scenarios, recommendations, recommendation decisions, ticket drafts and the agent registry.
 
 Read-only MVP: a recommendation decision records a human choice and nothing else; a ticket draft is
-stored in an outbox and is never delivered anywhere.
+stored in an outbox, and is delivered only through ``aisw.api.tickets`` when that is enabled.
 """
 
 from __future__ import annotations
@@ -12,15 +12,24 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import Engine, text
 
+from aisw.agents import reachability as reach
+from aisw.agents.architecture import builtin_catalog
 from aisw.agents.registry import AGENTS
+from aisw.agents.roadmap import build_roadmap
 from aisw.api.assessments import _run_or_404
 from aisw.api.container import Container
 from aisw.api.deps import correlation_id, get_actor, get_engine
+from aisw.contracts.analysis import ReachEdge
 from aisw.contracts.base import NonEmpty, StrictModel, canonical_hash
 from aisw.core.audit import append_audit
+from aisw.core.config import ModelProvider
 from aisw.core.db import tenant_connection
-from aisw.core.rbac import ActorContext, Permission, authorize
+from aisw.core.project_roles import project_of_run
+from aisw.core.rbac import ActorContext, Forbidden, Permission, authorize
 from aisw.core.redaction import redact_obj, redact_text
+from aisw.orchestrator.analysis import usage_totals, validation_summary
+from aisw.orchestrator.events import append_event
+from aisw.policy import signoffs
 from aisw.policy.rubric import builtin as builtin_rubric
 
 router = APIRouter(prefix="/api/v1")
@@ -60,6 +69,7 @@ def _visible(actor: ActorContext, verdict: str | None) -> bool:
 def run_scenarios(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> list[dict[str, Any]]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.FINDING_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)
@@ -68,12 +78,53 @@ def run_scenarios(
                  "WHERE run_id=:r ORDER BY scenario_id"), {"r": run_id},
         ).all()  # fmt: skip
         nar = _narratives(conn, run_id)
+        meta = {
+            fid: {"title": t, "severity": sev, "category": cat, "finding_verdict": fv}
+            for fid, t, sev, cat, fv in conn.execute(
+                text("SELECT finding_id, body->>'title', severity, body->>'category', "
+                     "assurance_verdict FROM findings WHERE run_id=:r"), {"r": run_id},
+            )
+        }  # fmt: skip
     return [
-        {**body, "assurance_verdict": v, "authoritative": v == "ACCEPT",
+        {**body, "chain": [{**c, **meta.get(c["finding_id"], {})} for c in body["chain"]],
+         "assurance_verdict": v, "authoritative": v == "ACCEPT",
          "narrative": nar.get(("scenario", sid)) if v == "ACCEPT" else None}
         for sid, body, v in rows
         if _visible(actor, v)
     ]  # fmt: skip
+
+
+@router.get("/assessments/{run_id}/reachability")
+def run_reachability(
+    run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
+) -> dict[str, Any]:
+    """Edges from firewall configuration and declared-vantage scans, and what was not modelled."""
+    actor = project_of_run(engine, actor, run_id)
+    authorize(actor, Permission.FINDING_READ)
+    with tenant_connection(engine, actor.tenant_id) as conn:
+        _run_or_404(conn, run_id)
+        edges = [
+            b
+            for (b,) in conn.execute(
+                text(
+                    "SELECT body FROM reachability_edges WHERE run_id=:r ORDER BY dst, src, edge_id"
+                ),
+                {"r": run_id},
+            )
+        ]
+        caveats = [
+            c
+            for (c,) in conn.execute(
+                text("SELECT code FROM reachability_caveats WHERE run_id=:r ORDER BY code"),
+                {"r": run_id},
+            )
+        ]
+    exposed = reach.exposure(ReachEdge.model_validate(e) for e in edges)
+    return {
+        "edges": edges,
+        "caveats": caveats,
+        "exposure": {a: {"level": lvl, "edges": ids} for a, (lvl, ids) in sorted(exposed.items())},
+    }
 
 
 def _rec_row(
@@ -88,10 +139,153 @@ def _rec_row(
     }  # fmt: skip
 
 
+@router.get("/assessments/{run_id}/model-calls")
+def run_model_calls(
+    run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
+) -> dict[str, Any]:
+    """The model-call ledger (ADR-023): who served each call, what it cost, and how it ended.
+    Hashes only; prompts and replies are never returned."""
+    actor = project_of_run(engine, actor, run_id)
+    authorize(actor, Permission.FINDING_READ)
+    with tenant_connection(engine, actor.tenant_id) as conn:
+        _run_or_404(conn, run_id)
+        rows = conn.execute(
+            text("SELECT purpose, subject_ref, model_id, prompt_version, status, attempts, defects, "
+                 "input_tokens, output_tokens, latency_ms, replayed, input_hash, output_hash, "
+                 "created_at FROM llm_calls WHERE run_id=:r ORDER BY created_at, purpose, "
+                 "subject_ref"), {"r": run_id},
+        ).mappings().all()  # fmt: skip
+        totals = usage_totals(conn, run_id)
+    return {
+        "totals": totals,
+        "items": [{**r, "created_at": r["created_at"].isoformat()} for r in rows],
+    }
+
+
+@router.get("/assessments/{run_id}/ai-validations")
+def run_ai_validations(
+    run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
+) -> dict[str, Any]:
+    """The agent validation pass for a run (ADR-021). Model-written text, labelled as such."""
+    actor = project_of_run(engine, actor, run_id)
+    authorize(actor, Permission.FINDING_READ)
+    with tenant_connection(engine, actor.tenant_id) as conn:
+        _run_or_404(conn, run_id)
+        rows = conn.execute(
+            text("SELECT target_ref, agent_id, verdict, effect, issues, human_questions, "
+                 "validator_confidence, defects, model_id, prompt_version FROM ai_validations "
+                 "WHERE run_id=:r ORDER BY agent_id, target_ref"), {"r": run_id},
+        ).mappings().all()  # fmt: skip
+        resolutions = {
+            r["target_ref"]: {k: r[k] for k in ("decision", "reason", "decided_by")}
+            | {"decided_at": r["decided_at"].isoformat()}
+            for r in conn.execute(
+                text("SELECT target_ref, decision, reason, decided_by, decided_at "
+                     "FROM ai_validation_resolutions WHERE run_id=:r"), {"r": run_id},
+            ).mappings()
+        }  # fmt: skip
+        summary = validation_summary(conn, run_id)
+    names = {a.agent_id: a.name for a in AGENTS}
+    return {
+        "summary": summary,
+        "items": [
+            {**r, "agent_name": names[r["agent_id"]], "ai_generated": True,
+             "resolution": resolutions.get(r["target_ref"])}
+            for r in rows
+        ],
+    }  # fmt: skip
+
+
+class ResolutionRequest(StrictModel):
+    target_ref: NonEmpty
+    decision: Literal["OVERRULE", "UPHOLD"]
+    reason: NonEmpty
+
+
+@router.post("/assessments/{run_id}/ai-validations/resolutions")
+def resolve_dissent(
+    run_id: str,
+    body: ResolutionRequest,
+    response: Response,
+    actor: ActorContext = Depends(get_actor),
+    engine: Engine = Depends(get_engine),
+    c: Container = Depends(_c),
+    cid: str = Depends(correlation_id),
+) -> dict[str, Any]:
+    """A human decides an AI dissent (ADR-022). OVERRULE re-runs assurance without it and issues a
+    new report revision; UPHOLD records agreement and changes nothing. Nothing is ever ACCEPTed
+    here directly: assurance decides again from the evidence."""
+    actor = project_of_run(engine, actor, run_id)
+    authorize(actor, Permission.REPORT_APPROVE)
+    reason = redact_text(body.reason)[:1000]
+    with tenant_connection(engine, actor.tenant_id) as conn:
+        _run_or_404(conn, run_id)
+        run = dict(conn.execute(
+            text("SELECT * FROM assessment_runs WHERE run_id=:r FOR UPDATE"), {"r": run_id},
+        ).mappings().one())  # fmt: skip
+        found = conn.execute(
+            text("SELECT verdict, effect FROM ai_validations WHERE run_id=:r AND target_ref=:t"),
+            {"r": run_id, "t": body.target_ref},
+        ).first()
+        if found is None:
+            raise HTTPException(status_code=404, detail="not found")
+        verdict, effect = found
+        # A scope dissent is a review note (ADR-024): overruling it records the decision only.
+        reassess = body.decision == "OVERRULE" and effect == "HOLD_FOR_REVIEW"
+        prior = conn.execute(
+            text("SELECT decision, reason FROM ai_validation_resolutions "
+                 "WHERE run_id=:r AND target_ref=:t"), {"r": run_id, "t": body.target_ref},
+        ).first()  # fmt: skip
+        if prior is not None:
+            if tuple(prior) == (body.decision, reason):
+                response.headers["Idempotent-Replay"] = "true"
+                return {"target_ref": body.target_ref, "decision": body.decision, "replayed": True}
+            raise HTTPException(status_code=409, detail=f"already resolved: {prior[0]}")
+        if verdict != "DISSENT":
+            raise HTTPException(status_code=409, detail="only an AI dissent can be resolved")
+        if run["requested_by"] == actor.actor_id:
+            raise Forbidden("the requester of a run cannot resolve its AI dissents")
+        latest = conn.execute(
+            text("SELECT approval_state FROM reports WHERE run_id=:r "
+                 "ORDER BY revision DESC LIMIT 1"), {"r": run_id},
+        ).scalar()  # fmt: skip
+        if run["state"] not in {"REPORT_READY", "PARTIAL"} or latest != "PENDING":
+            raise HTTPException(status_code=409, detail="run is not awaiting report approval")
+        now = c.clock()
+        revision = run["assurance_revision"] + reassess
+        conn.execute(
+            text("INSERT INTO ai_validation_resolutions (tenant_id, run_id, target_ref, decision, "
+                 "reason, decided_by, decided_at, assurance_revision) VALUES (:t, :r, :ref, :d, "
+                 ":why, :b, :n, :v)"),
+            {"t": actor.tenant_id, "r": run_id, "ref": body.target_ref, "d": body.decision,
+             "why": reason, "b": actor.actor_id, "n": now, "v": revision},
+        )  # fmt: skip
+        if reassess:
+            conn.execute(
+                text("UPDATE assessment_runs SET state='ASSURANCE', assurance_revision=:v, "
+                     "updated_at=:n WHERE run_id=:r"), {"v": revision, "n": now, "r": run_id},
+            )  # fmt: skip
+            append_event(
+                conn, tenant_id=actor.tenant_id, run_id=run_id, now=now,
+                event_type="phase.changed",
+                payload={"from": run["state"], "to": "ASSURANCE", "reason": "AI_DISSENT_OVERRULED"},
+            )  # fmt: skip
+        append_audit(
+            conn, tenant_id=actor.tenant_id, actor=actor.actor_id,
+            action=f"ai_validation.{body.decision.lower()}",
+            resource=f"ai_validation:{run_id}:{body.target_ref}", result="SUCCESS",
+            correlation_id=cid, before_hash=canonical_hash({"verdict": verdict}),
+            after_hash=canonical_hash({"decision": body.decision, "reason": reason}),
+        )  # fmt: skip
+    return {"target_ref": body.target_ref, "decision": body.decision, "decided_by": actor.actor_id,
+            "assurance_revision": revision, "reassessing": reassess}  # fmt: skip
+
+
 @router.get("/assessments/{run_id}/recommendations")
 def run_recommendations(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> list[dict[str, Any]]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.FINDING_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)
@@ -106,6 +300,31 @@ def run_recommendations(
         for rid, body, v, st, by, at, why in rows
         if _visible(actor, v)
     ]
+
+
+@router.get("/assessments/{run_id}/roadmap")
+def run_roadmap(
+    run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
+) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
+    authorize(actor, Permission.FINDING_READ)
+    with tenant_connection(engine, actor.tenant_id) as conn:
+        run = _run_or_404(conn, run_id)
+        rows = conn.execute(
+            text("SELECT body, assurance_verdict, status FROM recommendations WHERE run_id=:r"),
+            {"r": run_id},
+        ).all()  # fmt: skip
+        owners: dict[str, str | None] = {
+            a: o
+            for a, o in conn.execute(
+                text("SELECT asset_id, owner FROM assets WHERE project_id=:p"),
+                {"p": run["project_id"]},
+            )
+        }
+    recs = [{**body, "assurance_verdict": v, "status": st} for body, v, st in rows]
+    return {"run_id": run_id, **build_roadmap(recs, owners),
+            "catalog_signoff": signoffs.builtin().status_of(
+                f"architecture-catalog-{builtin_catalog().version}")}  # fmt: skip
 
 
 @router.get("/recommendations")
@@ -125,8 +344,9 @@ def all_recommendations(
         rows = conn.execute(
             text(
                 "SELECT r.run_id, r.recommendation_id, r.body, r.status, r.decided_by, r.decided_at, "
-                "r.decision_reason, p.name, count(*) OVER () FROM recommendations r "
+                "r.decision_reason, p.name, count(*) OVER (), a.requested_by FROM recommendations r "
                 "JOIN projects p ON p.project_id = r.project_id "
+                "JOIN assessment_runs a ON a.run_id = r.run_id "
                 "WHERE r.assurance_verdict='ACCEPT' AND (CAST(:s AS text) IS NULL OR r.status=:s) "
                 "AND (CAST(:r AS text) IS NULL OR r.run_id=:r) "
                 "ORDER BY r.run_id DESC, r.recommendation_id LIMIT :l OFFSET :o"
@@ -135,7 +355,7 @@ def all_recommendations(
         ).all()
     return {
         "items": [
-            {"run_id": r[0], "project_name": r[7],
+            {"run_id": r[0], "project_name": r[7], "run_requested_by": r[9],
              **_rec_row(r[2], "ACCEPT", r[3], r[4], r[5], r[6], None)}
             for r in rows
         ],
@@ -162,6 +382,7 @@ def decide(
     c: Container = Depends(_c),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.RECOMMENDATION_DECIDE)
     target = _TARGET_STATUS[body.decision]
     reason = redact_text(body.reason)[:1000]
@@ -182,6 +403,11 @@ def decide(
             return {"recommendation_id": recommendation_id, "status": status, "replayed": True}
         if status in {"APPROVED_FOR_PLANNING", "REJECTED"}:
             raise HTTPException(status_code=409, detail=f"decision already recorded: {status}")
+        if body.decision != "DEFER" and run["requested_by"] == actor.actor_id:
+            raise HTTPException(
+                status_code=403,
+                detail="separation of duties: you launched this run, so another approver decides",
+            )
         if body.decision == "ACCEPT" and (verdict != "ACCEPT" or run["state"] not in FINAL_RUN):
             raise HTTPException(
                 status_code=409,
@@ -241,6 +467,7 @@ def create_ticket_draft(
     c: Container = Depends(_c),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, body.run_id)
     authorize(actor, Permission.RECOMMENDATION_DECIDE)
     if not c.settings.enable_itsm_ticket_creation:
         raise HTTPException(
@@ -298,13 +525,16 @@ def list_ticket_drafts(
     with tenant_connection(engine, actor.tenant_id) as conn:
         rows = conn.execute(
             text("SELECT outbox_id::text, run_id, recommendation_id, status, payload, created_by, "
-                 "created_at FROM ticket_outbox WHERE (CAST(:r AS text) IS NULL OR run_id=:r) "
+                 "created_at, target, attempts, external_ref, external_url, last_error, sent_by, "
+                 "sent_at FROM ticket_outbox WHERE (CAST(:r AS text) IS NULL OR run_id=:r) "
                  "ORDER BY created_at DESC"),
             {"r": run_id},
         ).all()  # fmt: skip
     return [
         {"outbox_id": r[0], "run_id": r[1], "recommendation_id": r[2], "status": r[3], "payload": r[4],
-         "created_by": r[5], "created_at": r[6].isoformat(), "delivered": False}
+         "created_by": r[5], "created_at": r[6].isoformat(), "delivered": r[3] == "SENT",
+         "target": r[7], "attempts": r[8], "external_ref": r[9], "external_url": r[10],
+         "last_error": r[11], "sent_by": r[12], "sent_at": r[13].isoformat() if r[13] else None}
         for r in rows
     ]  # fmt: skip
 
@@ -330,17 +560,33 @@ def agents(actor: ActorContext = Depends(get_actor), c: Container = Depends(_c))
                 "ai_active": a.ai_capable
                 and s.ai_enabled
                 and (s.ai_narrative_enabled if a.agent_id == 5 else s.ai_architecture_enabled),
+                "ai_validated": a.ai_validated and s.ai_enabled and s.ai_validation_enabled,
             }
             for a in AGENTS
         ],
         "ai": {
             "enabled": s.ai_enabled,
+            "validation_enabled": s.ai_enabled and s.ai_validation_enabled,
+            "validation_model": (s.astra_validation_deployment or s.model_id)
+            if s.ai_enabled and s.ai_validation_enabled
+            else None,
             "model_id": s.model_id if s.ai_enabled else None,
             "model_license": s.model_license if s.ai_enabled else None,
-            "endpoint_local_only": True,
+            "provider": s.model_provider.value if s.ai_enabled else None,
+            "endpoint_local_only": s.model_provider is ModelProvider.OLLAMA,
             "tools_available_to_model": False,
             "may_decide": False,  # a model explains; deterministic checks decide
         },
         "ticket_drafts_enabled": s.enable_itsm_ticket_creation,
+        "ticket_delivery": {
+            "enabled": s.enable_itsm_ticket_delivery,
+            "target": s.itsm_target if s.enable_itsm_ticket_delivery else None,
+        },
         "rubric_version": rubric.version,
+        "signoffs": {
+            "rubric": signoffs.builtin().status_of(f"risk-rubric-{rubric.version}"),
+            "catalog": signoffs.builtin().status_of(
+                f"architecture-catalog-{builtin_catalog().version}"
+            ),
+        },
     }

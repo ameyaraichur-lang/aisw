@@ -68,33 +68,33 @@ class CmdbImportAdapter(ImportAdapter):
     profiles = {"CMDB_IMPORT": ProfileClass.READ_ONLY}
     target_kinds = frozenset({"asset_group"})
     import_kinds = frozenset({"cmdb_csv", "cmdb_json"})
-    formats = (
+    formats: tuple[str, ...] = (
         "CSV with header asset_id,hostname,ip,os_family,owner,criticality,environment,last_seen,source",
         "JSON list or {assets: [...]}",
     )  # noqa: E501
     param_model = CmdbParams
 
-    def _records(self, text: str) -> tuple[str, list[dict[str, Any]]]:
+    def _records(self, text: str) -> tuple[str, list[dict[str, Any]], list[str]]:
+        """(format, records in the CSV column shape, extra warnings)."""
         stripped = text.lstrip("﻿").lstrip()
         if stripped.startswith(("[", "{")):
             data = parse_json(stripped)
             items = data.get("assets") if isinstance(data, dict) else data
             if not isinstance(items, list) or not all(isinstance(i, dict) for i in items):
                 raise ImportParseError("UNSUPPORTED_FORMAT")
-            return "json", cap(items)
+            return "json", cap(items), []
         try:
             csv.field_size_limit(100_000)
             reader = csv.DictReader(io.StringIO(stripped))
             if not reader.fieldnames or "asset_id" not in reader.fieldnames:
                 raise ImportParseError("UNSUPPORTED_FORMAT")
-            return "csv", cap([dict(r) for r in reader])
+            return "csv", cap([dict(r) for r in reader]), []
         except csv.Error as exc:
             raise ImportParseError("MALFORMED_CSV") from exc
 
     def parse(self, text: str, job: AdapterJob, params: CmdbParams) -> Parsed:
-        fmt, items = self._records(text)
+        fmt, items, warnings = self._records(text)
         rows: list[CmdbRow] = []
-        warnings: list[str] = []
         for n, it in enumerate(items, 1):
             aid = clean(it.get("asset_id"), 64)
             if not _ID.match(aid):
@@ -128,7 +128,7 @@ class CmdbImportAdapter(ImportAdapter):
             "gaps": [{"kind": g.kind, "subject": g.subject, "detail": g.detail} for g in rec.gaps],
         }  # fmt: skip
         partial = any(g.kind in BLOCKING_GAPS for g in rec.gaps) or any(
-            w.startswith("INVALID_RECORD") for w in warnings
+            w.startswith(("INVALID_RECORD", "EXPORT_TRUNCATED")) for w in warnings
         )
         return Parsed(
             raw,

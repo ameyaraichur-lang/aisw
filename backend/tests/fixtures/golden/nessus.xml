@@ -1,0 +1,44 @@
+<?xml version="1.0" ?>
+<NessusClientData_v2>
+  <Policy><policyName>Synthetic basic network scan</policyName></Policy>
+  <Report name="synthetic-weekly" xmlns:cm="http://www.nessus.org/cm">
+    <ReportHost name="10.20.0.11">
+      <HostProperties>
+        <tag name="HOST_START">Wed Oct 14 08:00:00 2026</tag>
+        <tag name="host-ip">10.20.0.11</tag>
+        <tag name="host-fqdn">web-01.corp.test</tag>
+        <tag name="Credentialed_Scan">true</tag>
+        <tag name="HOST_END">Wed Oct 14 08:40:00 2026</tag>
+      </HostProperties>
+      <ReportItem port="443" svc_name="www" protocol="tcp" severity="4" pluginID="900001" pluginName="Synthetic Web Server Remote Code Execution" pluginFamily="Web Servers">
+        <cvss3_base_score>9.8</cvss3_base_score><cvss_base_score>10.0</cvss_base_score><cve>CVE-2099-0001</cve>
+        <plugin_output>Server: synthetic/1.0</plugin_output>
+      </ReportItem>
+      <ReportItem port="443" svc_name="www" protocol="tcp" severity="2" pluginID="900002" pluginName="Synthetic TLS Weak Cipher Suites" pluginFamily="General">
+        <cvss3_base_score>5.3</cvss3_base_score>
+      </ReportItem>
+      <ReportItem port="0" svc_name="general" protocol="tcp" severity="0" pluginID="19506" pluginName="Nessus Scan Information" pluginFamily="Settings"/>
+    </ReportHost>
+    <ReportHost name="10.20.0.12">
+      <HostProperties>
+        <tag name="host-ip">10.20.0.12</tag>
+        <tag name="hostname">db-01</tag>
+        <tag name="Credentialed_Scan">false</tag>
+        <tag name="HOST_END">Wed Oct 14 08:55:00 2026</tag>
+      </HostProperties>
+      <ReportItem port="5432" svc_name="postgresql" protocol="tcp" severity="1" pluginID="900003" pluginName="Synthetic Service Banner Disclosure" pluginFamily="Databases">
+        <cvss_base_score>2.6</cvss_base_score>
+      </ReportItem>
+    </ReportHost>
+    <ReportHost name="10.20.0.13">
+      <HostProperties>
+        <tag name="host-ip">10.20.0.13</tag>
+        <tag name="HOST_START">Wed Oct 14 08:00:00 2026</tag>
+      </HostProperties>
+    </ReportHost>
+    <ReportHost name="10.99.0.5">
+      <HostProperties><tag name="host-ip">10.99.0.5</tag><tag name="host-fqdn">stray-01.other.test</tag><tag name="HOST_END">x</tag></HostProperties>
+      <ReportItem port="22" protocol="tcp" severity="3" pluginID="900009" pluginName="Stray Finding"/>
+    </ReportHost>
+  </Report>
+</NessusClientData_v2>

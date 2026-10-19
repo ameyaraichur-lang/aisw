@@ -27,7 +27,33 @@ ANALYSIS = {
     "ticket_outbox",
 }  # fmt: skip
 HARDENING = {"retention_holds", "retention_actions"}
-TABLES = FOUNDATION | PIPELINE | IMPORTS | ANALYSIS | HARDENING
+AI_VALIDATION = {"ai_validations"}
+REVISIONS = {"ai_validation_resolutions"}
+SESSIONS = {"auth_session_revocations"}
+MAPPING_REVIEWS = {"framework_mapping_reviews"}
+EXCEPTIONS = {"finding_exceptions", "finding_reviews", "exception_applications"}
+TRIGGERS = {"ai_validation_triggers"}
+RETENTION_CHECKS = {"retention_checks"}
+PROJECT_ROLES = {"project_role_grants"}
+REACHABILITY = {"reachability_edges", "reachability_caveats"}
+ANCHORS = {"audit_anchors"}
+TABLES = (
+    FOUNDATION
+    | PIPELINE
+    | IMPORTS
+    | ANALYSIS
+    | HARDENING
+    | AI_VALIDATION
+    | REVISIONS
+    | SESSIONS
+    | MAPPING_REVIEWS
+    | EXCEPTIONS
+    | TRIGGERS
+    | RETENTION_CHECKS
+    | PROJECT_ROLES
+    | REACHABILITY
+    | ANCHORS
+)
 
 
 def _tables(engine) -> set[str]:  # type: ignore[no-untyped-def]
@@ -42,8 +68,175 @@ def test_upgrade_downgrade_upgrade(pg_server: Any) -> None:
     eng = make_db(pg_server, f"mig_{uuid.uuid4().hex[:8]}")
     migrate(eng, "head")
     assert _tables(eng) == TABLES
+    grant = text("SELECT has_table_privilege('aisw_app', 'alembic_version', 'SELECT')")
+    with eng.connect() as c:
+        assert c.execute(grant).scalar() is True
+    kind_check = text("SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+                      "WHERE conname='imports_kind_check'")  # fmt: skip
+    with eng.connect() as c:
+        assert "trivy_json" in str(c.execute(kind_check).scalar())
+    outbox_cols = text("SELECT count(*) FROM information_schema.columns "
+                       "WHERE table_name='ticket_outbox' AND column_name='external_ref'")  # fmt: skip
+    with eng.connect() as c:
+        assert c.execute(outbox_cols).scalar() == 1
+    sod = text("SELECT 1 FROM pg_proc WHERE proname='aisw_recommendation_sod'")
+    with eng.connect() as c:
+        assert c.execute(sod).first()
+    migrate(eng, "0022", down=True)  # 0023 (audit anchors) is reversible
+    assert _tables(eng) == TABLES - ANCHORS
+    migrate(eng, "0021", down=True)  # 0022 (reachability graph) is reversible
+    assert _tables(eng) == TABLES - ANCHORS - REACHABILITY
+    migrate(eng, "0020", down=True)  # 0021 (per-project role grants) is reversible
+    assert _tables(eng) == TABLES - ANCHORS - REACHABILITY - PROJECT_ROLES
+    with eng.connect() as c:
+        assert not c.execute(
+            text("SELECT 1 FROM pg_proc WHERE proname='aisw_grant_revoke_once'")
+        ).first()
+    migrate(eng, "0019", down=True)  # 0020 (scheduled retention checks) is reversible
+    assert _tables(eng) == TABLES - ANCHORS - REACHABILITY - PROJECT_ROLES - RETENTION_CHECKS
+    deps = text("SELECT count(*) FROM information_schema.columns "
+                "WHERE table_name='run_tasks' AND column_name='depends_on'")  # fmt: skip
+    with eng.connect() as c:
+        assert c.execute(deps).scalar() == 1
+    migrate(eng, "0018", down=True)  # 0019 (task dependencies) is reversible
+    with eng.connect() as c:
+        assert c.execute(deps).scalar() == 0
+    migrate(eng, "0017", down=True)  # 0018 (recommendation separation of duties) is reversible
+    with eng.connect() as c:
+        assert not c.execute(sod).first()
+    migrate(eng, "0016", down=True)  # 0017 (ticket delivery state) is reversible
+    with eng.connect() as c:
+        assert c.execute(outbox_cols).scalar() == 0
+    migrate(eng, "0015", down=True)  # 0016 (AVP trigger decisions) is reversible
+    assert (
+        _tables(eng)
+        == TABLES - ANCHORS - REACHABILITY - PROJECT_ROLES - RETENTION_CHECKS - TRIGGERS
+    )
+    migrate(eng, "0014", down=True)  # 0015 (import kinds) is reversible
+    with eng.connect() as c:
+        assert "trivy_json" not in str(c.execute(kind_check).scalar())
+    migrate(eng, "0013", down=True)  # 0014 (exceptions and finding reviews) is reversible
+    assert (
+        _tables(eng)
+        == TABLES
+        - ANCHORS
+        - REACHABILITY
+        - PROJECT_ROLES
+        - RETENTION_CHECKS
+        - TRIGGERS
+        - EXCEPTIONS
+    )
+    with eng.connect() as c:
+        assert not c.execute(
+            text("SELECT 1 FROM pg_proc WHERE proname='aisw_exception_transition'")
+        ).first()
+    migrate(eng, "0012", down=True)  # 0013 (mapping reviews) is independently reversible
+    assert (
+        _tables(eng)
+        == TABLES
+        - ANCHORS
+        - REACHABILITY
+        - PROJECT_ROLES
+        - RETENTION_CHECKS
+        - TRIGGERS
+        - EXCEPTIONS
+        - MAPPING_REVIEWS
+    )
+    migrate(eng, "0011", down=True)  # 0012 (ops grants) is independently reversible
+    with eng.connect() as c:
+        assert c.execute(grant).scalar() is False
+    migrate(eng, "0010", down=True)  # 0011 (session revocations) is independently reversible
+    assert (
+        _tables(eng)
+        == TABLES
+        - ANCHORS
+        - REACHABILITY
+        - PROJECT_ROLES
+        - RETENTION_CHECKS
+        - TRIGGERS
+        - EXCEPTIONS
+        - MAPPING_REVIEWS
+        - SESSIONS
+    )
+    migrate(eng, "0009", down=True)  # 0010 (generation agents) is independently reversible
+    with eng.connect() as c:
+        checks = {
+            n: d for n, d in c.execute(text(
+                "SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint WHERE contype='c' "
+                "AND conrelid IN ('ai_validations'::regclass, 'narratives'::regclass)"))
+        }  # fmt: skip
+    assert "ai_validations_dissent_effect" not in checks and "ai_validations_check" in checks
+    assert "executive" not in checks["narratives_purpose_check"]
+    migrate(eng, "head")
+    migrate(eng, "0009", down=True)
+    migrate(eng, "0008", down=True)  # 0009 (model-call usage) is independently reversible
+    assert (
+        _tables(eng)
+        == TABLES
+        - ANCHORS
+        - REACHABILITY
+        - PROJECT_ROLES
+        - RETENTION_CHECKS
+        - TRIGGERS
+        - EXCEPTIONS
+        - MAPPING_REVIEWS
+        - SESSIONS
+    )
+    with eng.connect() as c:
+        assert not c.execute(
+            text("SELECT 1 FROM information_schema.columns WHERE table_name='llm_calls' "
+                 "AND column_name IN ('input_tokens', 'latency_ms', 'replayed')")
+        ).first()  # fmt: skip
+    migrate(eng, "0007", down=True)  # 0008 (review revisions) is independently reversible
+    assert (
+        _tables(eng)
+        == TABLES
+        - ANCHORS
+        - REACHABILITY
+        - PROJECT_ROLES
+        - RETENTION_CHECKS
+        - TRIGGERS
+        - EXCEPTIONS
+        - MAPPING_REVIEWS
+        - SESSIONS
+        - REVISIONS
+    )
+    with eng.connect() as c:
+        assert not c.execute(
+            text("SELECT 1 FROM information_schema.columns WHERE table_name='reports' "
+                 "AND column_name='revision'")
+        ).first()  # fmt: skip
+    migrate(eng, "0006", down=True)  # 0007 (agent validation) is independently reversible
+    assert (
+        _tables(eng)
+        == TABLES
+        - ANCHORS
+        - REACHABILITY
+        - PROJECT_ROLES
+        - RETENTION_CHECKS
+        - TRIGGERS
+        - EXCEPTIONS
+        - MAPPING_REVIEWS
+        - SESSIONS
+        - REVISIONS
+        - AI_VALIDATION
+    )
     migrate(eng, "0005", down=True)  # 0006 (hardening) is independently reversible
-    assert _tables(eng) == TABLES - HARDENING
+    assert (
+        _tables(eng)
+        == TABLES
+        - ANCHORS
+        - REACHABILITY
+        - PROJECT_ROLES
+        - RETENTION_CHECKS
+        - TRIGGERS
+        - EXCEPTIONS
+        - MAPPING_REVIEWS
+        - SESSIONS
+        - REVISIONS
+        - AI_VALIDATION
+        - HARDENING
+    )
     with eng.connect() as c:
         assert not c.execute(
             text("SELECT 1 FROM pg_trigger WHERE tgname='assessment_runs_permit_swap'")

@@ -42,6 +42,7 @@ class Slice:
         worker_engine: Engine,
         evidence_dir: Path,
         ca_file: Path | None = None,
+        evidence: EvidenceStore | None = None,
     ) -> None:
         self.clock = Clock()
         self.uid = uuid.uuid4().hex[:10]
@@ -53,7 +54,7 @@ class Slice:
         self.container: Container = build_container(
             Settings(env="test", dev_auth_stub=True),
             app_engine, signer=signer, keyring=KeyRing.from_signer(signer),
-            evidence=EvidenceStore(evidence_dir), clock=self.clock, audit_sink=self.audit,
+            evidence=evidence or EvidenceStore(evidence_dir), clock=self.clock, audit_sink=self.audit,
             resolver=lambda h, p: self.dns.get(h, ["93.184.216.34"]), ca_file=ca_file,
         )  # fmt: skip
         self.client = TestClient(create_app(self.container.settings, app_engine, self.container))
@@ -162,7 +163,7 @@ class Slice:
 
     def report(self, run_id: str) -> dict[str, Any]:
         rows = self.call("GET", f"/api/v1/assessments/{run_id}/reports", "carol").json()
-        assert len(rows) == 1
+        assert rows and all(row["approval_state"] == "SUPERSEDED" for row in rows[1:])
         r = self.call("GET", f"/api/v1/reports/{rows[0]['report_id']}", "carol")
         assert r.status_code == 200
         return dict(r.json())

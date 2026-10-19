@@ -1,0 +1,11 @@
+# Daily retention check; Persistent catches up after downtime. See aisw-retention.service.
+[Unit]
+Description=Daily AISW retention check
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

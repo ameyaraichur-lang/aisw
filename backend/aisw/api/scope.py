@@ -29,6 +29,7 @@ from aisw.contracts.manifest import (
 )
 from aisw.core.audit import append_audit
 from aisw.core.db import tenant_connection
+from aisw.core.project_roles import project_of_manifest
 from aisw.core.rbac import ActorContext, Permission, authorize
 
 router = APIRouter(prefix="/api/v1")
@@ -96,6 +97,7 @@ def create_inventory(
     engine: Engine = Depends(get_engine),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = actor.on(body.project_id)
     authorize(actor, Permission.INVENTORY_MANAGE)
     resolved = "inv-" + hashlib.sha256(f"{body.kind}|{body.selector}".encode()).hexdigest()[:12]
     expected = body.expected_assets
@@ -146,6 +148,7 @@ def get_manifest(
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
 ) -> dict[str, Any]:
+    actor = project_of_manifest(engine, actor, manifest_id)
     authorize(actor, Permission.PROJECT_READ)
     from aisw.authz.service import row_to_manifest
 

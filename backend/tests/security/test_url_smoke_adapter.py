@@ -18,6 +18,7 @@ import pytest
 from pydantic import ValidationError
 
 from aisw.adapters.url_smoke import (
+    HTTP2_ONLY,
     NOTICE,
     UrlSmokeAdapter,
     UrlSmokeParams,
@@ -31,7 +32,16 @@ from aisw.authz.net_guard import (
     vet_redirect,
 )
 from aisw.gateway.registry import AdapterJob, AdapterOutput
-from tests.http_server import BODY_MARKER, Server, bundle, loopback_only, make_cert, start_server
+from tests.http_server import (
+    BODY_MARKER,
+    H2_REFUSAL,
+    Server,
+    bundle,
+    loopback_only,
+    make_cert,
+    start_raw_server,
+    start_server,
+)
 
 pytestmark = pytest.mark.security
 
@@ -74,8 +84,8 @@ def servers(pki: dict[str, Any]) -> Iterator[dict[str, Server]]:
         x.stop()
 
 
-def adapter(pki: dict[str, Any]) -> UrlSmokeAdapter:
-    return UrlSmokeAdapter(ca_file=pki["ca"])
+def adapter(pki: dict[str, Any], inspection: Path | None = None) -> UrlSmokeAdapter:
+    return UrlSmokeAdapter(ca_file=pki["ca"], inspection_ca_file=inspection)
 
 
 def hook_for(*origins: str, ports: list[int]) -> Callable[[CanonicalURL, str, int], VettedTarget]:
@@ -93,7 +103,7 @@ def hook_for(*origins: str, ports: list[int]) -> Callable[[CanonicalURL, str, in
 def run(
     pki: dict[str, Any], srv: Server, path: str = "/", params: dict[str, Any] | None = None,
     scope: tuple[str, ...] | None = None, hook: Any = "default", host: str = "smoke.test",
-    pinned: tuple[str, ...] = ("127.0.0.1",),
+    pinned: tuple[str, ...] = ("127.0.0.1",), inspection: Path | None = None,
 ) -> AdapterOutput:  # fmt: skip
     url = f"{srv.scheme}://{host}:{srv.port}{path}"
     origins = scope if scope is not None else (f"{srv.scheme}://{host}:{srv.port}",)
@@ -103,7 +113,7 @@ def run(
         target_kind="url", target_selector=url, params=params or {}, pinned_addresses=pinned,
         request_budget=10, vet_redirect=vet,
     )  # fmt: skip
-    return adapter(pki).execute(job)
+    return adapter(pki, inspection).execute(job)
 
 
 # ---- the happy path ------------------------------------------------------------------------
@@ -219,6 +229,42 @@ def test_tls_verification_failure_sends_no_http_request(
     assert hop["tls"]["certificate"][
         "sha256_fingerprint"
     ]  # metadata still described the cert we rejected
+
+
+# ---- TLS inspection: the network re-signs TLS with the organisation's own CA ----------------------
+def test_an_inspected_connection_is_reported_and_its_certificate_is_not_judged(
+    pki: dict[str, Any], servers: dict[str, Server]
+) -> None:
+    # "untrusted" stands in for the inspection proxy: outside the trust store, named by the operator.
+    srv = servers["untrusted"]
+    out = run(pki, srv, "/ok", inspection=pki["untrusted"].cert_path)
+    hop = out.raw["hops"][0]
+    assert hop["tls"]["inspected"] is True and hop["tls"]["verified"] is False
+    assert hop["error"] is None and hop["response"]["status"] == 200 and srv.paths() == ["/ok"]
+    assert out.status == "SUCCEEDED" and len(out.warnings) == 1
+    assert out.warnings[0].startswith(
+        "TLS_INSPECTED:smoke.test: certificate issued by CN=smoke.test"
+    )
+    observed = {
+        o.rule_id: o.value
+        for o in adapter(pki).normalize(out, run_id="r", task_id="k").observations
+    }
+    assert not [
+        r for r in observed if r.startswith("tls.")
+    ]  # the proxy's certificate is not the target's
+    assert observed["http.response_received"] is True and observed["http.hsts_present"] is True
+
+
+@pytest.mark.parametrize("which", ["untrusted", "wrongname"])
+def test_inspection_ca_does_not_excuse_other_tls_failures(
+    pki: dict[str, Any], servers: dict[str, Server], which: str
+) -> None:
+    other_ca = pki["expired"].cert_path if which == "untrusted" else pki["wrongname"].cert_path
+    srv = servers[which]  # untrusted: issued by another CA; wrongname: right CA, wrong hostname
+    out = run(pki, srv, "/ok", inspection=other_ca)
+    hop = out.raw["hops"][0]
+    assert out.warnings == ["TLS_VERIFY_FAILED"] and srv.requests == []
+    assert "inspected" not in hop["tls"] and hop["request_sent"] is False
 
 
 def test_expired_certificate_metadata_is_negative(
@@ -494,3 +540,102 @@ def test_non_https_targets_get_no_tls_observations(
         not any(k.startswith("tls.") or k == "http.hsts_present" for k in o)
         and o["http.response_received"] is True
     )
+
+
+# ---- network edge cases: IPv6-only, HTTP/2-only, proxies (loopback only) -----------------------
+def test_an_ipv6_only_target_is_probed_over_its_pinned_ipv6_address(
+    pki: dict[str, Any], attempts: list[tuple[str, int]]
+) -> None:
+    srv = start_server(pki["good"], bind="::1")
+    try:
+        out = run(pki, srv, "/ok", pinned=("::1",))
+        hop = out.raw["hops"][0]
+        assert out.status == "SUCCEEDED" and hop["connect"] == {"ip": "::1", "port": srv.port}
+        assert (
+            hop["tls"]["verified"] is True and srv.requests[0]["host"] == f"smoke.test:{srv.port}"
+        )
+
+        out2 = run(pki, srv, "/ok", pinned=("127.0.0.1", "::1"))  # nothing listens on IPv4
+        assert out2.status == "SUCCEEDED" and out2.raw["hops"][0]["connect"]["ip"] == "::1"
+        assert ("127.0.0.1", srv.port) in attempts and ("::1", srv.port) in attempts
+    finally:
+        srv.stop()
+
+
+def test_an_ipv6_literal_url_sends_a_bracketed_host_header(pki: dict[str, Any]) -> None:
+    srv = start_server(None, bind="::1")
+    try:
+        out = run(pki, srv, "/ok", host="[::1]", pinned=("::1",))
+        assert out.status == "SUCCEEDED" and srv.requests[0]["host"] == f"[::1]:{srv.port}"
+        assert out.raw["target"] == f"http://[::1]:{srv.port}/ok"
+    finally:
+        srv.stop()
+
+
+def _h2_only(pki: dict[str, Any], tls: bool) -> tuple[AdapterOutput, Any]:
+    srv = start_raw_server(H2_REFUSAL, pki["good"] if tls else None, alpn=["h2"])
+    try:
+        scheme = "https" if tls else "http"
+        url = f"{scheme}://smoke.test:{srv.port}/ok"
+        job = AdapterJob(
+            tenant_id="t", project_id="p", run_id="r", task_id="k", profile="PASSIVE_HTTP_SMOKE",
+            target_kind="url", target_selector=url, params={}, pinned_addresses=("127.0.0.1",),
+            request_budget=10, vet_redirect=hook_for(f"{scheme}://smoke.test:{srv.port}", ports=[srv.port]),
+        )  # fmt: skip
+        return adapter(pki).execute(job), srv
+    finally:
+        srv.stop()
+
+
+@pytest.mark.parametrize("tls", [True, False])
+def test_an_http2_only_server_is_reported_as_unsupported_not_as_silent(
+    pki: dict[str, Any], tls: bool
+) -> None:
+    out, srv = _h2_only(pki, tls)
+    hop = out.raw["hops"][0]
+    assert out.status == "PARTIAL" and out.warnings == [HTTP2_ONLY] and hop["error"] == HTTP2_ONLY
+    assert srv.received and srv.received[0].startswith(b"GET /ok HTTP/1.1\r\n")  # one request
+    if tls:
+        assert srv.alpn == [None] and hop["tls"]["verified"] is True and hop["tls"]["alpn"] is None
+    _, o = norm(pki, out)
+    assert "http.response_received" not in o  # the probe could not ask, so nothing is claimed
+    assert (o.get("tls.verified") is True) is tls
+
+
+def test_a_server_that_refuses_http1_during_the_handshake_is_unsupported(
+    pki: dict[str, Any], servers: dict[str, Server], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class Refusing(ssl.SSLContext):
+        def wrap_socket(self, *a: Any, **kw: Any) -> ssl.SSLSocket:
+            raise ssl.SSLError(
+                1, "[SSL: TLSV1_ALERT_NO_APPLICATION_PROTOCOL] no application protocol"
+            )
+
+    monkeypatch.setattr(
+        UrlSmokeAdapter, "_context", lambda self, verify: Refusing(ssl.PROTOCOL_TLS_CLIENT)
+    )
+    out = run(pki, servers["ok"], "/ok")
+    assert out.status == "PARTIAL" and out.raw["hops"][0]["error"] == HTTP2_ONLY
+    assert out.raw["request_count"] == 0 and servers["ok"].requests == []
+
+
+def test_the_negotiated_alpn_protocol_is_recorded(
+    pki: dict[str, Any], servers: dict[str, Server]
+) -> None:
+    hop = run(pki, servers["ok"], "/ok").raw["hops"][0]
+    assert hop["tls"]["alpn"] is None  # the test server does not negotiate ALPN; offered http/1.1
+
+
+@pytest.mark.parametrize("var", ["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "ALL_PROXY"])
+def test_proxy_settings_in_the_environment_are_never_used(
+    pki: dict[str, Any], servers: dict[str, Server], monkeypatch: pytest.MonkeyPatch, var: str
+) -> None:
+    proxy = start_raw_server(b"HTTP/1.1 200 Connection established\r\n\r\n")
+    try:
+        monkeypatch.setenv(var, f"http://127.0.0.1:{proxy.port}")
+        for srv in (servers["ok"], servers["http"]):
+            out = run(pki, srv, "/ok")
+            assert out.status == "SUCCEEDED" and out.raw["hops"][0]["connect"]["port"] == srv.port
+        assert proxy.received == []
+    finally:
+        proxy.stop()

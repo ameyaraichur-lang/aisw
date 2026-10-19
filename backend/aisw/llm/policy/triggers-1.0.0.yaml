@@ -1,0 +1,46 @@
+# AI validation pass (AVP) trigger policy: which agent outcomes the reviewer model is asked to check.
+# Configuration, not code. Every decision (triggered or skipped, and the rule that decided it) is
+# stored per run in ai_validation_triggers. A skipped item is still covered by the deterministic
+# validator (Agent 7); the AVP can only ever add caution.
+version: 1.0.0
+status: SAMPLE_NEEDS_OWNER_REVIEW
+# Order in which packets are sent, so a run budget is spent on the most important checks first.
+priority: [0, 7, 8, 5, 6, 1, 2, 3, 4]
+agents:
+  0:
+    rules: [{always: true}]
+    why: Every scope manifest version that a run executed under.
+  1:
+    rules:
+      - {coverage_below: 0.95}
+      - {zero_asset_anomaly: true}
+      - {source_failed: true}
+      - {has_gaps: true}
+    why: Coverage below 95%, a source that found nothing, a failed source, or recorded gaps.
+  2:
+    rules:
+      - {severity_at_least: HIGH}
+      - {outcome_in: [NOT_APPLICABLE, UNKNOWN, ERROR]}
+    why: Critical and high findings, and every not-applicable or unknown outcome.
+  3:
+    rules:
+      - {severity_at_least: HIGH}
+      - {outcome_in: [NOT_APPLICABLE, UNKNOWN, ERROR]}
+    why: High-or-worse cloud findings, and every not-applicable or unknown outcome.
+  4:
+    rules: [{severity_at_least: MEDIUM}]
+    why: Exposure findings of medium severity or worse.
+  5:
+    rules:
+      - {tier_in: [P0, P1]}
+      - {sample_rate: 0.2}
+    why: All P0 and P1 scenarios, and a deterministic 20% sample of the rest.
+  6:
+    rules: [{always: true}]
+    why: Every draft recommendation.
+  7:
+    rules: [{always: true}]
+    why: Every AI-written text that passed the deterministic grounding checks.
+  8:
+    rules: [{always: true}]
+    why: Every executive summary, before the publication gate.

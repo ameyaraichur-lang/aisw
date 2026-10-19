@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { useAllFindings, useFinding, useRuns } from '../api/hooks'
+import { useAllFindings, useFinding } from '../api/hooks'
 import { Badge, Banner, CopyButton, DataState, PageHeader, Pagination, ShortHash } from '../components/ui'
 import { RiskPanel } from '../components/analysis'
+import { ReviewPanel } from './Exceptions'
 import { fmtTime } from '../lib/format'
-import { OUTCOME_DISPLAY, SEVERITY_DISPLAY, VERDICT_DISPLAY, display } from '../lib/status'
-import { ControlsTable } from './RunDetail'
+import { LIFECYCLE_LABEL, MAPPING_DISPLAY, OUTCOME_DISPLAY, SEVERITY_DISPLAY, VERDICT_DISPLAY, display } from '../lib/status'
 
 export function Findings() {
   const [sp, setSp] = useSearchParams()
@@ -41,7 +41,7 @@ export function Findings() {
                   <tr key={f.run_id + f.finding_id}>
                     <td><Badge d={display(SEVERITY_DISPLAY, f.severity)} /></td>
                     <td><Link to={`/findings/${f.run_id}/${f.finding_id}`}>{f.title}</Link></td>
-                    <td>{f.project_name}</td><td>{f.affected_assets.join(', ')}</td><td>{f.lifecycle}</td>
+                    <td>{f.project_name}</td><td>{f.affected_assets.join(', ')}</td><td>{LIFECYCLE_LABEL[f.lifecycle] ?? f.lifecycle}</td>
                     <td><Link to={`/assessments/${f.run_id}`}>{f.run_id.slice(0, 8)}</Link></td>
                   </tr>))}
                 </tbody>
@@ -72,7 +72,7 @@ export function FindingDetail() {
               <Badge d={display(SEVERITY_DISPLAY, f.severity)} title={`severity source: ${f.severity_source}`} />
               <Badge d={display(OUTCOME_DISPLAY as never, f.outcome)} />
               <Badge d={display(VERDICT_DISPLAY, d.assurance_verdict)} />
-              <span className="chip">lifecycle {f.lifecycle}</span>
+              <span className="chip">lifecycle {LIFECYCLE_LABEL[d.lifecycle] ?? d.lifecycle}</span>
               <span className="chip">confidence {f.confidence}</span>
               <span className="chip">business risk: {d.risk_explanation.business_risk ?? 'not rated'}</span>
             </p>
@@ -125,12 +125,19 @@ export function FindingDetail() {
               <div>
                 <section className="panel" aria-labelledby="cm">
                   <h2 id="cm">Control mapping</h2>
-                  <table><caption>Mapped controls and their approval state</caption>
-                    <thead><tr><th scope="col">Framework</th><th scope="col">Control</th><th scope="col">Mapping</th></tr></thead>
-                    <tbody>{(f.control_mappings ?? []).map((m, i) => (
-                      <tr key={i}><td>{m.framework} {m.version}</td><td><code>{m.control_id}</code></td>
-                        <td>{m.mapping_status === 'APPROVED' ? <Badge d={{ icon: '✓', label: 'Approved', tone: 'ok' }} /> : <Badge d={{ icon: '?', label: 'Needs policy-owner review', tone: 'warn' }} />}</td></tr>))}</tbody>
-                  </table>
+                  {(() => {
+                    const own = (f.control_mappings ?? [])[0]
+                    return own ? <p>Pack control <code>{own.control_id}</code> ({own.framework} {own.version})</p> : null
+                  })()}
+                  {d.framework_mappings.length ? (
+                    <table><caption>Proposed framework mappings and their review state</caption>
+                      <thead><tr><th scope="col">Framework</th><th scope="col">Control</th><th scope="col">Mapping</th></tr></thead>
+                      <tbody>{d.framework_mappings.map((m) => (
+                        <tr key={m.key}><td>{m.framework} {m.version}</td><td><code>{m.control_id}</code> <span className="muted">{m.title}</span></td>
+                          <td><Badge d={display(MAPPING_DISPLAY, m.status)} />{m.reviewed_by ? <span className="muted"> by {m.reviewed_by}</span> : null}</td></tr>))}</tbody>
+                    </table>
+                  ) : <p className="muted">No framework mapping is catalogued for this control.</p>}
+                  <p className="hint">Mappings are reviewed on the <Link to={`/controls`}>Control Matrix</Link>. An approved mapping is not a statement of compliance.</p>
                   <p className="hint">Policy: <code>{f.policy_version}</code></p>
                 </section>
                 <section className="panel" aria-labelledby="as">
@@ -143,40 +150,12 @@ export function FindingDetail() {
                     </dl>
                   ) : <p className="muted">Not yet assessed.</p>}
                 </section>
-                <section className="panel" aria-labelledby="ra">
-                  <h2 id="ra">Review actions</h2>
-                  <p className="muted">Recording decisions (confirm, reject, exception request) is planned for a later milestone. Nothing on this page changes data.</p>
-                </section>
+                <ReviewPanel runId={runId} d={d} />
               </div>
             </div>
           </>
         )
       }}
     </DataState>
-  )
-}
-
-export function ControlCoverage() {
-  const runs = useRuns({ limit: 50 })
-  const [sel, setSel] = useState('')
-  return (
-    <>
-      <PageHeader title="Control Coverage" lead="Control outcomes per run. Unknown and not-assessed are separate from pass." />
-      <DataState q={runs} label="runs" isEmpty={(d) => d.items.length === 0} empty={<p className="muted">No runs yet.</p>}>
-        {(d) => {
-          const finished = d.items.filter((r) => ['REPORT_READY', 'PARTIAL', 'CLOSED'].includes(r.state))
-          const runId = sel || finished[0]?.run_id || ''
-          return (
-            <>
-              <label htmlFor="cr">Run</label>
-              <select id="cr" value={runId} onChange={(e) => setSel(e.target.value)}>
-                {d.items.map((r) => <option key={r.run_id} value={r.run_id}>{r.run_id.slice(0, 8)} · {r.project_name} · {r.state}</option>)}
-              </select>
-              {runId ? <div style={{ marginTop: '1rem' }}><ControlsTable runId={runId} /></div> : <p className="muted">No finished run yet.</p>}
-            </>
-          )
-        }}
-      </DataState>
-    </>
   )
 }

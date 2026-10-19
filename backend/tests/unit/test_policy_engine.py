@@ -5,7 +5,14 @@ from typing import Any
 import pytest
 
 from aisw.contracts.enums import PolicyOutcome as O
-from aisw.policy.engine import PackRegistry, PackRule, PolicyPack, PythonRuleEvaluator
+from aisw.policy.engine import (
+    PackRegistry,
+    PackRule,
+    PolicyEvaluator,
+    PolicyPack,
+    PythonRuleEvaluator,
+)
+from aisw.policy.opa import OpaClient, OpaEvaluator
 from aisw.policy.results import dedupe_key, finding_id, rollup
 
 
@@ -16,7 +23,20 @@ def _load() -> PolicyPack:
 
 
 PACK = _load()
-EV = PythonRuleEvaluator()
+
+
+@pytest.fixture(params=["python", "opa"])
+def ev(request: pytest.FixtureRequest) -> PolicyEvaluator:
+    """Both engines must pass the same suite (ADR-003)."""
+    if request.param == "python":
+        return PythonRuleEvaluator()
+    return OpaEvaluator(OpaClient(request.getfixturevalue("opa_url")))
+
+
+def one_rule_pack(r: PackRule) -> PolicyPack:
+    return PolicyPack.model_validate(
+        {**PACK.model_dump(mode="json"), "rules": [r.model_dump(mode="json")]}
+    )
 
 
 def rule(op: str, value: Any, applies: dict[str, list[str]] | None = None) -> PackRule:
@@ -46,10 +66,36 @@ def rule(op: str, value: Any, applies: dict[str, list[str]] | None = None) -> Pa
         ("gte", 12, "fourteen", O.ERROR),  # check cannot execute on this type
         ("gte", 12, True, O.ERROR),  # booleans are not numbers
         ("lte", 5, [1], O.ERROR),
+        ("equals", True, 1, O.FAIL),  # JSON equality: true is not 1
+        ("equals", 12, 12.0, O.PASS),
+        ("in", [True], 1, O.FAIL),
+        ("equals", {"a": [1, 2]}, {"a": [1, 2]}, O.PASS),
+        ("disjoint", ["telnet"], ["ssh"], O.PASS), ("disjoint", ["telnet"], ["telnet"], O.FAIL),
+        ("disjoint", ["telnet"], "telnet", O.ERROR),
+        ("rego", {"rule": "storage.not_public"}, {"public_access": True}, None),  # engine-specific
     ],
 )  # fmt: skip
-def test_rule_semantics(op: str, expected: Any, observed: Any, outcome: O) -> None:
-    assert rule(op, expected).evaluate_value(observed) is outcome
+def test_rule_semantics(
+    ev: PolicyEvaluator, op: str, expected: Any, observed: Any, outcome: O | None
+) -> None:
+    r = rule(op, expected)
+    got = ev.evaluate_observation(one_rule_pack(r), rule_id="r", value=observed, attrs={})
+    if op == "rego":  # only OPA runs domain rules; the Python engine refuses rather than guesses
+        assert got is (O.FAIL if ev.runs_rego else O.ERROR)
+    else:
+        assert got is outcome
+        assert r.evaluate_value(observed) is outcome
+
+
+@pytest.mark.parametrize(
+    ("op", "value", "error"),
+    [("gte", "12", "numeric"), ("gte", True, "numeric"), ("in", "ab", "list"),
+     ("rego", "storage.not_public", "rego needs"), ("rego", {"rule": "../x"}, "rego needs"),
+     ("rego", {"rule": "a.b", "extra": 1}, "rego needs")],
+)  # fmt: skip
+def test_check_values_are_typed_at_load(op: str, value: Any, error: str) -> None:
+    with pytest.raises(ValueError, match=error):
+        rule(op, value)
 
 
 def test_applicability_requires_proof_of_the_attribute() -> None:
@@ -60,22 +106,22 @@ def test_applicability_requires_proof_of_the_attribute() -> None:
     assert not r.applies({"os_family": None})
 
 
-def test_evaluator_unknown_or_inapplicable_rules_return_none() -> None:
-    assert EV.evaluate_observation(PACK, rule_id="nope", value=1, attrs={}) is None
+def test_evaluator_unknown_or_inapplicable_rules_return_none(ev: PolicyEvaluator) -> None:
+    assert ev.evaluate_observation(PACK, rule_id="nope", value=1, attrs={}) is None
     assert (
-        EV.evaluate_observation(
+        ev.evaluate_observation(
             PACK, rule_id="ssh.permit_root_login", value="no", attrs={"os_family": "windows"}
         )
         is None
     )
     assert (
-        EV.evaluate_observation(
+        ev.evaluate_observation(
             PACK, rule_id="ssh.permit_root_login", value="no", attrs={"os_family": "linux"}
         )
         is O.PASS
     )
     assert (
-        EV.evaluate_observation(
+        ev.evaluate_observation(
             PACK,
             rule_id="ssh.permit_root_login",
             value="no; rm -rf /",
@@ -85,9 +131,9 @@ def test_evaluator_unknown_or_inapplicable_rules_return_none() -> None:
     )
 
 
-def test_applicable_rules_by_os() -> None:
-    linux = {r.rule_id for r in EV.applicable_rules(PACK, {"os_family": "linux"})}
-    win = {r.rule_id for r in EV.applicable_rules(PACK, {"os_family": "windows"})}
+def test_applicable_rules_by_os(ev: PolicyEvaluator) -> None:
+    linux = {r.rule_id for r in ev.applicable_rules(PACK, {"os_family": "linux"})}
+    win = {r.rule_id for r in ev.applicable_rules(PACK, {"os_family": "windows"})}
     assert linux - win == {"ssh.permit_root_login"} and win < linux
 
 
@@ -123,7 +169,9 @@ def test_registry_only_serves_registered_packs() -> None:
     reg = PackRegistry.builtin()
     assert reg.get("fixture-baseline:1.0.0") and reg.get("fixture-baseline:9.9.9") is None
     assert reg.get("../../etc/passwd") is None and reg.keys() == [
+        "config-baseline:1.0.0",
         "fixture-baseline:1.0.0",
+        "image-baseline:1.0.0",
         "import-baseline:1.0.0",
         "url-smoke-baseline:1.0.0",
     ]

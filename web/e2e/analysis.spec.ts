@@ -24,17 +24,25 @@ test('risk is never invented, recommendations are drafts, and nothing is executa
   await page.goto(`/findings/${runId}/${high.finding_id}`)
   await expect(page.getByRole('heading', { name: 'Risk rubric' })).toBeVisible()
   await expect(page.getByText('Not rated: the inputs are incomplete, so no tier is invented.')).toBeVisible()
+  await expect(page.getByText('sample rubric awaiting policy-owner approval', { exact: false })).toBeVisible() // P0-6 pending
   await expect(page.getByText('Owner-supplied asset criticality is unknown')).toBeVisible()
   await expect(page.getByRole('complementary', { name: 'AI-written summary' })).toHaveCount(0)
 
   await page.goto(`/assessments/${runId}/analysis`)
   await expect(page.getByRole('heading', { name: 'Correlated scenarios' })).toBeVisible()
-  await expect(page.getByText('Evidence chain (observed only)')).toBeVisible()
+  const chain = page.getByTestId('scenario-chain').first()
+  await expect(chain.getByRole('link', { name: 'host-2' })).toBeVisible()
+  await expect(chain.getByRole('link', { name: 'Direct root login over SSH is disabled' })).toBeVisible()
+  await expect(chain.getByText('observed').first()).toBeVisible()
+  await expect(page.getByText('nothing in this chain is inferred', { exact: false }).first()).toBeVisible()
+  expect((await new AxeBuilder({ page }).withTags(TAGS).include('[data-testid="scenario-chain"]').analyze()).violations).toEqual([])
   await expect(page.getByText('Not rated').first()).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Draft recommendations' })).toBeVisible()
   await page.getByText('Details, validation and rollback').first().click()
   await expect(page.getByText('Unknown: only the owner can estimate this').first()).toBeVisible()
   await expect(page.getByRole('region', { name: 'Draft recommendations' }).getByRole('button')).toHaveCount(0) // nothing to click: no execute, apply or fix control
+  await expect(page.getByRole('heading', { name: 'AI validation of agent outcomes' })).toBeVisible()
+  await expect(page.getByText('No AI validation for this run')).toBeVisible() // AI is off in e2e: nothing is reviewed or labelled
   await expect(tab(page, 'Analysis')).toBeVisible()
 })
 
@@ -56,6 +64,7 @@ test('an approver records a decision with a reason; others can only read', async
   await expect(page.getByRole('heading', { name: 'Architecture & Modernization' })).toBeVisible()
   await expect(page.getByText('AI is disabled', { exact: false })).toBeVisible()
   await expect(page.getByText('Showing run')).toBeVisible()
+  await expect(page.getByText('Sample patterns')).toBeVisible() // catalog sign-off pending
   await expect(page.getByText('2 recommendation(s)')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Accept for planning' })).toHaveCount(0)
   await expect(page.getByText('needs the approver role').first()).toBeVisible()
@@ -90,4 +99,22 @@ test('an approver records a decision with a reason; others can only read', async
   await page.getByRole('dialog').getByRole('button', { name: 'Defer' }).click()
   await expect(other.getByText('Deferred: needs owner input')).toBeVisible()
   await expect(other.getByRole('button', { name: 'Reject' })).toBeVisible() // a deferred item can still be decided
+})
+
+test('whoever launched a run can only defer its recommendations', async ({ page, request }) => {
+  test.setTimeout(120_000)
+  const { projectId } = await seedProject(request)
+  const runId = await launch(request, projectId, await approvedManifest(request, projectId), 'baseline-ok', false, 'olga')
+  await untilState(request, runId, ['REPORT_READY'])
+  await signIn(page, 'olga') // assessment operator and approver in one person
+  await page.goto(`/architecture?run=${runId}`)
+  const rec = page.getByRole('region').filter({ has: page.getByText(`Run ${runId.slice(0, 8)}`) }).first()
+  await expect(rec.getByText('You launched this run, so another approver accepts or rejects its recommendations.')).toBeVisible()
+  await expect(rec.getByRole('button', { name: 'Defer' })).toBeVisible()
+  await expect(rec.getByRole('button', { name: /^Accept/ })).toHaveCount(0)
+  await expect(rec.getByRole('button', { name: 'Reject' })).toHaveCount(0)
+  await signOut(page)
+  await signIn(page, 'bob')
+  await page.goto(`/architecture?run=${runId}`)
+  await expect(page.getByRole('region').filter({ has: page.getByText(`Run ${runId.slice(0, 8)}`) }).first().getByRole('button', { name: /^Accept/ })).toBeVisible()
 })

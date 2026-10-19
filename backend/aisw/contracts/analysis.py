@@ -18,6 +18,8 @@ class RiskFactors(StrictModel):
     exposure: Literal["VERIFIED", "CONFIGURED", "UNKNOWN"]
     evidence_fresh: bool
     corroborating_sources: int = Field(ge=1)
+    # Reachability edges (ADR-041) that raise exposure above the finding category's own level.
+    exposure_basis: list[Slug] = Field(default_factory=list)
 
 
 class RiskAssessment(StrictModel):
@@ -52,23 +54,52 @@ class ChainLink(StrictModel):
         return self
 
 
+INTERNET = "internet"
+
+
+class ReachEdge(StrictModel):
+    """One way traffic can reach a host: from the internet or from another host (ADR-041)."""
+
+    edge_id: Slug
+    src: Slug  # INTERNET or an asset id
+    dst: Slug
+    basis: Literal[EdgeBasis.OBSERVED, EdgeBasis.CONFIGURED]
+    ports: list[tuple[int, int]] | None  # None: every port
+    via: Slug  # the firewall rule/policy asset, or the scanning adapter
+    evidence_ref: NonEmpty
+    note: NonEmpty | None = None
+
+
 class CorrelationScenario(StrictModel):
     scenario_id: Slug
     asset_id: Slug
     title: NonEmpty
-    finding_ids: list[Slug] = Field(min_length=2)
-    chain: list[ChainLink] = Field(min_length=2)
+    finding_ids: list[Slug] = Field(min_length=1)
+    chain: list[ChainLink] = Field(min_length=1)
     tier: Tier | None
     basis: Literal["COMPLETE", "NEEDS_POLICY_REVIEW"]
     confidence: Confidence
     assumptions: list[NonEmpty] = Field(default_factory=list)
     missing_evidence: list[NonEmpty] = Field(default_factory=list)
     validation_steps: list[NonEmpty] = Field(min_length=1)
+    path: list[ReachEdge] = Field(default_factory=list)  # internet -> ... -> asset_id
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
         if (self.basis == "COMPLETE") != (self.tier is not None):
             raise ValueError("tier must be present exactly when basis is COMPLETE")
+        if not self.path and len(self.finding_ids) < 2:
+            raise ValueError(
+                "a scenario needs two findings, or one finding and a reachability path"
+            )
+        if self.path and (
+            self.path[0].src != INTERNET
+            or self.path[-1].dst != self.asset_id
+            or any(a.dst != b.src for a, b in zip(self.path, self.path[1:], strict=False))
+        ):
+            raise ValueError(
+                "a path must run from the internet to the scenario's asset, hop by hop"
+            )
         if {c.finding_id for c in self.chain} != set(self.finding_ids):
             raise ValueError("every finding must appear in the evidence chain, and only those")
         return self

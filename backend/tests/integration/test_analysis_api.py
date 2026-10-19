@@ -169,7 +169,7 @@ def test_ticket_drafts_are_disabled_by_default(sl: Slice) -> None:
         "POST", "/api/v1/tickets/drafts", "bob", json={"run_id": run_id, "recommendation_id": rid}
     )
     assert r.status_code == 403 and "disabled" in r.json()["detail"]
-    assert sl.sql("SELECT count(*) FROM ticket_outbox")[0][0] == 0
+    assert sl.sql("SELECT count(*) FROM ticket_outbox WHERE run_id=:r", r=run_id)[0][0] == 0
 
 
 def test_ticket_draft_requires_acceptance_is_idempotent_and_never_delivered(sl: Slice) -> None:
@@ -193,14 +193,14 @@ def test_ticket_draft_requires_acceptance_is_idempotent_and_never_delivered(sl: 
     assert "Effort: unknown" in j["payload"]["description"]
     second = sl.call("POST", "/api/v1/tickets/drafts", "bob", json=body)
     assert second.status_code == 200 and second.json()["outbox_id"] == j["outbox_id"]
-    assert sl.sql("SELECT count(*) FROM ticket_outbox")[0][0] == 1
+    assert sl.sql("SELECT count(*) FROM ticket_outbox WHERE run_id=:r", r=run_id)[0][0] == 1
     assert sl.call("POST", "/api/v1/tickets/drafts", "bob",
                    json={"run_id": run_id, "recommendation_id": other}).status_code == 409  # fmt: skip
     listed = sl.call("GET", f"/api/v1/tickets/drafts?run_id={run_id}", "carol").json()
     assert len(listed) == 1 and listed[0]["delivered"] is False
-    # the outbox can only ever hold drafts: delivery is not representable
+    # a draft cannot jump to SENT: delivery goes through a claimed attempt (ADR-037)
     with pytest.raises(DBAPIError), tenant_connection(sl.app_engine, "tenant-a") as c:
-        c.execute(text("UPDATE ticket_outbox SET status='SENT'"))
+        c.execute(text("UPDATE ticket_outbox SET status='SENT' WHERE run_id=:r"), {"r": run_id})
 
 
 def test_agent_registry_maps_every_adapter_and_reports_ai_state(sl: Slice) -> None:
@@ -217,11 +217,14 @@ def test_agent_registry_maps_every_adapter_and_reports_ai_state(sl: Slice) -> No
     assert len(j["agents"]) == 9 and j["ai"]["enabled"] is False
     assert j["ai"]["tools_available_to_model"] is False and j["ai"]["may_decide"] is False
     assert j["ai"]["model_id"] is None and j["ticket_drafts_enabled"] is False
+    assert j["ai"]["provider"] is None and j["ai"]["endpoint_local_only"] is True
     assert not any(a["ai_active"] for a in j["agents"])
+    assert j["signoffs"] == {"rubric": "PENDING", "catalog": "PENDING"}  # sample labels stay on
     sl.enable_ai(ScriptedModel(grounded))
     on = sl.call("GET", "/api/v1/agents", "carol").json()
-    assert {a["agent_id"] for a in on["agents"] if a["ai_active"]} == {5, 6}
+    assert {a["agent_id"] for a in on["agents"] if a["ai_active"]} == {4, 5, 6, 8}
     assert on["ai"]["model_id"] == "stub-model-0" and on["ai"]["model_license"] == "Apache-2.0"
+    assert on["ai"]["provider"] == "ollama" and on["ai"]["endpoint_local_only"] is True
 
 
 def test_finding_detail_carries_risk_without_inventing_business_risk(sl: Slice) -> None:
@@ -232,6 +235,7 @@ def test_finding_detail_carries_risk_without_inventing_business_risk(sl: Slice) 
     rx = d["risk_explanation"]
     assert rx["business_risk"] is None and rx["risk"]["basis"] == "NEEDS_POLICY_REVIEW"
     assert rx["risk"]["provisional_tier"] == "P2" and rx["risk"]["assurance_verdict"] == "ACCEPT"
+    assert rx["risk"]["rubric_signoff"] == "PENDING"
     assert rx["ai_narrative"] is None and len(rx["scenarios"]) == 1
 
 
@@ -265,3 +269,25 @@ def test_acceptance_needs_an_assurance_accepted_recommendation_of_a_finished_run
     assert (
         decide(sl, run_id, rid, "DEFER", "waiting").status_code == 200
     )  # non-acceptance is still allowed
+
+
+def test_the_run_requester_cannot_decide_its_recommendations(sl: Slice) -> None:
+    _, _, run_id = sl.full_run(EXPECTED, user="olga")  # operator and approver in one person
+    sl.drain()
+    a, b = (r["recommendation_id"] for r in
+            sl.call("GET", f"/api/v1/assessments/{run_id}/recommendations", "carol").json())  # fmt: skip
+    for decision in ("ACCEPT", "REJECT"):
+        r = decide(sl, run_id, a, decision, user="olga")
+        assert r.status_code == 403 and "separation of duties" in r.json()["detail"]
+    assert decide(sl, run_id, a, "DEFER", user="olga").status_code == 200
+    page = sl.call("GET", f"/api/v1/recommendations?run_id={run_id}", "olga").json()
+    assert {i["run_requested_by"] for i in page["items"]} == {"olga"}
+    assert decide(sl, run_id, b, "ACCEPT", user="bob").status_code == 200
+
+    with pytest.raises(DBAPIError, match="separation of duties"):  # holds for any writer
+        with tenant_connection(sl.app_engine, "tenant-a") as conn:
+            conn.execute(
+                text("UPDATE recommendations SET status='REJECTED', decided_by='olga', "
+                     "decided_at=now(), decision_reason='x' WHERE run_id=:r AND recommendation_id=:i"),
+                {"r": run_id, "i": a},
+            )  # fmt: skip

@@ -1,4 +1,4 @@
-"""Identity resolution. OIDC (Keycloak) lands later; until then only the dev stub exists.
+"""Dev-stub identity resolution. Real sign-in is OIDC through the BFF (ADR-026, aisw.api.auth).
 
 The stub is refused unless settings.dev_auth_stub is on AND env is dev/test (config validation
 also forbids it in prod). With no valid identity the answer is 401: fail closed.
@@ -15,13 +15,19 @@ _SEEDED: dict[str, ActorContext] = {
         "tenant-a", "alice", frozenset({Role.PROJECT_ADMIN, Role.ASSESSMENT_OPERATOR})
     ),
     "dev-bob": ActorContext("tenant-a", "bob", frozenset({Role.APPROVER})),
+    "dev-vic": ActorContext("tenant-a", "vic", frozenset({Role.APPROVER})),
     "dev-carol": ActorContext("tenant-a", "carol", frozenset({Role.REPORT_READER})),
     "dev-rita": ActorContext("tenant-a", "rita", frozenset({Role.REVIEWER})),
     "dev-sam": ActorContext(
         "tenant-a", "sam", frozenset({Role.ASSESSMENT_OPERATOR, Role.REVIEWER})
     ),
+    "dev-olga": ActorContext(
+        "tenant-a", "olga", frozenset({Role.ASSESSMENT_OPERATOR, Role.APPROVER})
+    ),
     "dev-erin": ActorContext("tenant-a", "erin", frozenset({Role.AUDITOR})),
+    "dev-paula": ActorContext("tenant-a", "paula", frozenset({Role.POLICY_OWNER})),
     "dev-dave": ActorContext("tenant-b", "dave", frozenset({Role.PROJECT_ADMIN})),
+    "dev-pete": ActorContext("tenant-a", "pete", frozenset()),  # project-scoped grants only
 }
 
 

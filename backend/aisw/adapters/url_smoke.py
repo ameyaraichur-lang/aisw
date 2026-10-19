@@ -6,7 +6,14 @@ target against the signed scope and egress policy.
 
 What it deliberately does NOT do: resolve names itself (it connects only to pinned addresses, so
 DNS rebinding cannot redirect it), crawl, submit forms, fuzz, enumerate ports, send cookies or
-credentials, read or store a response body, or continue after a failed TLS verification.
+credentials, read or store a response body, or continue after a failed TLS verification. It speaks
+HTTP/1.1 only (offered by ALPN) and never uses a forward proxy, including one set in the environment.
+
+TLS inspection: some networks re-sign every TLS connection with the organisation's own CA, so the
+certificate seen is the inspection proxy's, not the target's. When the operator names that CA
+(``tls_inspection_ca_file``) and a chain that fails the trust store verifies against it, the probe
+records the connection as inspected and continues over it: the certificate controls are left
+unassessed (UNKNOWN) and the response headers are recorded as observed through the proxy.
 
 Anything the target sends (headers, certificate fields) is untrusted DATA: truncated, newline-
 stripped, redacted again at ingest, and never interpreted.
@@ -52,6 +59,9 @@ KEPT_HEADERS = (
     "location",
 )  # fmt: skip
 MAX_VALUE = 512
+HTTP2_ONLY = "HTTP2_ONLY_UNSUPPORTED"
+TLS_INSPECTED = "TLS_INSPECTED"
+H2_FRAME_TYPES = {0x4, 0x7}  # SETTINGS and GOAWAY: what an HTTP/2-only server sends to HTTP/1.1
 NOTICE = "Public URL smoke test — not a security certification"
 
 
@@ -68,6 +78,11 @@ def url_asset_id(url: CanonicalURL) -> str:
 
 def _clean(value: str) -> str:
     return " ".join(value.replace("\r", " ").replace("\n", " ").split())[:MAX_VALUE]
+
+
+def _http2_reply(line: str) -> bool:
+    """True when the bytes read as a status line are an HTTP/2 frame header on stream 0."""
+    return len(line) >= 9 and ord(line[3]) in H2_FRAME_TYPES and line[5:9] == "\x00" * 4
 
 
 def _name(rdn: x509.Name) -> str:
@@ -103,11 +118,14 @@ def cert_metadata(der: bytes, now: datetime) -> dict[str, Any]:
 
 class UrlSmokeAdapter:
     def __init__(
-        self, *, ca_file: Path | None = None, clock: Callable[[], datetime] | None = None
-    ) -> None:
+        self, *, ca_file: Path | None = None, inspection_ca_file: Path | None = None,
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:  # fmt: skip
         # The trust store is configured by the operator/deployment only; neither the manifest nor
         # the request can change it. None means the platform default trust store.
         self._ca_file = ca_file
+        # Must not also be in the trust store, or inspected connections would verify as the target.
+        self._inspection_ca_file = inspection_ca_file
         self._clock = clock or (lambda: datetime.now(UTC))
         self.capability = AdapterCapability(
             adapter_id=ADAPTER_ID, version=TOOL_VERSION, domains=frozenset({"url"}),
@@ -136,6 +154,10 @@ class UrlSmokeAdapter:
         for n in range(params.max_redirects + 1):
             hop = self._probe(current, addrs, params)
             hops.append(hop)
+            if (hop["tls"] or {}).get("inspected"):
+                issuer = (hop["tls"].get("certificate") or {}).get("issuer", "unknown issuer")
+                warnings.append(f"{TLS_INSPECTED}:{hop['host']}: certificate issued by {issuer}; "
+                                "certificate controls not assessed, headers observed through the proxy")  # fmt: skip
             resp = hop["response"]
             if hop["error"]:
                 code = str(hop["error"])
@@ -189,14 +211,16 @@ class UrlSmokeAdapter:
             raw=raw, warnings=warnings, errors=errors,
         )  # fmt: skip
 
-    def _context(self, *, verify: bool) -> ssl.SSLContext:
+    def _context(self, *, verify: bool, cafile: Path | None = None) -> ssl.SSLContext:
         if verify:
-            ctx = ssl.create_default_context(cafile=str(self._ca_file) if self._ca_file else None)
+            ca = cafile or self._ca_file
+            ctx = ssl.create_default_context(cafile=str(ca) if ca else None)
         else:  # metadata-only handshake after a failed verification: no data is ever sent on it
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
         ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        ctx.set_alpn_protocols(["http/1.1"])
         return ctx
 
     def _probe(
@@ -210,25 +234,56 @@ class UrlSmokeAdapter:
         sock = self._connect(addrs, url.port, p.timeout_seconds, hop)
         if sock is None:
             return hop
+        opened: list[socket.socket] = [sock]
         try:
             channel: socket.socket | ssl.SSLSocket = sock
             if url.scheme == "https":
                 try:
                     tls = self._context(verify=True).wrap_socket(sock, server_hostname=url.host)
                 except ssl.SSLCertVerificationError as exc:
+                    inspected = self._inspected(hop["connect"]["ip"], url, p.timeout_seconds)
+                    if inspected is not None:
+                        opened.append(inspected)
+                        hop["tls"] = {"verified": False, "inspected": True,
+                                      "verify_error": _clean(exc.verify_message or str(exc)),
+                                      **self._session_info(inspected)}  # fmt: skip
+                        return self._request(inspected, url, p, hop)
                     hop["tls"] = {"verified": False, "verify_error": _clean(exc.verify_message or str(exc)),
                                   "verify_code": exc.verify_code, **self._peek_metadata(hop["connect"]["ip"], url)}  # fmt: skip
                     hop["error"] = "TLS_VERIFY_FAILED"  # nothing is sent over an unverified channel
                     return hop
-                except (ssl.SSLError, OSError) as exc:
+                except ssl.SSLError as exc:
+                    alpn = "NO_APPLICATION_PROTOCOL" in f"{getattr(exc, 'reason', '')} {exc}"
+                    hop["error"] = (
+                        HTTP2_ONLY if alpn else f"TLS_HANDSHAKE_FAILED:{type(exc).__name__}"
+                    )
+                    return hop
+                except OSError as exc:
                     hop["error"] = f"TLS_HANDSHAKE_FAILED:{type(exc).__name__}"
                     return hop
                 hop["tls"] = {"verified": True, **self._session_info(tls)}
                 channel = tls
             return self._request(channel, url, p, hop)
         finally:
-            with contextlib.suppress(OSError):
-                sock.close()
+            for s_ in opened:
+                with contextlib.suppress(OSError):
+                    s_.close()
+
+    def _inspected(self, ip: str, url: CanonicalURL, timeout: float) -> ssl.SSLSocket | None:
+        """A new connection that verifies (chain and hostname) against the inspection CA only."""
+        if self._inspection_ca_file is None:
+            return None
+        try:
+            raw = socket.create_connection((ip, url.port), timeout=timeout)
+        except OSError:
+            return None
+        try:
+            return self._context(verify=True, cafile=self._inspection_ca_file).wrap_socket(
+                raw, server_hostname=url.host
+            )
+        except (ssl.SSLError, OSError):
+            raw.close()
+            return None
 
     def _connect(
         self, addrs: tuple[str, ...], port: int, timeout: float, hop: dict[str, Any]
@@ -248,7 +303,8 @@ class UrlSmokeAdapter:
     def _session_info(self, tls: ssl.SSLSocket) -> dict[str, Any]:
         der = tls.getpeercert(binary_form=True)
         cipher = tls.cipher()
-        info: dict[str, Any] = {"version": tls.version(), "cipher": cipher[0] if cipher else None}
+        info: dict[str, Any] = {"version": tls.version(), "cipher": cipher[0] if cipher else None,
+                                "alpn": tls.selected_alpn_protocol()}  # fmt: skip
         if der:
             info["certificate"] = cert_metadata(der, self._clock())
         return info
@@ -291,6 +347,9 @@ class UrlSmokeAdapter:
             }  # fmt: skip
         except TimeoutError:
             hop["error"] = "READ_TIMEOUT"
+        except http.client.BadStatusLine as exc:
+            line = str(exc.args[0]) if exc.args else ""
+            hop["error"] = HTTP2_ONLY if _http2_reply(line) else "HTTP_PROTOCOL_ERROR:BadStatusLine"
         except (http.client.HTTPException, OSError) as exc:
             hop["error"] = f"HTTP_PROTOCOL_ERROR:{type(exc).__name__}"
         finally:
@@ -323,7 +382,7 @@ class UrlSmokeAdapter:
             )
 
         tls = first["tls"]
-        if url.scheme == "https" and tls is not None:
+        if url.scheme == "https" and tls is not None and not tls.get("inspected"):
             obs("tls.verified", bool(tls.get("verified")))
             if tls.get("version"):
                 obs("tls.protocol", tls["version"])
@@ -337,7 +396,7 @@ class UrlSmokeAdapter:
             if final["scheme"] == "https":
                 obs("http.hsts_present", "strict-transport-security" in r["headers"])
             obs("http.x_content_type_options", r["headers"].get("x-content-type-options", "absent"))
-        elif first["error"] not in {"TLS_VERIFY_FAILED"}:
+        elif first["error"] not in {"TLS_VERIFY_FAILED", HTTP2_ONLY}:  # not the target's answer
             obs("http.response_received", False)
         if any(h["redirect_blocked"] for h in hops):
             obs("http.redirects_within_scope", False)

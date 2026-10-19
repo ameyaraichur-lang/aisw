@@ -1,0 +1,20 @@
+# Build contexts never carry secrets, keys, local environments or caches.
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+**/*.key
+**/.venv
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/dist
+**/test-results
+**/playwright-report
+.git
+deploy/compose/secrets
+data
+evidence
+keys

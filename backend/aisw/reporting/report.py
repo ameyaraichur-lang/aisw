@@ -15,6 +15,8 @@ from typing import Any
 from aisw.contracts.assurance import ReportBundle
 from aisw.contracts.base import canonical_hash
 from aisw.contracts.domain import CoverageLedger
+from aisw.policy import signoffs
+from aisw.reporting.gaps import GAP_LABEL, architecture_delta
 
 DISCLAIMER = (
     "Assessment report generated from recorded evidence. It is not a certification and does not "
@@ -49,6 +51,35 @@ class ReportInputs:
     analysis_excluded: dict[str, int] = field(default_factory=dict)  # e.g. scenarios_rejected: 2
     ai: dict[str, Any] = field(default_factory=lambda: {"mode": "disabled"})
     model_versions: list[str] = field(default_factory=list)
+    revision: int = 1  # > 1 after a human overruled an AI dissent and assurance re-ran (ADR-022)
+    supersedes: str | None = None
+    # Agent 8 / Agent 4 AI-written text that passed grounding, assurance and the validator.
+    executive_summary: dict[str, Any] | None = None
+    verification_questions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # ADR-033: exceptions that covered (APPLIED) or no longer covered (EXPIRED) a failing check.
+    exceptions: list[dict[str, Any]] = field(default_factory=list)
+    # ADR-038: framework controls through the reviewed mappings, frozen with the report.
+    control_gaps: dict[str, Any] | None = None
+
+
+def _pending_signoffs(inp: ReportInputs) -> list[str]:
+    """The sample/provisional label of every policy artefact this report actually relies on."""
+    used = {f"risk-rubric-{r['rubric_version']}" for r in inp.risks.values()}
+    used |= {
+        f"architecture-catalog-{r['catalog_ref'].rpartition('@')[2]}" for r in inp.recommendations
+    }
+    register = signoffs.builtin()
+    pack_signoff = inp.policy_version.replace(":", "-")
+    if register.get(pack_signoff) is not None:
+        used.add(pack_signoff)  # packs without a sign-off record carry their own report notice
+    out = []
+    for signoff_id in sorted(used):
+        entry = register.get(signoff_id)
+        if entry is None:
+            out.append(f"{signoff_id} has no sign-off record; treat its results as unapproved.")
+        elif entry.status != "APPROVED":
+            out.append(f"{entry.label_while_pending} ({signoff_id}: {entry.status})")
+    return out
 
 
 def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
@@ -64,6 +95,12 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
     for t in inp.tasks:
         if t["status"] not in {"SUCCEEDED"}:
             limitations.append(f"Task {t['adapter_id']} on {t['target']}: {t['status']}.")
+        elif warnings := t.get("warnings"):
+            limitations.append(
+                f"Task {t['adapter_id']} on {t['target']} succeeded with warnings: "
+                + "; ".join(warnings[:5])
+                + (f" (and {len(warnings) - 5} more)." if len(warnings) > 5 else ".")
+            )
     if inp.rejected_count:
         limitations.append(
             f"{inp.rejected_count} candidate finding(s) failed independent assurance "
@@ -86,8 +123,48 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
             f"AI-written summaries were unavailable or not accepted for {inp.ai['not_shown']} item(s); "
             "the deterministic description is shown instead."
         )
+    validation = inp.ai.get("validation") or {}
+    if validation.get("held_for_review"):
+        limitations.append(
+            f"The AI validator dissented on {validation['held_for_review']} item(s); accepted items "
+            "among them are held for human review and are not authoritative until resolved."
+        )
+    if validation.get("overruled") or validation.get("upheld"):
+        limitations.append(
+            f"A reviewer overruled {validation.get('overruled', 0)} and upheld "
+            f"{validation.get('upheld', 0)} AI validator dissent(s); each decision is recorded "
+            "with its reason."
+        )
+    if validation.get("unavailable"):
+        limitations.append(
+            f"AI validation was unavailable or invalid for {validation['unavailable']} item(s); "
+            "their deterministic results stand unreviewed by the model."
+        )
+    usage = inp.ai.get("usage") or {}
+    if usage.get("budget_refused"):
+        limitations.append(
+            f"The run's AI token budget was exhausted: {usage['budget_refused']} model call(s) "
+            "were not made and their deterministic results stand."
+        )
+    if usage.get("replayed"):
+        limitations.append(
+            f"{usage['replayed']} AI reply(ies) were replayed from a recording, not produced live."
+        )
     if not inp.ledgers:
         limitations.append("No coverage information was produced.")
+    applied = [x for x in inp.exceptions if x["effect"] == "APPLIED"]
+    expired = [x for x in inp.exceptions if x["effect"] == "EXPIRED"]
+    if applied:
+        limitations.append(
+            f"{len(applied)} failing check(s) were covered by an approved, unexpired exception and "
+            "are not listed as findings; each is listed under Exceptions with its expiry."
+        )
+    if expired:
+        limitations.append(
+            f"{len(expired)} exception(s) had expired when the evidence was collected; those "
+            "checks are reported as findings again."
+        )
+    limitations.extend(_pending_signoffs(inp))
 
     by_sev = {s: 0 for s in SEVERITY_ORDER}
     for f in inp.accepted:
@@ -115,7 +192,10 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
         "coverage": [L.model_dump(mode="json") for L in inp.ledgers],
         "controls": inp.controls,
         "findings": [
-            {**f, "risk": inp.risks[f["finding_id"]]} if f["finding_id"] in inp.risks else f
+            {**f,
+             **({"risk": inp.risks[f["finding_id"]]} if f["finding_id"] in inp.risks else {}),
+             **({"verification_questions": inp.verification_questions[f["finding_id"]]}
+                if f["finding_id"] in inp.verification_questions else {})}
             for f in inp.accepted
         ],
         "scenarios": inp.scenarios, "recommendations": inp.recommendations, "ai": inp.ai,
@@ -126,8 +206,17 @@ def build_report(inp: ReportInputs) -> tuple[ReportBundle, dict[str, Any], str]:
         },
         "pending_review": inp.needs_review, "tasks": inp.tasks, "evidence_manifest": manifest,
     }  # fmt: skip
+    if inp.revision > 1:
+        body["revision"] = {"number": inp.revision, "supersedes": inp.supersedes}
+    if inp.executive_summary:
+        body["executive_summary"] = {**inp.executive_summary, "ai_generated": True}
+    if inp.exceptions:
+        body["exceptions"] = inp.exceptions
+    if inp.control_gaps is not None:
+        body["control_gaps"] = inp.control_gaps
+    suffix = f"-r{inp.revision}" if inp.revision > 1 else ""
     bundle = ReportBundle(
-        report_id=f"rep-{inp.run_id}", tenant_id=inp.tenant_id, project_id=inp.project_id,
+        report_id=f"rep-{inp.run_id}{suffix}", tenant_id=inp.tenant_id, project_id=inp.project_id,
         run_id=inp.run_id, scope_manifest_hash=inp.manifest_hash,
         policy_versions=[inp.policy_version], tool_versions=tools, model_versions=inp.model_versions,
         coverage_complete=coverage_complete, limitations=limitations, finding_counts=counts,
@@ -161,6 +250,54 @@ def _narrative_html(n: dict[str, Any] | None) -> str:
     )
 
 
+def _gaps_html(body: dict[str, Any]) -> str:
+    gaps = body.get("control_gaps")
+    if not gaps:
+        return ""
+    out = (f"<h2>Control-gap matrix</h2><p><em>{_e(gaps['notice'])} Mapping catalog "
+           f"{_e(gaps['catalog_version'])}. PROPOSED marks a mapping still awaiting policy-owner "
+           "review.</em></p>")  # fmt: skip
+    for fw in gaps["frameworks"]:
+        rows = "".join(
+            f"<tr><td>{_e(r['control_id'])}</td><td>{_e(r['title'])}</td>"
+            f"<td>{_e(GAP_LABEL[r['state']])}</td><td>"
+            + _e(", ".join(f"{p['control_id']} {p['outcome']}" for p in r["pack_controls"]))
+            + f"</td><td>{_e(r['mapping'])}</td></tr>"
+            for r in fw["rows"]
+        )
+        out += (f"<h3>{_e(fw['name'])} ({_e(fw['version'])})</h3><table><thead><tr><th>Control</th>"
+                "<th>Title</th><th>State</th><th>Pack checks</th><th>Mapping</th></tr></thead>"
+                f"<tbody>{rows}</tbody></table>")  # fmt: skip
+    return out
+
+
+def _delta_html(body: dict[str, Any]) -> str:
+    rows = "".join(
+        f"<tr><td>{_e(r['pattern'] or '-')}</td><td>{_e('; '.join(r['current']))}</td>"
+        f"<td>{_e(r['target'] or '-')}</td><td>{_e(', '.join(r['assets']) or '-')}</td>"
+        f"<td>{_e(r['tier'] or 'not rated')}</td></tr>"
+        for r in architecture_delta(body)
+    )
+    if not rows:
+        return ""
+    return ("<h2>Architecture delta (draft, for planning only)</h2><p><em>Current state, as "
+            "recorded in accepted findings, beside the approved target pattern. Effort is unknown "
+            "until the owner estimates it.</em></p><table><thead><tr><th>Pattern</th><th>Current "
+            "state</th><th>Target</th><th>Assets</th><th>Risk tier</th></tr></thead>"
+            f"<tbody>{rows}</tbody></table>")  # fmt: skip
+
+
+def _route_html(path: list[dict[str, Any]]) -> str:
+    if not path:
+        return ""
+    hops = " → ".join(
+        f"{_e(h['dst'])} ({_e(h['basis'].lower())}, "
+        f"{_e('every port' if h['ports'] is None else ', '.join(str(lo) if lo == hi else f'{lo}-{hi}' for lo, hi in h['ports']))})"
+        for h in path
+    )
+    return f"<p>Route: internet → {hops}. Read from configuration or a declared-vantage scan; no traffic was sent.</p>"
+
+
 def _analysis_html(body: dict[str, Any]) -> str:
     out = ""
     if body.get("scenarios"):
@@ -170,10 +307,12 @@ def _analysis_html(body: dict[str, Any]) -> str:
             out += (
                 f"<h3>{_e(s['title'])}</h3><p>Asset {_e(s['asset_id'])} | risk tier {tier} | "
                 f"findings {_e(', '.join(s['finding_ids']))}</p>"
+                f"{_route_html(s.get('path') or [])}"
                 f"<p>Assumptions: {_e('; '.join(s['assumptions']) or 'none')}</p>"
                 f"<p>Validation steps: {_e('; '.join(s['validation_steps']))}</p>"
                 f"{_narrative_html(s.get('narrative'))}"
             )
+    out += _delta_html(body)
     if body.get("recommendations"):
         out += "<h2>Recommendations (draft, for planning only)</h2>"
         for r in body["recommendations"]:
@@ -187,6 +326,15 @@ def _analysis_html(body: dict[str, Any]) -> str:
                 f"<p>Owner questions:</p><ul>{questions or '<li>None</li>'}</ul>"
                 f"{_narrative_html(r.get('narrative'))}"
             )
+    v = (body.get("ai") or {}).get("validation")
+    if v:
+        verdicts = ", ".join(f"{_e(k)}: {n}" for k, n in sorted(v["by_verdict"].items()))
+        out += (
+            "<h2>AI validation of agent outcomes</h2>"
+            f"<p><em>An AI reviewer (model {_e(', '.join(v['models']) or 'unknown')}) checked "
+            f"{v['total']} agent outcome(s). It can only add caution: a dissent holds an item for "
+            f"human review, and nothing is ever marked as passing by it.</em></p><p>{verdicts}</p>"
+        )
     return out
 
 
@@ -208,7 +356,46 @@ def render_html(body: dict[str, Any]) -> str:
     banner = f'<p role="alert"><strong>{_e(body["banner"])}</strong></p>' if body["banner"] else ""
     if body.get("notice"):
         banner = f'<p role="note"><strong>{_e(body["notice"])}</strong></p>' + banner
+    if rev := body.get("revision"):
+        banner += (
+            f'<p role="note">Revision {int(rev["number"])}; supersedes report '
+            f"{_e(rev['supersedes'] or '')} after a human review of AI validator dissent.</p>"
+        )
     counts = ", ".join(f"{_e(k)}: {v}" for k, v in body["finding_counts"].items())
+    executive = ""
+    if ex := body.get("executive_summary"):
+        executive = (
+            '<section aria-labelledby="exec-h"><h2 id="exec-h">Executive summary (AI-written)</h2>'
+            f"<p>{_e(ex['summary'])}</p><p><em>Written by model {_e(ex.get('model_id') or 'unknown')}"
+            "; every claim was checked against the accepted findings. The findings table below is "
+            "authoritative.</em></p></section>"
+        )
+    questions = "".join(
+        f"<li>{_e(f['title'])}<ul>"
+        + "".join(f"<li>{_e(q)}</li>" for q in f["verification_questions"]["questions"])
+        + "</ul></li>"
+        for f in body["findings"] if f.get("verification_questions")
+    )  # fmt: skip
+    if questions:
+        questions = (
+            "<h2>Questions for asset owners (AI-written)</h2><p><em>Answering these confirms or "
+            f"refutes the recorded exposure. Nothing was tested to produce them.</em></p><ul>{questions}</ul>"
+        )
+    exceptions = ""
+    if body.get("exceptions"):
+        exc_rows = "".join(
+            f"<tr><td>{_e(x['exception_id'])}</td><td>{_e(x['effect'])}</td><td>{_e(x['title'])}</td>"
+            f"<td>{_e(x['asset_id'])}</td><td>{_e(x['expires_at'])}</td><td>{_e(x['approved_by'])}</td>"
+            f"<td>{_e(x['reason'])}</td></tr>"
+            for x in body["exceptions"]
+        )
+        exceptions = (
+            "<h2>Exceptions</h2><p><em>APPLIED: an approved exception was in force when the evidence "
+            "was collected, so the check is not listed as a finding. EXPIRED: the exception had lapsed "
+            "and the finding is reported again.</em></p><table><thead><tr><th>Exception</th>"
+            "<th>Effect</th><th>Check</th><th>Asset</th><th>Expires</th><th>Approved by</th>"
+            f"<th>Reason</th></tr></thead><tbody>{exc_rows}</tbody></table>"
+        )
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta http-equiv="Content-Security-Policy" '
@@ -217,11 +404,11 @@ def render_html(body: dict[str, Any]) -> str:
         f"<h1>{_e(body['title'])}</h1>{banner}<p>{_e(body['disclaimer'])}</p>"
         f"<p>Run {_e(body['run_id'])} | scope hash {_e(body['scope_manifest_hash'])} | "
         f"policy {_e(', '.join(body['policy_versions']))} | "
-        f"report generated {_e(body['generated_at'])}</p>"
+        f"report generated {_e(body['generated_at'])}</p>{executive}"
         f"<h2>Findings ({counts})</h2><table><thead><tr><th>Severity</th><th>Risk tier</th><th>Title</th>"
         f"<th>Assets</th><th>Evidence</th></tr></thead><tbody>{rows}</tbody></table>"
         "<h2>Coverage</h2><table><thead><tr><th>Segment</th><th>Expected</th><th>Reconciled</th>"
         f"<th>Unknown</th><th>Unsupported</th><th>Reasons</th></tr></thead><tbody>{cov}</tbody></table>"
-        f"{_analysis_html(body)}"
+        f"{_gaps_html(body)}{exceptions}{questions}{_analysis_html(body)}"
         f"<h2>Limitations</h2><ul>{limits}</ul></main></body></html>"
     )

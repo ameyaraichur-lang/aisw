@@ -234,6 +234,23 @@ class VettedTarget:
     warnings: tuple[str, ...] = field(default=())
 
 
+def parse_egress_zones(raw: Iterable[str]) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+    """Deployment-level scan zones (ADR-028): the networks the host firewall lets the worker reach.
+    Never the whole internet and never anything covering cloud metadata."""
+    out: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
+    for item in raw:
+        try:
+            net = ipaddress.ip_network(item.strip(), strict=True)
+        except ValueError as exc:
+            raise NetGuardError("INVALID_EGRESS_ZONE", item) from exc
+        if net.prefixlen < (8 if net.version == 4 else 16):
+            raise NetGuardError("EGRESS_ZONE_TOO_BROAD", item)
+        if any(net.overlaps(m) for m in _METADATA_NETS if m.version == net.version):
+            raise NetGuardError("EGRESS_ZONE_COVERS_METADATA", item)
+        out.append(net)
+    return out
+
+
 def resolve_and_vet(
     url: CanonicalURL,
     *,
@@ -241,6 +258,7 @@ def resolve_and_vet(
     internal_ranges: Iterable[str] = (),
     resolver: Resolver = system_resolver,
     previous: VettedTarget | None = None,
+    egress_zones: Iterable[str] = (),
 ) -> VettedTarget:
     """Resolve A/AAAA and vet every answer. Call at preflight AND again immediately before
     dispatch (pass the preflight result as ``previous`` to detect and report DNS changes)."""
@@ -262,10 +280,13 @@ def resolve_and_vet(
             parsed.append(ipaddress.ip_address(a))
         except ValueError as exc:
             raise NetGuardError("DNS_INVALID_ANSWER", a) from exc
+    zones = parse_egress_zones(egress_zones)
     for ip in parsed:  # ONE bad answer denies the whole target
         reason = block_reason(ip, ranges)
         if reason:
             raise NetGuardError(f"BLOCKED_ADDRESS_{reason}", f"{url.host} -> {ip}")
+        if zones and not any(ip in z for z in zones if z.version == ip.version):
+            raise NetGuardError("BLOCKED_ADDRESS_OUTSIDE_EGRESS_ZONE", f"{url.host} -> {ip}")
     addresses = tuple(sorted(str(ip) for ip in parsed))
     warnings: tuple[str, ...] = ()
     if previous is not None and set(previous.addresses) != set(addresses):
@@ -282,6 +303,7 @@ def vet_redirect(
     allowed_ports: Iterable[int],
     internal_ranges: Iterable[str] = (),
     resolver: Resolver = system_resolver,
+    egress_zones: Iterable[str] = (),
 ) -> VettedTarget:
     """Re-validate a redirect target against scope and egress policy."""
     if hop > MAX_REDIRECTS:
@@ -294,5 +316,6 @@ def vet_redirect(
     if not in_scope(nxt):
         raise NetGuardError("REDIRECT_OUT_OF_SCOPE", str(nxt))
     return resolve_and_vet(
-        nxt, allowed_ports=allowed_ports, internal_ranges=internal_ranges, resolver=resolver
-    )
+        nxt, allowed_ports=allowed_ports, internal_ranges=internal_ranges, resolver=resolver,
+        egress_zones=egress_zones,
+    )  # fmt: skip

@@ -1,0 +1,142 @@
+# AISW on one host with Docker Compose (ADR-029). From deploy/compose/:
+#   cp aisw.env.example aisw.env   # then edit; no secrets in this file
+#   ./make-secrets.sh              # writes ./secrets/* (0600), never committed
+#   docker compose up -d --build
+# TLS terminates in front of the web service (published on loopback only).
+name: aisw
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  tmpfs: ["/tmp:size=64m,mode=1777"]
+  restart: unless-stopped
+
+x-backend: &backend
+  <<: *hardening
+  image: aisw-backend:${AISW_VERSION:-local}
+  build: { context: ../.., dockerfile: deploy/docker/backend.Dockerfile }
+  user: "10001:10001"
+  env_file: [aisw.env]
+  environment:
+    AISW_SECRETS_DIR: /run/secrets
+
+services:
+  postgres:
+    <<: *hardening
+    image: postgres:16.15-bookworm
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    tmpfs: ["/tmp:size=64m,mode=1777", "/var/run/postgresql:size=8m,uid=999,gid=999"]
+    environment:
+      POSTGRES_USER: aisw_owner
+      POSTGRES_DB: aisw
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_owner_password
+    secrets: [pg_owner_password]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    networks: [data]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "aisw_owner", "-d", "aisw"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  bootstrap:
+    <<: *backend
+    restart: "no"
+    command: ["aisw.bootstrap", "--app-password-file", "/run/secrets/pg_app_password",
+              "--worker-password-file", "/run/secrets/pg_worker_password"]
+    environment:
+      AISW_SECRETS_DIR: /run/secrets
+      AISW_MIGRATION_DATABASE_URL_FILE: /run/secrets/aisw_migration_database_url
+    secrets: [aisw_migration_database_url, pg_app_password, pg_worker_password]
+    networks: [data]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    <<: *backend
+    command: ["aisw.api"]
+    secrets: [aisw_database_url, aisw_session_secret, aisw_oidc_client_secret, kms_app_token]
+    volumes: ["evidence:/var/lib/aisw/evidence"]
+    networks: [data, app, policy, egress]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=3).status != 200)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    depends_on:
+      bootstrap: { condition: service_completed_successfully }
+      opa: { condition: service_healthy }
+
+  worker:
+    <<: *backend
+    command: ["aisw.orchestrator"]
+    environment:
+      AISW_SECRETS_DIR: /run/secrets
+      AISW_WORKER_HEARTBEAT_FILE: /tmp/worker.heartbeat
+    secrets: [aisw_worker_database_url, kms_app_token]
+    volumes: ["evidence:/var/lib/aisw/evidence"]
+    networks: [data, policy, egress]
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "python", "-m", "aisw.orchestrator", "--check-heartbeat"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+    depends_on:
+      bootstrap: { condition: service_completed_successfully }
+      opa: { condition: service_healthy }
+
+  opa:
+    <<: *hardening
+    # Policy engine (ADR-031): serves only the packaged Rego, on an internal network.
+    image: openpolicyagent/opa:1.21.2-static
+    user: "65532:65532"
+    command: ["run", "--server", "--addr", "0.0.0.0:8181", "--disable-telemetry",
+              "--log-level", "error", "--ignore", "*_test.rego", "/policy"]
+    volumes: ["../../backend/aisw/policy/rego:/policy:ro"]
+    networks: [policy]
+    healthcheck:
+      # The static image has no shell; evaluating the policy proves the binary and the bundle.
+      test: ["CMD", "/opa", "eval", "--fail", "-d", "/policy", "--ignore", "*_test.rego", "data.aisw.lib.any_source"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+
+  web:
+    <<: *hardening
+    image: aisw-web:${AISW_VERSION:-local}
+    build: { context: ../.., dockerfile: deploy/docker/web.Dockerfile }
+    user: "101:101"
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    ports: ["127.0.0.1:8080:8080"]
+    networks: [app]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    depends_on:
+      api: { condition: service_healthy }
+
+networks:
+  data: { internal: true }     # postgres is unreachable from outside and has no egress
+  app: { internal: true }      # web -> api only
+  policy: { internal: true }   # api/worker -> opa only
+  egress: {}                   # api/worker control plane and scan zones; filter at the host (ADR-028)
+
+volumes:
+  pgdata: {}
+  evidence: {}
+
+secrets:
+  pg_owner_password: { file: ./secrets/pg_owner_password }
+  pg_app_password: { file: ./secrets/pg_app_password }
+  pg_worker_password: { file: ./secrets/pg_worker_password }
+  aisw_migration_database_url: { file: ./secrets/aisw_migration_database_url }
+  aisw_database_url: { file: ./secrets/aisw_database_url }
+  aisw_worker_database_url: { file: ./secrets/aisw_worker_database_url }
+  aisw_session_secret: { file: ./secrets/aisw_session_secret }
+  aisw_oidc_client_secret: { file: ./secrets/aisw_oidc_client_secret }
+  kms_app_token: { file: ./secrets/kms_app_token }

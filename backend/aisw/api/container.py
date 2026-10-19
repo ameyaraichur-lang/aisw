@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +16,14 @@ from sqlalchemy import Engine
 
 from aisw.adapters.cloud_import import ProwlerImportAdapter
 from aisw.adapters.cmdb_import import CmdbImportAdapter
+from aisw.adapters.config_imports import (
+    AwsIamImportAdapter,
+    DirectoryImportAdapter,
+    FirewallImportAdapter,
+    KubescapeImportAdapter,
+)
 from aisw.adapters.fixture import FixtureAdapter
+from aisw.adapters.inventory_imports import NetboxImportAdapter, ServiceNowImportAdapter
 from aisw.adapters.scanner_imports import (
     GreenboneImportAdapter,
     NmapImportAdapter,
@@ -24,6 +31,12 @@ from aisw.adapters.scanner_imports import (
     WazuhImportAdapter,
 )
 from aisw.adapters.url_smoke import UrlSmokeAdapter
+from aisw.adapters.vuln_imports import (
+    NessusImportAdapter,
+    QualysImportAdapter,
+    TenableImportAdapter,
+    TrivyImportAdapter,
+)
 from aisw.adapters.web_import import ZapImportAdapter
 from aisw.authz.gate import ScopeGate
 from aisw.authz.inventory import DbInventory
@@ -31,15 +44,19 @@ from aisw.authz.net_guard import Resolver, system_resolver
 from aisw.authz.policy import GatePolicy
 from aisw.authz.service import ScopeService
 from aisw.authz.signing import KeyRing, LocalKeySigner, ManifestSigner
+from aisw.authz.transit import transit_from_settings
+from aisw.core.anchor import Witness, witness_from_settings
 from aisw.core.config import Environment, Settings
 from aisw.evidence.imports import ImportStore
 from aisw.evidence.store import EvidenceStore
+from aisw.evidence.worm import LocalObjectLockEmulator, WormEvidenceStore
 from aisw.gateway.gateway import ToolGateway
 from aisw.gateway.registry import AdapterRegistry
 from aisw.gateway.stores import AuditSink, DbAuditSink, DbAuthorizationStore
-from aisw.llm.factory import build_model_client
+from aisw.llm.factory import build_model_client, build_validation_client
 from aisw.orchestrator.worker import Worker
 from aisw.policy.engine import PackRegistry, PolicyEvaluator, PythonRuleEvaluator
+from aisw.policy.opa import OpaClient, OpaEvaluator
 
 
 @dataclass
@@ -55,6 +72,7 @@ class Container:
     keyring: KeyRing | None = None
     evidence: EvidenceStore | None = None
     audit_sink: AuditSink | None = None
+    witness: Witness | None = None
     gate: ScopeGate = field(init=False)
     service: ScopeService | None = field(init=False, default=None)
     gateway: ToolGateway | None = field(init=False, default=None)
@@ -63,7 +81,7 @@ class Container:
     def __post_init__(self) -> None:
         self.gate = ScopeGate(
             registry=self.registry, inventory=DbInventory(self.engine), policy=GatePolicy(),
-            resolver=self.resolver,
+            resolver=self.resolver, egress_zones=tuple(self.settings.egress_zones),
         )  # fmt: skip
         if self.signer is not None and self.keyring is not None:
             self.service = ScopeService(
@@ -76,6 +94,7 @@ class Container:
                 registry=self.registry, store=DbAuthorizationStore(self.engine),
                 verifier=self.keyring, audit=self.audit_sink or DbAuditSink(self.engine),
                 resolver=self.resolver, clock=self.clock, imports=self.imports,
+                egress_zones=tuple(self.settings.egress_zones),
             )  # fmt: skip
 
     def make_worker(self, worker_engine: Engine | None = None, **kw: Any) -> Worker:
@@ -86,7 +105,19 @@ class Container:
         )  # Disabled unless fully configured
         kw.setdefault("ai_scenario_narratives", self.settings.ai_narrative_enabled)
         kw.setdefault("ai_recommendation_narratives", self.settings.ai_architecture_enabled)
+        kw.setdefault("ai_verification_questions", self.settings.ai_verification_questions_enabled)
+        kw.setdefault("ai_executive_summary", self.settings.ai_executive_summary_enabled)
         kw.setdefault("model_timeout", float(self.settings.model_timeout_seconds))
+        s = self.settings
+        kw.setdefault("ai_validation", s.ai_enabled and s.ai_validation_enabled)
+        if s.astra_validation_deployment:
+            kw.setdefault("validation_model", build_validation_client(s))
+        kw.setdefault("validation_batch", s.ai_validation_batch_size)
+        kw.setdefault("validation_max_items", s.ai_validation_max_items_per_agent)
+        kw.setdefault("validation_concurrency", s.ai_validation_concurrency)
+        kw.setdefault("run_token_budget", s.ai_run_token_budget)
+        kw.setdefault("avp_trigger_version", s.ai_validation_trigger_version)
+        kw.setdefault("lease", timedelta(seconds=s.worker_lease_seconds))
         if self.service is not None:
             kw.setdefault("renew_permit", self.service.renew_permit)
         return Worker(
@@ -110,7 +141,9 @@ def build_container(
 ) -> Container:
     clock = clock or (lambda: datetime.now(UTC))
     registry = AdapterRegistry()
-    registry.register(UrlSmokeAdapter(ca_file=ca_file, clock=clock))  # read-only, scope-bound
+    registry.register(UrlSmokeAdapter(  # read-only, scope-bound
+        ca_file=ca_file, inspection_ca_file=settings.tls_inspection_ca_file, clock=clock,
+    ))  # fmt: skip
     for imp in (
         CmdbImportAdapter,
         ProwlerImportAdapter,
@@ -119,17 +152,39 @@ def build_container(
         OpenScapImportAdapter,
         WazuhImportAdapter,
         ZapImportAdapter,
+        FirewallImportAdapter,
+        KubescapeImportAdapter,
+        DirectoryImportAdapter,
+        AwsIamImportAdapter,
+        NetboxImportAdapter,
+        ServiceNowImportAdapter,
+        NessusImportAdapter,
+        TenableImportAdapter,
+        QualysImportAdapter,
+        TrivyImportAdapter,
     ):  # file in, evidence out
         registry.register(imp(clock=clock))
     if settings.env is not Environment.PROD:
-        registry.register(FixtureAdapter(clock=clock))
-    if signer is None and settings.signing_key_path and settings.env is not Environment.PROD:
+        registry.register(FixtureAdapter(clock=clock, delay_ms=settings.fixture_delay_ms))
+    if signer is None and settings.signing_backend == "transit":
+        signer, keyring = transit_from_settings(settings)
+    elif signer is None and settings.signing_key_path and settings.env is not Environment.PROD:
         local = LocalKeySigner.load_or_create("local-1", settings.signing_key_path)
         signer, keyring = local, KeyRing.from_signer(local)
     if evidence is None and settings.evidence_dir is not None:
-        evidence = EvidenceStore(settings.evidence_dir)
+        if settings.evidence_worm_backend == "emulator" and settings.evidence_worm_dir is not None:
+            evidence = WormEvidenceStore(
+                settings.evidence_dir, LocalObjectLockEmulator(settings.evidence_worm_dir, clock),
+                settings.evidence_worm_retain_days, clock,
+            )  # fmt: skip
+        else:
+            evidence = EvidenceStore(settings.evidence_dir)
+    evaluator: PolicyEvaluator = PythonRuleEvaluator()
+    if settings.policy_engine == "opa" and settings.opa_url:
+        evaluator = OpaEvaluator(OpaClient(settings.opa_url))
     return Container(
         settings=settings, engine=engine, registry=registry, packs=PackRegistry.builtin(),
-        evaluator=PythonRuleEvaluator(), clock=clock, resolver=resolver, signer=signer,
+        evaluator=evaluator, clock=clock, resolver=resolver, signer=signer,
         keyring=keyring, evidence=evidence, audit_sink=audit_sink,
+        witness=witness_from_settings(settings.audit_witness_path, settings.audit_witness),
     )  # fmt: skip

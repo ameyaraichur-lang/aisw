@@ -17,6 +17,10 @@ test('operator drafts, approver approves, operator launches, reviewer closes: fu
   await expect(page.getByText(/resolves to/)).toContainText('3 expected asset(s)')
   await page.getByRole('button', { name: 'Next' }).click()
   await useAdapter(page, 'fixture', 'FIXTURE_BASELINE')
+  // the e2e backend runs the Python engine, so Rego packs are offered but cannot be chosen
+  await expect(page.locator('#pack option[value="config-baseline:1.0.0"]')).toBeDisabled()
+  await expect(page.locator('#pack option[value="config-baseline:1.0.0"]')).toContainText('needs the OPA policy engine')
+  await expect(page.getByLabel(/Policy pack/)).toHaveValue('fixture-baseline:1.0.0')
   await page.getByRole('button', { name: 'Next' }).click()
   await expect(page.getByLabel('Maximum concurrency')).toBeVisible()
   await page.getByRole('button', { name: 'Next' }).click()
@@ -70,7 +74,8 @@ test('operator drafts, approver approves, operator launches, reviewer closes: fu
   await expect(page.getByText('Secrets were redacted before storage').or(page.getByText('No redaction needed'))).toBeVisible()
   await expect(page.locator('dl').filter({ hasText: 'Observed' }).getByText('"yes"')).toBeVisible()
   await expect(page.locator('dl').filter({ hasText: 'Expected' }).getByText('"no"')).toBeVisible()
-  await expect(page.getByText('Needs policy-owner review')).toBeVisible() // external mapping is not trusted
+  await expect(page.getByText('Pack control FB-1')).toBeVisible()
+  await expect(page.getByText('Needs policy-owner review').first()).toBeVisible() // external mapping is not trusted
   await expect(page.getByText(/with AI disabled none exists/)).toBeVisible()
   await page.goBack()
 
@@ -85,7 +90,8 @@ test('operator drafts, approver approves, operator launches, reviewer closes: fu
   await expect(page.getByText('Awaiting review')).toBeVisible()
   await page.getByRole('button', { name: 'Preview HTML report' }).click()
   const frame = page.frameLocator('iframe[title="Report preview"]')
-  await expect(frame.getByText('Direct root login over SSH is disabled')).toBeVisible()
+  await expect(frame.getByText('Direct root login over SSH is disabled').first()).toBeVisible()
+  await expect(frame.getByRole('heading', { name: 'Control-gap matrix' })).toBeVisible()
   await expect(page.locator('iframe[title="Report preview"]')).toHaveAttribute('sandbox', '')
   await page.getByRole('button', { name: 'Approve report' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Approve', exact: true }).click()

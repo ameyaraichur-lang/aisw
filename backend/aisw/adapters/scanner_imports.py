@@ -14,7 +14,7 @@ import ipaddress
 import re
 import shlex
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 from aisw.adapters.imports_base import (
     ImportAdapter,
@@ -257,6 +257,13 @@ def nmap_args_violation(args: str) -> str | None:
     return None
 
 
+class NmapImportParams(ImportParams):
+    """``vantage`` is the launcher's statement of where the scan ran; only "untrusted" (outside the
+    estate, e.g. the internet) lets open ports count as verified exposure (ADR-041)."""
+
+    vantage: Literal["untrusted", "internal"] | None = None
+
+
 class NmapImportAdapter(ImportAdapter):
     adapter_id = "nmap_import"
     tool = "aisw-nmap-import"
@@ -267,7 +274,7 @@ class NmapImportAdapter(ImportAdapter):
     formats = (
         "nmaprun XML (xmloutputversion 1.0x) from the approved bounded profile: -sT/-sS, -T0-3, <=100 ports, <=2 retries, no scripts/version/OS detection",
     )  # noqa: E501
-    param_model = ImportParams
+    param_model = NmapImportParams
 
     def parse(self, text: str, job: AdapterJob, params: ImportParams) -> Parsed:
         root = parse_xml(text)

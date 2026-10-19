@@ -72,6 +72,10 @@ def assess(finding_id: str, factors: RiskFactors, rubric: Rubric) -> RiskAssessm
         missing.append(
             "Exposure to untrusted networks was not verified; it is scored as 0, not assumed"
         )
+    elif factors.exposure == "CONFIGURED" and factors.exposure_basis:
+        missing.append(
+            "Exposure is read from firewall configuration; filtering upstream was not evaluated"
+        )
     if not factors.evidence_fresh:
         missing.append("Supporting evidence is older than the freshness window")
     if factors.criticality is None:

@@ -98,6 +98,14 @@ def worker_engine(pg_server: Any, owner_engine: Engine, app_engine: Engine) -> I
     eng.dispose()
 
 
+@pytest.fixture(scope="session")
+def opa_url() -> Iterator[str]:
+    from tests.opa_server import opa_server
+
+    with opa_server() as url:
+        yield url
+
+
 @pytest.fixture()
 def client(app_engine: Engine) -> TestClient:
     settings = Settings(env="test", dev_auth_stub=True)

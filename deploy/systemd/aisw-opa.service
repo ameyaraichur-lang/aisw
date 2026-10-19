@@ -1,0 +1,41 @@
+# AISW policy engine (ADR-031): OPA serving only the packaged Rego, on loopback.
+# Install the pinned binary (see deploy/README.md) at /usr/local/bin/opa.
+[Unit]
+Description=AISW policy engine (OPA)
+Documentation=file:///opt/aisw/deploy/README.md
+After=network-online.target
+
+[Service]
+Type=exec
+User=aisw
+Group=aisw
+ExecStart=/usr/local/bin/opa run --server --addr 127.0.0.1:8181 --disable-telemetry --log-level error --ignore *_test.rego /opt/aisw/backend/aisw/policy/rego
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=localhost
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+
+[Install]
+WantedBy=multi-user.target

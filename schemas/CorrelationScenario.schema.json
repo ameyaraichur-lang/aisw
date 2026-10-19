@@ -57,6 +57,95 @@
       ],
       "title": "EdgeBasis",
       "type": "string"
+    },
+    "ReachEdge": {
+      "additionalProperties": false,
+      "description": "One way traffic can reach a host: from the internet or from another host (ADR-041).",
+      "properties": {
+        "basis": {
+          "enum": [
+            "OBSERVED",
+            "CONFIGURED"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "dst": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+          "title": "Dst",
+          "type": "string"
+        },
+        "edge_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+          "title": "Edge Id",
+          "type": "string"
+        },
+        "evidence_ref": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Evidence Ref",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "ports": {
+          "anyOf": [
+            {
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Ports"
+        },
+        "src": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+          "title": "Src",
+          "type": "string"
+        },
+        "via": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+          "title": "Via",
+          "type": "string"
+        }
+      },
+      "required": [
+        "edge_id",
+        "src",
+        "dst",
+        "basis",
+        "ports",
+        "via",
+        "evidence_ref"
+      ],
+      "title": "ReachEdge",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -87,7 +176,7 @@
       "items": {
         "$ref": "#/$defs/ChainLink"
       },
-      "minItems": 2,
+      "minItems": 1,
       "title": "Chain",
       "type": "array"
     },
@@ -99,7 +188,7 @@
         "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
         "type": "string"
       },
-      "minItems": 2,
+      "minItems": 1,
       "title": "Finding Ids",
       "type": "array"
     },
@@ -110,6 +199,13 @@
         "type": "string"
       },
       "title": "Missing Evidence",
+      "type": "array"
+    },
+    "path": {
+      "items": {
+        "$ref": "#/$defs/ReachEdge"
+      },
+      "title": "Path",
       "type": "array"
     },
     "scenario_id": {

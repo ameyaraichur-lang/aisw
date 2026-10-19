@@ -1,0 +1,8 @@
+#TYPE Selected.Microsoft.ActiveDirectory.Management.ADUser
+"SamAccountName","Enabled","LastLogonDate","whenCreated","MemberOf","adminCount","DistinguishedName"
+"adm.jsmith","True","10/12/2026 8:15:02 AM","1/5/2023 9:00:00 AM","CN=Domain Admins,CN=Users,DC=corp,DC=example,DC=com;CN=VPN Users,OU=Groups,DC=corp,DC=example,DC=com","1","CN=adm.jsmith,OU=Admins,DC=corp,DC=example,DC=com"
+"jdoe","True","10/14/2026 7:01:44 AM","3/2/2024 10:00:00 AM","CN=VPN Users,OU=Groups,DC=corp,DC=example,DC=com","","CN=jdoe,OU=Staff,DC=corp,DC=example,DC=com"
+"svc-backup-old","True","3/1/2026 2:00:00 AM","6/1/2021 9:00:00 AM","CN=Backup Operators,CN=Builtin,DC=corp,DC=example,DC=com","1","CN=svc-backup-old,OU=Service,DC=corp,DC=example,DC=com"
+"contractor.k","True","","1/1/2025 9:00:00 AM","","","CN=contractor.k,OU=Staff,DC=corp,DC=example,DC=com"
+"leaver.m","False","1/1/2025 9:00:00 AM","1/1/2020 9:00:00 AM","","","CN=leaver.m,OU=Disabled,DC=corp,DC=example,DC=com"
+"partner.x","True","10/14/2026 7:01:44 AM","1/1/2025 9:00:00 AM","","","CN=partner.x,OU=Users,DC=partner,DC=example,DC=net"

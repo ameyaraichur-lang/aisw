@@ -17,9 +17,11 @@ from aisw.authz.service import ScopeDenied, ScopeService
 from aisw.contracts.base import NonEmpty, Sha256, Slug, StrictModel
 from aisw.core.audit import append_audit
 from aisw.core.db import tenant_connection
+from aisw.core.project_roles import project_of_report, project_of_run
 from aisw.core.rbac import ActorContext, Forbidden, Permission, authorize
 from aisw.orchestrator.events import append_event
 from aisw.orchestrator.runs import create_run
+from aisw.reporting.export import MEDIA, export, stamp_lines
 
 router = APIRouter(prefix="/api/v1")
 esc = _html.escape
@@ -72,6 +74,7 @@ def launch(
     cid: str = Depends(correlation_id),
     idempotency_key: str | None = Header(default=None),
 ) -> dict[str, Any]:
+    actor = actor.on(body.project_id)
     try:
         authorize(actor, Permission.ASSESSMENT_LAUNCH)
     except Forbidden:
@@ -81,8 +84,11 @@ def launch(
         raise HTTPException(status_code=400, detail="Idempotency-Key header is required")
 
     def hook(conn: Any, run_id: str, permit: Any, manifest: Any) -> None:
-        if c.packs.get(manifest.body.policy_version) is None:
+        pack = c.packs.get(manifest.body.policy_version)
+        if pack is None:
             raise ScopeDenied(["POLICY_PACK_UNKNOWN"])
+        if pack.needs_opa and not c.evaluator.runs_rego:
+            raise ScopeDenied(["POLICY_ENGINE_OPA_REQUIRED"])
         if body.requested_domains and not set(body.requested_domains) <= set(manifest.body.domains):
             raise ScopeDenied(["DOMAIN_NOT_IN_MANIFEST"])
         if not set(body.adapter_params) <= set(manifest.body.allowed_adapters):
@@ -119,6 +125,7 @@ def launch(
 def status(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         run = _run_or_404(conn, run_id)
@@ -130,11 +137,13 @@ def status(
             text("SELECT COALESCE(MAX(seq),0) FROM run_events WHERE run_id=:r"), {"r": run_id}
         ).scalar_one()
         report = conn.execute(
-            text("SELECT report_id, approval_state FROM reports WHERE run_id=:r"), {"r": run_id}
-        ).first()
+            text("SELECT report_id, approval_state FROM reports WHERE run_id=:r "
+                 "ORDER BY revision DESC LIMIT 1"), {"r": run_id},
+        ).first()  # fmt: skip
     counts = {s: n for s, n in tasks}
     return {
         "run_id": run_id,
+        "project_id": str(run["project_id"]),
         "state": run["state"],
         "last_phase": run["last_phase"],
         "reason": run["reason"],
@@ -158,6 +167,7 @@ def events(
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)
@@ -189,6 +199,7 @@ def cancel(
     c: Container = Depends(_container),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.ASSESSMENT_CANCEL)
     now = c.clock()
     with tenant_connection(engine, actor.tenant_id) as conn:
@@ -222,6 +233,7 @@ def cancel(
 def coverage(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.PROJECT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         run = _run_or_404(conn, run_id)
@@ -257,6 +269,7 @@ def findings(
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
 ) -> dict[str, Any]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.FINDING_READ)
     if not set(verdict) <= {"ACCEPT", "NEEDS_REVIEW", "REJECT"}:
         raise HTTPException(status_code=422, detail="unknown verdict filter")
@@ -284,19 +297,22 @@ def findings(
 def list_reports(
     run_id: str, actor: ActorContext = Depends(get_actor), engine: Engine = Depends(get_engine)
 ) -> list[dict[str, Any]]:
+    actor = project_of_run(engine, actor, run_id)
     authorize(actor, Permission.REPORT_READ)
     with tenant_connection(engine, actor.tenant_id) as conn:
         _run_or_404(conn, run_id)
         rows = conn.execute(
             text(
                 "SELECT report_id, approval_state, report_hash, generated_at, "
-                "(body->>'coverage_complete')::boolean FROM reports WHERE run_id=:r"
+                "(body->>'coverage_complete')::boolean, revision, supersedes FROM reports "
+                "WHERE run_id=:r ORDER BY revision DESC"
             ),
             {"r": run_id},
         ).all()
-    return [
+    return [  # newest revision first; older ones are SUPERSEDED history
         {"report_id": r[0], "approval_state": r[1], "report_hash": r[2],
-         "generated_at": r[3].isoformat(), "coverage_complete": r[4]}
+         "generated_at": r[3].isoformat(), "coverage_complete": r[4], "revision": r[5],
+         "supersedes": r[6]}
         for r in rows
     ]  # fmt: skip
 
@@ -304,13 +320,14 @@ def list_reports(
 @router.get("/reports/{report_id}")
 def get_report(
     report_id: str,
-    format: str = Query(default="json", pattern="^(json|html)$"),  # noqa: A002
+    format: str = Query(default="json", pattern="^(json|html|pdf|docx)$"),  # noqa: A002
     download: bool = False,
     actor: ActorContext = Depends(get_actor),
     engine: Engine = Depends(get_engine),
     c: Container = Depends(_container),
     cid: str = Depends(correlation_id),
 ) -> Response:
+    actor = project_of_report(engine, actor, report_id)
     authorize(actor, Permission.REPORT_READ)  # checked again at download time
     now = c.clock()
     with tenant_connection(engine, actor.tenant_id) as conn:
@@ -345,9 +362,12 @@ def get_report(
         "X-Exported-By": actor.actor_id, "X-Exported-At": now.isoformat(),
         "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'",
     }  # fmt: skip
-    ext = "html" if format == "html" else "json"
     if download:
-        headers["Content-Disposition"] = f'attachment; filename="{report_id}.{ext}"'
+        headers["Content-Disposition"] = f'attachment; filename="{report_id}.{format}"'
+    if format in MEDIA:
+        lines = stamp_lines(actor.actor_id, actor.tenant_id, now.isoformat(), approval, report_hash)
+        data = export(body, format, lines, approved=approval == "APPROVED")  # type: ignore[arg-type]
+        return Response(data, media_type=MEDIA[format], headers=headers)
     if format == "html":
         return Response(
             html.replace("<main>", "<main>" + stamp, 1), media_type="text/html", headers=headers
@@ -377,6 +397,7 @@ def approve_report(
     c: Container = Depends(_container),
     cid: str = Depends(correlation_id),
 ) -> dict[str, Any]:
+    actor = project_of_report(engine, actor, report_id)
     authorize(actor, Permission.REPORT_APPROVE)
     now = c.clock()
     with tenant_connection(engine, actor.tenant_id) as conn:

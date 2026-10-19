@@ -91,7 +91,7 @@ Each milestone ends with a **gate** and a **handoff report** (files changed, beh
 | **M9** (needs your explicit authorization) | Live external validation | (a) `example.com` passive smoke (b) one bounded Nmap run on `scanme.nmap.org` (c) ZAP baseline→active against *your own* Juice Shop deployment | Evidence package per J.7 / addendum §9.5 | J.3–J.5 |
 
 ### Deliberately deferred (per App. D.3)
-Agent-to-agent negotiation, graph database, active network probing beyond the three approved profiles, remediation executor, model fine-tuning, 3D graphs, Temporal, DefectDojo/SeaweedFS (optional hooks only).
+Agent-to-agent negotiation, graph database, active network probing beyond the three approved profiles, remediation executor, model fine-tuning, 3D graphs (still deferred; the decorative 3D view of ADR-047 draws no relationships), Temporal, DefectDojo/SeaweedFS (optional hooks only).
 
 ---
 

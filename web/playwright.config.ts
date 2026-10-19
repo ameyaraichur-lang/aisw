@@ -27,7 +27,7 @@ export default defineConfig({
       url: WEB,
       timeout: 60_000,
       reuseExistingServer: false,
-      env: { AISW_API_URL: 'http://127.0.0.1:8099', VITE_STREAM_BACKOFF_MS: '300', VITE_POLL_MS: '600' },
+      env: { AISW_API_URL: 'http://127.0.0.1:8099', VITE_STREAM_BACKOFF_MS: '300', VITE_POLL_MS: '600', VITE_STREAM_STALL_MS: '2000' },
     },
   ],
 })

@@ -101,5 +101,11 @@ def validate_narrative(out: NarrativeOutput, subject: NarrativeSubject) -> list[
         elif t != subject.tier:
             defects.add(f"TIER_MISMATCH:{t}")
 
+    if subject.purpose == "verification":
+        if not out.open_questions:
+            defects.add("NO_VERIFICATION_QUESTIONS")
+        if any(not q.rstrip().endswith("?") for q in out.open_questions):
+            defects.add("VERIFICATION_NOT_A_QUESTION")
+
     defects.update(prohibited_content(text))
     return sorted(defects)

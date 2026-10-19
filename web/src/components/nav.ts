@@ -1,14 +1,23 @@
-export interface Item { to: string; label: string; need?: string; planned?: string }
+export interface Item { to: string; label: string; need?: string | string[]; planned?: string }
 export const NAV: Item[] = [
+  { to: '/mission', label: 'Mission Control' },
   { to: '/', label: 'Command Center' },
   { to: '/projects', label: 'Projects & Environments' },
   { to: '/integrations', label: 'Integrations & Collectors' },
   { to: '/assessments', label: 'Assessments' },
-  { to: '/assets', label: 'Asset Explorer', planned: 'planned' },
+  { to: '/assets', label: 'Asset Explorer' },
+  { to: '/coverage', label: 'Coverage Ledger' },
   { to: '/findings', label: 'Findings & Exposure', need: 'finding:read' },
   { to: '/architecture', label: 'Architecture & Modernization', need: 'finding:read' },
-  { to: '/controls', label: 'Control Coverage' },
+  { to: '/roadmap', label: 'Modernization Roadmap', need: 'finding:read' },
+  { to: '/tickets', label: 'Ticket Outbox', need: 'finding:read' },
+  { to: '/controls', label: 'Control Matrix' },
+  { to: '/exceptions', label: 'Exceptions', need: 'finding:read' },
+  { to: '/assurance', label: 'Assurance Console', need: 'finding:read' },
   { to: '/reports', label: 'Reports & Evidence', need: 'report:read' },
   { to: '/audit', label: 'Policy, Users & Audit', need: 'audit:read' },
+  { to: '/audit/model-calls', label: 'Model-call ledger', need: 'audit:read' },
+  { to: '/retention', label: 'Evidence Retention', need: ['retention:manage', 'audit:read'] },
+  { to: '/evaluation', label: 'Evaluation Lab', need: 'finding:read' },
 ]
 

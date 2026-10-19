@@ -86,7 +86,7 @@ def build_recommendations(
                 recommendation_id="rec-" + hashlib.sha256(f"{entry.catalog_id}|{'|'.join(ids)}".encode()).hexdigest()[:16],
                 tenant_id=tenant_id, finding_refs=ids, title=entry.title,
                 catalog_ref=f"{entry.catalog_id}@{catalog.version}", target_pattern=entry.target_pattern,
-                current_state=f"{len(ids)} finding(s) on {len(asset_ids)} asset(s): " + "; ".join(titles[:3]),
+                current_state=f"{len(ids)} failed check(s) on {len(asset_ids)} asset(s); requirement not met: " + "; ".join(titles[:3]),
                 action=entry.action, alternatives=entry.alternatives, dependencies=entry.prerequisites,
                 effort=EffortEstimate(value=None, basis=None),  # UNKNOWN: only an owner can estimate
                 owner_questions=questions, rollback=entry.rollback, acceptance_test=entry.acceptance_test,

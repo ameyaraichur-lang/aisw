@@ -1,8 +1,8 @@
 """Lockfile-based SBOM (CycloneDX 1.5) and licence gate for the backend and web workspaces.
 
-NOT Syft/ScanCode (neither is installed here): components come from `uv.lock` and
-`package-lock.json`; Python licences come from installed package metadata, npm licences from the
-lockfile. Native libraries bundled inside wheels (libpq, OpenSSL, ...) are NOT inventoried.
+Components come from `uv.lock` and `package-lock.json`; Python licences come from installed package
+metadata, npm licences from the lockfile. Native libraries bundled inside wheels (libpq, OpenSSL,
+...) are NOT inventoried; CI cross-checks this SBOM against Syft and ScanCode (sbom_crosscheck.py).
 
 Usage: python tools/sbom.py [--check]    (--check: fail if the committed SBOM/report drifted or the
 licence gate fails; without it the files are (re)written)

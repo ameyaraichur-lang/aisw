@@ -1,0 +1,6 @@
+# Deliberate synthetic secrets in redaction and hostile-header tests (ADR-043). Add a line only
+# after checking the hit is a fixture; never for a real credential, which must be rotated instead.
+5b6888865a4d722dc18130059862469ca55cc6d5:backend/tests/security/test_url_smoke_pipeline.py:generic-api-key:477
+435492d115a5bab4be25420e8b092ad2b8f79060:backend/tests/security/test_redaction.py:generic-api-key:35
+435492d115a5bab4be25420e8b092ad2b8f79060:backend/tests/security/test_redaction.py:stripe-access-token:15
+435492d115a5bab4be25420e8b092ad2b8f79060:backend/tests/security/test_redaction.py:jwt:18
