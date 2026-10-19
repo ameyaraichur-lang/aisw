@@ -1197,7 +1197,7 @@
     }
    ],
    "purl": "pkg:pypi/pyyaml@6.0.3",
-   "scope": "excluded",
+   "scope": "required",
    "type": "library",
    "version": "6.0.3"
   },

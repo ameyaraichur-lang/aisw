@@ -12,6 +12,7 @@ dependencies = [
   "pydantic>=2.9",
   "pydantic-settings>=2.6",
   "pyjwt>=2.10",
+  "pyyaml>=6",
   "sqlalchemy>=2.0",
   "uvicorn>=0.32",
 ]
@@ -25,7 +26,6 @@ dev = [
   "pip-audit>=2.7",
   "pgserver>=0.1.4",
   "types-defusedxml>=0.7.0.20260504",
-  "pyyaml>=6",
   "types-pyyaml>=6",
   "httpx2>=2.13.1",
 ]
