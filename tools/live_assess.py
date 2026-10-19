@@ -182,18 +182,22 @@ def run(api: Api, key: str, ai: bool, timeout: float) -> str:
     s = SCENARIOS[key]
     print(f"\n=== {s['name']} ({key})")
     pid = project_id(api, s["name"], s["environment"])
+    targets = []
     for kind, selector in s["inventory"]:
         if kind == "url":
             expected = expected_urls(selector)
         else:
             adapter, (import_kind, pattern) = next(iter(s["imports"].items()))
             expected = (expected_hosts if import_kind == "nmap_xml" else expected_images)(pattern)
+            # Inventory entries cannot be edited, so a changed scan set gets its own selector.
+            selector = f"{selector}-{_h('|'.join(expected), 6)}"
         api.call("POST", "/api/v1/inventory", ok=(201, 409),
                  json_body={"project_id": pid, "kind": kind, "selector": selector,
                             "expected_assets": expected})  # fmt: skip
+        targets.append({"kind": kind, "selector": selector})
         print(f"    inventory {kind} {selector}: expects {expected}")
     body = {
-        "project_id": pid, "targets": [{"kind": k, "selector": v} for k, v in s["inventory"]],
+        "project_id": pid, "targets": targets,
         "evidence_retention_days": 30,
         "expires_at": (datetime.now(UTC) + timedelta(days=7)).isoformat(), **s["manifest"],
     }  # fmt: skip
