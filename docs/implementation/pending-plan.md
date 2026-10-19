@@ -1,19 +1,25 @@
 # Pending work plan (post-M8)
 
-Date: 2026-10-18 (first written 2026-10-16). Baseline: branch `feat/astra-llm-config`, [draft PR #1](https://github.com/ameyaraichur-lang/aisw/pull/1) on top of `main` at `956489d` (M0–M8).
+Date: 2026-10-19 (first written 2026-10-16). Baseline: branch `feat/astra-llm-config`, [draft PR #1](https://github.com/ameyaraichur-lang/aisw/pull/1) on top of `main` at `956489d` (M0–M8).
 Sources: this repository's README "prepared / not prepared" matrix, `status.md`, the threat model's residual risks, ADRs 001–046, the runbooks, the sign-off register, and the WARDEN rev 3 implementation plan kept beside the repository (`../docs/implementation/implementation-plan.md` in the parent workspace).
 
 ## 1. Where the project stands
 
-The proof-of-concept pipeline is complete end to end on **synthetic data**: signed scope, tool gateway, durable worker, evidence store, OPA policy evaluation, Agents 0–8 with the advisory Astra validation pass, independent assurance, report with human approval, and the operator console. Since 2026-10-16 the pre-production seams (sign-in, key custody, egress, deployment, CI), the adopted rev 3 scope and the engineering gaps below were built, ADR-020 to ADR-046, migrations up to 0023.
+The proof-of-concept pipeline is complete end to end on **synthetic data**: signed scope, tool gateway, durable worker, evidence store, OPA policy evaluation, Agents 0–8 with the advisory Astra validation pass, independent assurance, report with human approval, and the operator console. Since 2026-10-16 the pre-production seams (sign-in, key custody, egress, deployment, CI), the adopted rev 3 scope and the engineering gaps below were built, ADR-020 to ADR-046, migrations up to 0023. On 2026-10-18 the product ran against real targets for the first time ([record](live-validation/2026-10-18-live-runs.md)), and the console gained the Mission Control live view and a HUD theme (ADR-047).
 
-Measured on 2026-10-18: 1545 backend tests, 14 web unit tests and 40 end-to-end tests (with accessibility scans on 28 screens) pass locally and on the [first GitHub Actions run](https://github.com/ameyaraichur-lang/aisw/actions/runs/39111965433), together with ruff, strict mypy, OPA, schema, SBOM, licence, sign-off, secret-scan and gitleaks checks. Results: [`scorecard.md`](scorecard.md).
+Measured on 2026-10-19: 1553 backend tests, 22 web unit tests and 42 end-to-end tests (with accessibility scans on 29 screens) pass locally and on the [latest GitHub Actions run](https://github.com/ameyaraichur-lang/aisw/actions/runs/39143185443) (commit `ad31c81`), together with ruff, strict mypy, OPA, schema, SBOM, licence, sign-off, secret-scan and gitleaks checks. Results: [`scorecard.md`](scorecard.md).
 
-Nothing has touched a real host, real scanner output, a real identity provider, a real KMS or a real deployment. Astra has run on synthetic fixtures only. What remains is mostly that contact with reality, and the human decisions recorded as PENDING in [`signoffs.md`](signoffs.md) (14 entries, each with an owner and a next step).
+Contact with reality so far is the product owner's live runs of 2026-10-18, made with Astra on and outside the M9 harness:
+- a passive probe of `example.com`, which went through the corporate TLS-inspection proxy, so its certificate controls were not assessed;
+- the local portal;
+- a bounded Nmap scan of this workstation;
+- Trivy scans of the product's own base images.
+
+They found four defects, all fixed, and real critical and high vulnerabilities in both base images. Nothing has touched a real identity provider, a real KMS or a real deployment, and every importer other than Nmap and Trivy has seen synthetic data only. What remains is mostly the rest of that contact with reality, and the human decisions recorded as PENDING in [`signoffs.md`](signoffs.md) (14 entries, each with an owner and a next step).
 
 ## 2. Which plan governs: decided
 
-**This repository is the base; rev 3 items are adopted one at a time (ADR-046).** Adopted: Astra on the agents (advisory only), OPA, framework mappings, exceptions, the rev 3 importers, the rev 3 pages as routes in the existing console, PDF/DOCX and ITSM reporting, the Maple Trust estate and the Evaluation Lab. Not adopted: the vanilla JS / Socket.IO / APEX rendering model, WARDEN branding, GitLab CI, live API pulls from CMDB and scanner products, and the Estate Map relationship graph. Taking any of those up needs a new ADR.
+**This repository is the base; rev 3 items are adopted one at a time (ADR-046).** Adopted: Astra on the agents (advisory only), OPA, framework mappings, exceptions, the rev 3 importers, the rev 3 pages as routes in the existing console, PDF/DOCX and ITSM reporting, the Maple Trust estate and the Evaluation Lab. Not adopted: the vanilla JS / Socket.IO / APEX rendering model, WARDEN branding, GitLab CI, live API pulls from CMDB and scanner products, and the Estate Map relationship graph. Taking any of those up needs a new ADR. Added since, outside rev 3: the Mission Control live view and the HUD theme (ADR-047), which is decorative and adds no relationship graph.
 
 ## 3. Required before any real use (P0)
 
@@ -40,7 +46,7 @@ Done on 2026-10-16:
 
 | # | Item | Notes |
 |---|---|---|
-| A-1 | Data-handling approval for Astra (open item O3) covering real evidence | **Recorded PENDING** in the sign-off register (`astra-data-approval`). Synthetic data only until then; the configured approval ref covers synthetic data only (owner: product owner with the data protection officer) |
+| A-1 | Data-handling approval for Astra (open item O3) covering real evidence | **Recorded PENDING** in the sign-off register (`astra-data-approval`; owner: product owner with the data protection officer). Until it is recorded, Astra may see synthetic data plus the redacted findings of the four 2026-10-18 live targets, under the product owner's scoped approval `product-owner-2026-10-18-live-local-targets-and-example-com`. Measured on those runs: 34 calls, 33 schema-valid, median latency 4.9 s; quality not scored ([record](live-validation/2026-10-18-live-runs.md)) |
 
 ## 5. Rev 3 scope adopted (ADR-046)
 
@@ -57,17 +63,17 @@ Done on 2026-10-16:
 
 | Area | Gap |
 |---|---|
-| Live validation (M9) | ~~Harness and authorisation gate~~ (done, ADR-045: the plan in `docs/implementation/live-validation/plan.json` lists `example.com` passive smoke, one bounded Nmap on `scanme.nmap.org` and ZAP against your own Juice Shop; `preflight` refuses any target without an approved, unchanged plan and an in-window authorisation; `evaluate` compares an exported report with the answer key; proven end to end on loopback). **Pending:** sign-off `live-validation` (owner: you, as the authorising party; next step: fill each target's authorisation block and expectations, re-check the scanme.nmap.org terms, point the Juice Shop selector at your instance, then record the decision with the plan's sha256) |
-| Imports | ~~Upload/import-parameter UI; task dependency ordering~~ (done: review-step file pickers; inventory tasks run first, migration 0019); real tool-version compatibility of the importers |
+| Live validation (M9) | ~~Harness and authorisation gate~~ (done, ADR-045: the plan in `docs/implementation/live-validation/plan.json` lists `example.com` passive smoke, one bounded Nmap on `scanme.nmap.org` and ZAP against your own Juice Shop; `preflight` refuses any target without an approved, unchanged plan and an in-window authorisation; `evaluate` compares an exported report with the answer key; proven end to end on loopback). ~~First real targets~~ (done outside the harness, 2026-10-18: example.com, the local portal, this workstation and the base images, [record](live-validation/2026-10-18-live-runs.md)). **Pending:** a public-CA chain over a direct connection (example.com was TLS-inspected), and sign-off `live-validation` (owner: you, as the authorising party; next step: fill each target's authorisation block and expectations, re-check the scanme.nmap.org terms, point the Juice Shop selector at your instance, then record the decision with the plan's sha256) |
+| Imports | ~~Upload/import-parameter UI; task dependency ordering~~ (done: review-step file pickers; inventory tasks run first, migration 0019); ~~real output for Nmap and Trivy~~ (done 2026-10-18 with Nmap 7.992 and Trivy 0.76.0; real Nmap XML exposed the DOCTYPE defect fixed in `fd4eba9`); real tool-version compatibility of the other importers |
 | Analysis | ~~Real reachability for exposure scoring; graph/attack-path reasoning~~ (done, ADR-041: edges from host-firewall configuration and declared-vantage scans, exposure backed by stored edges, internet-to-asset path scenarios, migration 0022); cloud security-group attachment, rule shadowing and perimeter devices are not modelled; ~~separation of duties for recommendation decisions~~ (done: the run requester may only defer; migration 0018 enforces it) |
 | Retention | ~~UI and scheduler~~ (done: Evidence Retention page; daily dry-run check with opt-in, two-sighting auto soft purge, migration 0020); quarantine deletion is manual. **Pending:** sign-off on enabling auto-execute (owner: retention owner; next step: approve `AISW_RETENTION_AUTO_EXECUTE=true` and the confirmation window per tenant) |
 | Evidence | ~~Object-lock/WORM storage; externally witnessed audit-chain anchor~~ (done as seams with dev/test emulators: write-once replica, signed and witnessed hourly anchors, migration 0023, ADR-042). **Pending:** sign-offs `evidence-worm-storage` (owner: platform owner; next step: provision an Object Lock bucket in COMPLIANCE mode with a write-only role and agree retention) and `audit-anchor-witness` (owner: security programme lead; next step: choose an RFC 3161 TSA, a transparency log or a separate-account WORM bucket) |
 | Events | ~~Silent-stall detection for an open but dead SSE stream (ADR-015)~~ (done: a client watchdog reopens the stream from the cursor after 30 s of silence) |
 | Authorisation | ~~Per-project roles~~ (done, ADR-040: additive project grants for operator, approver, reviewer and report reader, migration 0021); tenant-wide lists still need a tenant role |
 | URL probe | ~~IPv6-only, HTTP/2-only and proxy behaviour~~ (done on loopback: IPv6 pinning and fallback, HTTP/2-only reported as `HTTP2_ONLY_UNSUPPORTED`, environment proxies ignored by design, ADR-016). **Pending:** a public-CA target, part of live validation (M9) and needing your authorisation |
-| Supply chain | ~~Syft/ScanCode SBOM; gitleaks~~ (done, ADR-043: CI cross-checks the lockfile SBOM against Syft image scans and ScanCode licence detection; gitleaks scans the full history; Syft and gitleaks run locally, ScanCode in CI only). Both green on the first CI run (2026-10-18). **Pending:** the base images' OS packages (105 deb, 70 apk found by Syft) are not in the lockfile SBOM; signing of release artefacts |
+| Supply chain | ~~Syft/ScanCode SBOM; gitleaks~~ (done, ADR-043: CI cross-checks the lockfile SBOM against Syft image scans and ScanCode licence detection; gitleaks scans the full history; Syft and gitleaks run locally, ScanCode in CI only). Both green on the first CI run (2026-10-18). **Pending:** the base images carry real critical and high vulnerabilities (Trivy, 2026-10-18: `python:3.12.11-slim-bookworm` 9 critical and 100 high, `nginxinc/nginx-unprivileged:1.29.0-alpine` 3 critical and 46 high), so patched or slimmer base images are needed; the base images' OS packages (105 deb, 70 apk found by Syft) are not in the lockfile SBOM; signing of release artefacts |
 | Scale | ~~Multi-node worker soak test~~ (done on one machine, ADR-044: worker processes killed at random; 120 of 120 runs, 28 kills, 9 tasks reclaimed, results in `soak.md`). **Pending:** workers on separate hosts, network partitions, and DoS sizing on the target hardware (owner: platform owner) |
-| Accessibility | ~~Structural checks~~ (done: axe best-practice structure rules, heading order, one main landmark, a level-1 heading, content in landmarks, on all 28 scanned screens; two heading-order faults fixed on the run coverage and report tabs). Manual screen-reader pass: **Pending:** sign-off `accessibility-screen-reader` (owner: accessibility lead, ideally a daily screen-reader user; next step: run the 13 tasks in `docs/runbooks/accessibility-screen-reader.md` with VoiceOver and NVDA and record the results) |
+| Accessibility | ~~Structural checks~~ (done: axe best-practice structure rules, heading order, one main landmark, a level-1 heading, content in landmarks, on all 29 scanned screens; two heading-order faults fixed on the run coverage and report tabs). Manual screen-reader pass: **Pending:** sign-off `accessibility-screen-reader` (owner: accessibility lead, ideally a daily screen-reader user; next step: run the 13 tasks in `docs/runbooks/accessibility-screen-reader.md` with VoiceOver and NVDA and record the results) |
 | Hygiene | ~~Starlette `TestClient`/`httpx` deprecation warning in every test run~~ **Done:** the test client uses `httpx2`, as Starlette now requires |
 
 ## 7. Suggested sequence
@@ -77,10 +83,13 @@ Done on 2026-10-16:
 3. **M10: deployability** on real infrastructure (owner: platform admin): P0-1 IdP registration, P0-2 real KMS and rotation drill, P0-3 firewall rules on the hosts, P0-4 clean-machine install, then the write-once bucket and audit witness (§6 Evidence) and a soak across separate hosts (§6 Scale).
 4. **M11: governance**: P0-6 rubric, catalog, baselines, AI evaluation bar and trigger policy; the framework mapping review; P0-7 licence review; A-1 Astra data approval; ITSM delivery and retention auto-execute.
 5. **Engineering that needs no one else**, in parallel with the above:
+   - persist the tool gateway's per-run quotas (concurrency and request budget). Today they are in memory per process, so several workers or a restart do not share them (`aisw/gateway/gateway.py`, `QuotaTracker`);
+   - move to patched base images and re-run the base-images scenario until IMG-1 passes or each remaining vulnerability has an owned exception;
    - put the base images' OS packages into the SBOM and run the licence gate over them;
    - sign release artefacts (images and SBOMs);
    - importers for the storage, logging, TLS, hardening and lifecycle facts the Rego pack already has rules for;
-   - reachability through cloud security groups, firewall rule shadowing and perimeter devices.
+   - reachability through cloud security groups, firewall rule shadowing and perimeter devices;
+   - Mission Control: say "showing N of M" when an estate has more than 200 assets (ADR-047).
 
 ## 8. Open questions for the product owner
 

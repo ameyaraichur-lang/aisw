@@ -1,6 +1,6 @@
 # Enabling and disabling AI
 
-AI is **off by default** and is not needed for any decision. A model writes optional explanations of scenarios and recommendations and, when enabled, reviews agent outcomes; it can only hold items for human review ([ADR-021](../adr/ADR-021-agent-validation-pass.md)). Deterministic checks decide what is shown. **No model weights are bundled or downloaded by this repository.** Astra has been run live on synthetic fixtures only (2026-10-16); no local model has been run.
+AI is **off by default** and is not needed for any decision. A model writes optional explanations of scenarios and recommendations and, when enabled, reviews agent outcomes; it can only hold items for human review ([ADR-021](../adr/ADR-021-agent-validation-pass.md)). Deterministic checks decide what is shown. **No model weights are bundled or downloaded by this repository.** Astra has been run live on synthetic fixtures (2026-10-16), and on the redacted findings of four real targets under a scoped product-owner approval (2026-10-18, [record](../implementation/live-validation/2026-10-18-live-runs.md)); no local model has been run.
 
 Two providers exist (`AISW_MODEL_PROVIDER`): `ollama`, a local runtime on loopback (default), and `astra`, the Astra / Azure OpenAI Responses API (remote, [ADR-020](../adr/ADR-020-astra-remote-model-provider.md)).
 

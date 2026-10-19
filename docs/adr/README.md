@@ -46,5 +46,6 @@
 - [ADR-044: Multi-node worker soak with random kills](ADR-044-multi-worker-soak.md)
 - [ADR-045: Live validation harness with an authorisation gate](ADR-045-live-validation-harness.md)
 - [ADR-046: Plan of record: this repository as the base, rev 3 adopted item by item](ADR-046-plan-of-record.md)
+- [ADR-047: Mission Control live view and the HUD theme](ADR-047-mission-control-and-hud-theme.md)
 
 Conflict rule (blueprint v2.1): when sources disagree, apply the stricter security boundary and record an ADR.

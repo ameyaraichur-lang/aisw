@@ -86,7 +86,7 @@
       "artefact": "docs/adr/ADR-020-astra-remote-model-provider.md",
       "owner": "Product owner with the data protection officer",
       "status": "PENDING",
-      "label_while_pending": "Astra may be used on synthetic fixtures only; the configured approval reference covers synthetic data only.",
+      "label_while_pending": "Astra may be used on synthetic fixtures, and on redacted findings from the four live targets of 2026-10-18 under the product owner's scoped approval; any other real evidence needs this approval.",
       "next_step": "Data protection review of what leaves the host (redacted findings, no raw evidence) and of the Azure tenant's retention terms; record the approval reference here and in AISW_ASTRA_DATA_APPROVAL_REF.",
       "decision": null
     },
@@ -141,7 +141,7 @@
       "artefact": "docs/implementation/live-validation/plan.json",
       "owner": "Product owner (the user) with the security programme lead",
       "status": "PENDING",
-      "label_while_pending": "No real target has been contacted; the harness is proven on loopback only and refuses every target in the plan.",
+      "label_while_pending": "The harness refuses every target in the M9 plan; real targets have been contacted only by the product owner's live runs of 2026-10-18, outside the harness.",
       "next_step": "Product owner fills each target's authorisation (who, reference, window), re-checks the scanme.nmap.org terms, replaces the Juice Shop selector with an owned instance, records expected outcomes, then records the decision with the plan's sha256, per docs/adr/ADR-045-live-validation-harness.md.",
       "decision": null
     },

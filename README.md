@@ -147,14 +147,15 @@ flowchart LR
 | Ticket rendering and two-person delivery to Jira or ServiceNow ([ADR-037](docs/adr/ADR-037-itsm-ticket-rendering-and-delivery.md)) | 🟡 | Off by default; a retry finds the ticket instead of duplicating it. Tested against a loopback fake only; real delivery awaits the `itsm-delivery` sign-off |
 | Asset Explorer | ✅ | Reconciled assets with sourced ownership, latest posture per rule and accepted findings; relationships are not modelled, so none is shown |
 | Coverage Ledger | ✅ | Tenant-wide, from each project's latest finished run: gaps grouped by kind with the assets named, inventory the run did not target, and projects never assessed |
-| Passive URL smoke adapter | 🟡 | Proven against a **local server only** |
-| Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; real tool versions unverified. Files are uploaded on the launch review step or through the API |
-| More importers ([ADR-034](docs/adr/ADR-034-config-inventory-vulnerability-imports.md)): firewall, kubescape, AD/LDAP, AWS IAM, NetBox, ServiceNow, Nessus, Tenable, Qualys, Trivy | 🟡 | Feed the Rego pack and `image-baseline`; **synthetic** fixtures, real tool versions unverified |
+| Passive URL smoke adapter | 🟡 | Proven against a local server. On 2026-10-18 it also ran against example.com, through a TLS-inspecting proxy, so the certificate controls were not assessed ([live runs](docs/implementation/live-validation/2026-10-18-live-runs.md)) |
+| Import adapters: CMDB, Prowler, Greenbone, OpenSCAP, Wazuh, Nmap XML, ZAP | 🟡 | Built on **synthetic** fixtures; Nmap XML has also read real Nmap 7.992 output. Other real tool versions unverified. Files are uploaded on the launch review step or through the API |
+| More importers ([ADR-034](docs/adr/ADR-034-config-inventory-vulnerability-imports.md)): firewall, kubescape, AD/LDAP, AWS IAM, NetBox, ServiceNow, Nessus, Tenable, Qualys, Trivy | 🟡 | Feed the Rego pack and `image-baseline`; **synthetic** fixtures, plus real Trivy 0.76.0 reports of the product's base images. Other real tool versions unverified |
 | Risk rubric, scenarios, recommendations, Agent 7 | 🟡 | Rubric weights and the architecture catalog are **samples** awaiting policy-owner approval, labelled in reports and the console; see the [sign-off register](docs/implementation/signoffs.md) |
-| LLM gateway (disabled by default, loopback only, no tools, grounding validator) | 🟡 | Tested with a **scripted stub only**; no model has ever run |
-| Astra (Azure OpenAI) provider, opt-in ([ADR-020](docs/adr/ADR-020-astra-remote-model-provider.md)) | 🟡 | Controls tested with an in-memory transport; **run live on synthetic fixtures** (gpt-6-astra, gpt-5.4, gpt-4.1-mini) on 2026-10-16. No real evidence sent |
+| LLM gateway (disabled by default, loopback only, no tools, grounding validator) | 🟡 | The local-model path is tested with a **scripted stub only**; no local model has run (Astra: next row) |
+| Astra (Azure OpenAI) provider, opt-in ([ADR-020](docs/adr/ADR-020-astra-remote-model-provider.md)) | 🟡 | Controls tested with an in-memory transport. **Run live on synthetic fixtures** (gpt-6-astra, gpt-5.4, gpt-4.1-mini) on 2026-10-16, and on the redacted findings of four real targets on 2026-10-18 under a scoped product-owner approval |
 | AI validation pass over Agents 1–7 ([ADR-021](docs/adr/ADR-021-agent-validation-pass.md)) | 🟡 | One-way: a dissent holds an item for review, nothing else. Tested with a scripted model and run live on Astra (synthetic, including the prompt-injection fixture). Quality on real estates not measured |
 | Operator console (all main screens), SSE with cursor replay, accessibility | ✅ | Axe WCAG 2.2 AA and structural rules automated on every main screen; the manual screen-reader pass is a [checklist](docs/runbooks/accessibility-screen-reader.md) awaiting sign-off |
+| Mission Control live view and HUD theme ([ADR-047](docs/adr/ADR-047-mission-control-and-hud-theme.md)) | ✅ | 3D estate view that animates only recorded events, live event stream, pipeline strip; text alternatives, reduced motion and a no-WebGL fallback; three.js (MIT) loaded only on that page |
 | Report export controls (audited, watermark, drafts restricted) | ✅ | |
 | Evidence retention (dry-run, hash-pinned execute, holds, **soft purge**) | 🟡 | Evidence Retention page and a daily scheduled check; automatic soft purge is opt-in and off; final deletion is a manual act |
 | SBOM (CycloneDX) and licence gate | 🟡 | Lockfile-based, cross-checked against Syft image scans and ScanCode in CI ([ADR-043](docs/adr/ADR-043-syft-scancode-and-gitleaks.md)); green on the first CI run (all 35 runtime components confirmed). Base-image OS packages are not in the lockfile SBOM |
@@ -169,9 +170,9 @@ flowchart LR
 | Area | State | Why / what is needed |
 |---|---|---|
 | **Live validation (M9)**: `example.com` smoke, `scanme.nmap.org` bounded Nmap, ZAP on your own Juice Shop | ⛔ | Harness and authorisation gate built and proven on loopback ([ADR-045](docs/adr/ADR-045-live-validation-harness.md)); needs your explicit authorisation for each target |
-| Real scanner execution (Nmap, ZAP, Greenbone, Wazuh, Prowler) | ⛔ | Not in the MVP; only imports and the passive URL probe exist |
-| A real language model run on real evidence | ⛔ | Astra has run on synthetic fixtures only; real evidence needs the data-handling approval (ADR-020). No local model has been run |
-| CI proof ([ADR-030](docs/adr/ADR-030-ci-on-github-actions.md)) | ✅ | All six GitHub Actions jobs green on the [first run](https://github.com/ameyaraichur-lang/aisw/actions/runs/39111965433) (2026-10-18): 1545 backend and 40 end-to-end tests, images, Syft, ScanCode, gitleaks |
+| Real scanner execution (Nmap, ZAP, Greenbone, Wazuh, Prowler) | ⛔ | Not in the MVP; only imports and the passive URL probe exist. On 2026-10-18 Nmap and Trivy were run by hand and their reports imported |
+| A real language model run on real evidence | 🟡 | Astra reviewed and narrated the redacted findings of four real targets on 2026-10-18, under a scoped product-owner approval; quality was not scored. Wider use needs the data-handling sign-off (ADR-020). No local model has been run |
+| CI proof ([ADR-030](docs/adr/ADR-030-ci-on-github-actions.md)) | ✅ | All six GitHub Actions jobs green on the [first run](https://github.com/ameyaraichur-lang/aisw/actions/runs/39111965433) (2026-10-18) and on the [latest](https://github.com/ameyaraichur-lang/aisw/actions/runs/39143185443) (`ad31c81`): 1553 backend and 42 end-to-end tests, images, Syft, ScanCode, gitleaks |
 | Graph reasoning, attack paths | ✅ | Reachability from host firewall rules and declared-vantage scans; internet-to-asset routes ([ADR-041](docs/adr/ADR-041-reachability-and-attack-paths.md)); cloud security groups are a caveat only |
 | Estate relationship map | ⛔ | Asset Explorer lists assets; no map view |
 | Import upload UI; task dependency ordering between imports | ✅ | Inventory imports run first in the same run (migration 0019) |
@@ -195,7 +196,7 @@ flowchart LR
 | M6 | Import adapters, Agent 1 reconciliation, registry hardening | `0ff106a` |
 | M7 | Risk rubric, Agents 5–7, bounded LLM gateway (stub), workbench UI | `9fa075c` |
 | M8 | Permit renewal, retention, export controls, SBOM/licence gate, threat model, runbooks, scorecard | `2850882` |
-| M9 | Live external validation | harness built; **no target run** (awaiting authorisation) |
+| M9 | Live external validation | harness built; first real targets run outside it on 2026-10-18 ([record](docs/implementation/live-validation/2026-10-18-live-runs.md)); the plan's targets await authorisation |
 
 Each milestone was committed only after its gate passed, and each was reviewed before the next began.
 
