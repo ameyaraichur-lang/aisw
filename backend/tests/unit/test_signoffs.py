@@ -59,7 +59,29 @@ def test_every_open_sign_off_is_recorded_pending_with_an_owner_and_next_step() -
     for s in reg.signoffs:
         assert s.status == "PENDING" and s.decision is None, s.id
         assert len(s.owner) > 5 and len(s.next_step) > 20 and s.label_while_pending
+        assert s.engineering_review is not None, s.id
     assert problems(reg, REPO) == []
+
+
+def test_engineering_review_is_not_a_decision_and_goes_stale() -> None:
+    data = raw()
+    data["signoffs"][0]["engineering_review"]["readiness"] = "APPROVED"
+    with pytest.raises(ValidationError):
+        Register.model_validate(data)
+    data = raw()
+    data["signoffs"][0]["engineering_review"]["evidence"] = []
+    with pytest.raises(ValidationError):
+        Register.model_validate(data)
+    data = raw()
+    data["signoffs"][0]["engineering_review"]["sha256"] = "0" * 64
+    stale = Register.model_validate(data)
+    assert stale.status_of("risk-rubric-1.0.0") == "PENDING"
+    assert problems(stale, REPO) == [
+        f"risk-rubric-1.0.0: {RUBRIC} changed after the engineering review of 2026-10-19"
+    ]
+    text = render_markdown(signoffs.builtin())
+    assert "A review is not a decision" in text
+    assert "### `risk-rubric-1.0.0`: not ready: a prerequisite is missing" in text
 
 
 def test_decision_must_match_status() -> None:

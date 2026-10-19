@@ -20,6 +20,12 @@ from pydantic import Field, model_validator
 from aisw.contracts.base import NonEmpty, StrictModel
 
 Status = Literal["PENDING", "APPROVED", "REJECTED"]
+Readiness = Literal["READY_FOR_DECISION", "READY_WITH_CONDITIONS", "NOT_READY"]
+READINESS_TEXT: dict[Readiness, str] = {
+    "READY_FOR_DECISION": "ready for a decision",
+    "READY_WITH_CONDITIONS": "ready for a decision, with conditions",
+    "NOT_READY": "not ready: a prerequisite is missing",
+}
 
 
 class Decision(StrictModel):
@@ -27,6 +33,19 @@ class Decision(StrictModel):
     at: date
     ref: NonEmpty
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class EngineeringReview(StrictModel):
+    """What engineering prepared for the decider. Never a decision: it leaves the status and the
+    pending label alone, and it goes stale when the artefact changes."""
+
+    by: NonEmpty
+    at: date
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    readiness: Readiness
+    summary: NonEmpty
+    evidence: list[NonEmpty] = Field(min_length=1)
+    open_points: list[NonEmpty] = Field(default_factory=list)
 
 
 class Signoff(StrictModel):
@@ -39,6 +58,7 @@ class Signoff(StrictModel):
     label_while_pending: NonEmpty
     next_step: NonEmpty
     decision: Decision | None
+    engineering_review: EngineeringReview | None = None
 
     @model_validator(mode="after")
     def _decided(self) -> Signoff:
@@ -90,6 +110,11 @@ def problems(register: Register, repo_root: Path) -> list[str]:
             out.append(
                 f"{s.id}: {s.artefact} changed after the {s.status} decision {s.decision.ref}"
             )
+        r = s.engineering_review
+        if r is not None and r.sha256 != sha256_file(path):
+            out.append(
+                f"{s.id}: {s.artefact} changed after the engineering review of {r.at.isoformat()}"
+            )
     return out
 
 
@@ -114,4 +139,31 @@ def render_markdown(register: Register) -> str:
             f"| `{s.id}` | {s.plan_ref} | {s.subject} (`{s.artefact}`) | {s.owner} | {status} "
             f"| {s.label_while_pending} | {s.next_step} |"
         )
+    reviewed = [s for s in register.signoffs if s.engineering_review is not None]
+    if reviewed:
+        rows += [
+            "",
+            "## Engineering reviews",
+            "",
+            "Prepared by engineering so each decider can decide quickly. A review is not a decision:",
+            "it does not change the status or remove a label, and it goes stale when the artefact",
+            "changes. Readiness says whether a decision can be made now, not which way to decide.",
+        ]
+    for s in reviewed:
+        if (r := s.engineering_review) is None:
+            continue
+        rows += [
+            "",
+            f"### `{s.id}`: {READINESS_TEXT[r.readiness]}",
+            "",
+            r.summary,
+            "",
+            f"Reviewed by {r.by} on {r.at.isoformat()}; artefact sha256 `{r.sha256}`.",
+            "",
+            "Evidence:",
+            "",
+            *[f"- {e}" for e in r.evidence],
+        ]
+        if r.open_points:
+            rows += ["", "Open before a decision:", "", *[f"- {p}" for p in r.open_points]]
     return "\n".join(rows) + "\n"

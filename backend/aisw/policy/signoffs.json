@@ -11,7 +11,22 @@
       "status": "PENDING",
       "label_while_pending": "Risk tiers come from a sample rubric awaiting policy-owner approval; treat them as indicative.",
       "next_step": "Policy owner reviews the weights and thresholds against a reviewed sample of real findings, then records the decision here or publishes an adjusted rubric version.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "759430adc4d00cf4f6431917902610f1da0893d4e713e138c2b137f8f8875aee",
+        "readiness": "NOT_READY",
+        "summary": "The rubric works as designed, but its own description requires calibration on a reviewed sample of real findings before the tiers mean anything, and no such sample exists yet.",
+        "evidence": [
+          "Additive weights: severity 0-4, owner-supplied criticality 0-3, exposure 0-2; P0 at 8 or more, P1 at 6, P2 at 4. A business tier is produced only when criticality is known; otherwise the result is NEEDS_POLICY_REVIEW.",
+          "Scoring and the pending label in reports are unit-tested (`tests/unit/test_rubric.py`, `tests/unit/test_signoffs.py`).",
+          "The only real findings so far come from the 2026-10-18 live runs (`docs/implementation/live-validation/2026-10-18-live-runs.md`)."
+        ],
+        "open_points": [
+          "A reviewed sample of real findings with owner-supplied criticality, scored and compared with the tiers the reviewers expect."
+        ]
+      }
     },
     {
       "id": "architecture-catalog-1.0.0",
@@ -22,7 +37,21 @@
       "status": "PENDING",
       "label_while_pending": "Recommendation patterns come from a sample catalog, not the customer's approved reference architecture.",
       "next_step": "Replace or confirm each pattern against the customer's reference architecture; an approved catalog is published as a new version with status APPROVED.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "d55d16974caf8bd100f6ece99bbb49c6faf097e54233dd2ed52db3926eebeb1f",
+        "readiness": "NOT_READY",
+        "summary": "The catalog is a sample of 10 patterns; approving it needs the customer's reference architecture, which engineering does not have.",
+        "evidence": [
+          "10 entries, status `SAMPLE_NEEDS_OWNER_REVIEW`.",
+          "Reports and the console show the sample-catalog label while this is pending (`tests/unit/test_signoffs.py`)."
+        ],
+        "open_points": [
+          "The customer's reference architecture, so each pattern can be confirmed, replaced or dropped and a new catalog version published."
+        ]
+      }
     },
     {
       "id": "config-baseline-1.0.0",
@@ -33,7 +62,23 @@
       "status": "PENDING",
       "label_while_pending": "Framework mappings are proposals awaiting review; a mapping is not a statement of compliance.",
       "next_step": "Compliance lead confirms or corrects each mapping and threshold; approved mappings are marked APPROVED in a new pack version.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "6821c0453f350268c69e2832efce0fac1be54a19a965694c3fca0abefdc3b361",
+        "readiness": "READY_WITH_CONDITIONS",
+        "summary": "The compliance lead can review the rules and mappings now, but several rule families have no importer feeding them real facts yet.",
+        "evidence": [
+          "20 rules across data protection, encryption, host configuration, identity, Kubernetes RBAC, lifecycle, logging and network exposure, with 67 framework mappings in the pack.",
+          "Rules are evaluated by OPA, and `opa test` runs in CI (ADR-031).",
+          "Real input so far is Nmap and Trivy output only; the other importers are tested on synthetic fixtures."
+        ],
+        "open_points": [
+          "The compliance lead confirms or corrects each of the 67 mappings and each threshold.",
+          "Importers for storage, logging, TLS, hardening and lifecycle facts are not built, so those rules have not seen real data (pending plan, section 7)."
+        ]
+      }
     },
     {
       "id": "image-baseline-1.0.0",
@@ -44,7 +89,21 @@
       "status": "PENDING",
       "label_while_pending": "Container image thresholds are a synthetic baseline; any critical or high vulnerability fails, with or without a fix.",
       "next_step": "Platform security lead decides whether unfixed vulnerabilities and which severities fail an image; the agreed thresholds ship as a new pack version marked APPROVED.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "e0794620d8667224936384cdf0018c30dabf23c74d10ce1964f0c3c563a5287e",
+        "readiness": "READY_WITH_CONDITIONS",
+        "summary": "Both rules behave correctly on real Trivy reports. The decision left is how to treat vulnerabilities that have no fix: today any critical or high fails, fixed or not.",
+        "evidence": [
+          "IMG-1 failed on the old base images (2026-10-18) and passes on the current ones (2026-10-19); IMG-2 passed on both (`docs/implementation/live-validation/2026-10-18-live-runs.md`).",
+          "On 2026-10-19 `python:3.12.15-slim-trixie` had 44 high vulnerabilities, none with a Debian fix; under this rule it fails although nothing can be patched."
+        ],
+        "open_points": [
+          "Choose: keep failing on unfixed critical and high (each then needs an owned exception), or fail only when a fix exists and report unfixed ones separately. Ship the choice as a new pack version."
+        ]
+      }
     },
     {
       "id": "ai-evaluation-bar",
@@ -55,7 +114,22 @@
       "status": "PENDING",
       "label_while_pending": "The evaluation bar is provisional; meeting it on the synthetic labelled set is not an approval.",
       "next_step": "Agree the thresholds and a labelled set drawn from reviewed real findings (needs the data approval below), then record the decision.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "30fc6800689575d9aa515c128ff570e87127100ff5815bb9efa8a27e54bc936e",
+        "readiness": "NOT_READY",
+        "summary": "The provisional bar is met on synthetic cases only. Agreeing it needs a labelled set drawn from reviewed real findings, which in turn needs the Astra data approval.",
+        "evidence": [
+          "Provisional bar in `evaluation.py`: recall at least 0.7, false-dissent rate at most 0.1, unscored at most 0.1.",
+          "Synthetic labelled set of 24 review and 5 narrative cases: recall 1.0, false dissent 0, 5 of 5 narratives accepted on the third live run (ADR-025).",
+          "Live runs of 2026-10-18: 34 model calls, 33 schema-valid; quality not scored."
+        ],
+        "open_points": [
+          "`astra-data-approval`, then a labelled set drawn from reviewed real findings."
+        ]
+      }
     },
     {
       "id": "avp-triggers-1.0.0",
@@ -66,7 +140,22 @@
       "status": "PENDING",
       "label_while_pending": "Sample trigger policy: skipped outcomes are still checked by the deterministic validator, but the review scope has not been approved.",
       "next_step": "Review the per-agent rules and the 20% scenario sample against measured call volume and cost on owner-supplied targets, then record the decision bound to the file hash.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "2506ddde3f753c08f10336aadd270f4def786f6011354cbcc44a05e6c4d9b183",
+        "readiness": "READY_WITH_CONDITIONS",
+        "summary": "The policy can only add caution, and every skipped outcome is still checked by the deterministic validator. Its cost has been measured only on four small runs.",
+        "evidence": [
+          "Agents 0, 6, 7 and 8 are always reviewed; agents 1 to 4 on coverage gaps, failed sources, findings above a severity floor (high, or medium for exposure) and unknown outcomes; agent 5 on P0 and P1 scenarios plus a deterministic 20% sample.",
+          "Every trigger decision is stored per run, and a per-run token budget caps spend (ADR-023, ADR-036).",
+          "Four live runs of 2026-10-18: 34 calls, median latency 4.9 s."
+        ],
+        "open_points": [
+          "Call volume and cost on an owner-supplied target of realistic size."
+        ]
+      }
     },
     {
       "id": "licence-review",
@@ -77,7 +166,24 @@
       "status": "PENDING",
       "label_while_pending": "Licence acceptances are engineering positions, not legal advice; no external redistribution until reviewed.",
       "next_step": "Legal reviewer confirms or changes each acceptance in licence-policy.json, then records the decision here.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "c452da2dc0a54527b4461ca113ac9027aca191814415a79c5738dbb3cc91f215",
+        "readiness": "READY_WITH_CONDITIONS",
+        "summary": "The application's dependencies are ready for legal review. The container images' operating-system packages are outside the licence gate and need the same review before images are distributed.",
+        "evidence": [
+          "Runtime copyleft: psycopg and psycopg-binary (LGPL-3.0-only), used unmodified as replaceable packages; psycopg-binary bundles libpq.",
+          "MPL-2.0 items (pathspec, certifi, axe-core, @axe-core/playwright, lightningcss) are development, test or build tooling and are not shipped.",
+          "Packages without readable licence metadata: pgserver (development), colorama, tzdata (Windows only) and httpx2-jsfetch (Pyodide only).",
+          "ScanCode in CI reads the licence text of runtime components and denies nothing (ADR-043)."
+        ],
+        "open_points": [
+          "Base-image OS packages: 85 Alpine packages across the two images (Syft, 2026-10-19), including BusyBox (GPL-2.0), are not in the gate.",
+          "Redistribution obligations for the LGPL packages (notices, ability to replace the library) in the packaging."
+        ]
+      }
     },
     {
       "id": "astra-data-approval",
@@ -88,7 +194,24 @@
       "status": "PENDING",
       "label_while_pending": "Astra may be used on synthetic fixtures, and on redacted findings from the four live targets of 2026-10-18 under the product owner's scoped approval; any other real evidence needs this approval.",
       "next_step": "Data protection review of what leaves the host (redacted findings, no raw evidence) and of the Azure tenant's retention terms; record the approval reference here and in AISW_ASTRA_DATA_APPROVAL_REF.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "9bd78b2aef24e701ce80f2fb25554294ea113d6a133ab7580a552de7fe6cfdb7",
+        "readiness": "READY_WITH_CONDITIONS",
+        "summary": "The engineering controls this decision relies on are built and documented. The data protection officer still needs the Azure tenant's terms, and the development key needs rotating.",
+        "evidence": [
+          "Only a redacted, whitelisted projection of findings is sent; raw evidence does not leave the host (ADR-020).",
+          "The platform refuses to start with Astra enabled unless `AISW_ASTRA_DATA_APPROVAL_REF` names an approval.",
+          "Every call is recorded with deployment, usage and latency in the model-call ledger, readable by auditors (ADR-023).",
+          "Real use so far: redacted findings of the four 2026-10-18 live targets under the product owner's scoped approval, 34 calls."
+        ],
+        "open_points": [
+          "Azure tenant retention and abuse-monitoring terms for the deployment, reviewed by the data protection officer.",
+          "Rotate the development API key before real evidence is sent (open since 2026-10-16)."
+        ]
+      }
     },
     {
       "id": "itsm-delivery",
@@ -99,7 +222,21 @@
       "status": "PENDING",
       "label_while_pending": "Delivery is off; tickets are drafts that can be previewed for Jira or ServiceNow. Delivery is tested against a loopback fake only.",
       "next_step": "ITSM owner approves a rendered payload and a create-and-search-only service account; network owner approves the itsm egress destination; first ticket created in a sandbox project per docs/runbooks/itsm-delivery.md.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "e15dce396d943c5e0a37a240bb7372e82c4932de2e055f6e215ec4b15593490f",
+        "readiness": "READY_FOR_DECISION",
+        "summary": "Rendering and delivery are built and tested against a loopback fake. What remains is on the ITSM owner's side: approving a payload, a service account and an egress rule.",
+        "evidence": [
+          "Jira and ServiceNow renderers, the Ticket Outbox page and two-person find-then-create delivery (ADR-037).",
+          "Delivery is off by default and has only been exercised against a loopback fake."
+        ],
+        "open_points": [
+          "After approval, a first ticket in a sandbox project per `docs/runbooks/itsm-delivery.md`."
+        ]
+      }
     },
     {
       "id": "retention-auto-execute",
@@ -110,7 +247,22 @@
       "status": "PENDING",
       "label_while_pending": "Auto-execute is off; the daily check only records the dry-run plan and a retention manager executes a reviewed plan.",
       "next_step": "Retention owner approves AISW_RETENTION_AUTO_EXECUTE=true per tenant and the AISW_RETENTION_CONFIRM_HOURS window, and names who removes quarantined files and when, per docs/runbooks/evidence-retention.md.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "4d349af3d6b14a86733a3ddea6e1822e3c526cdd6254db588015b689292854f3",
+        "readiness": "READY_WITH_CONDITIONS",
+        "summary": "Automatic purge only moves files to quarantine, and only after the same plan has been seen across the confirmation window. The restore path has not been exercised on a live system.",
+        "evidence": [
+          "The platform never deletes: purge moves blobs to quarantine, and final deletion is a manual, ticketed action.",
+          "Each scheduled check records its dry-run plan; any hold, release or newly eligible run changes the plan hash and restarts the window."
+        ],
+        "open_points": [
+          "Restore from quarantine is marked unverified live in the runbook; rehearse it once before enabling.",
+          "Name who removes quarantined files, and when."
+        ]
+      }
     },
     {
       "id": "evidence-worm-storage",
@@ -121,7 +273,20 @@
       "status": "PENDING",
       "label_while_pending": "Evidence has a single mutable copy in production; the write-once replica runs only as a dev/test emulator.",
       "next_step": "Platform owner provisions an Object Lock bucket in COMPLIANCE mode with a write-only platform role and no governance bypass, agrees the retention period with the retention owner, and implements the ObjectLockBackend, per docs/runbooks/evidence-integrity.md.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "6a2f1cfed4f756cee7dc48e5f2820503f4c6cfe9f668bf3ea8a2853e31d5dbfc",
+        "readiness": "NOT_READY",
+        "summary": "Only the dev/test emulator exists; there is no Object Lock backend to approve yet.",
+        "evidence": [
+          "`ObjectLockBackend` is an interface in `aisw/evidence/worm.py`, exercised only with an emulator (ADR-042)."
+        ],
+        "open_points": [
+          "Provision an Object Lock bucket in COMPLIANCE mode with a write-only role, agree the retention period, and implement the backend."
+        ]
+      }
     },
     {
       "id": "audit-anchor-witness",
@@ -132,7 +297,20 @@
       "status": "PENDING",
       "label_while_pending": "The audit chain is verified only against itself in production; anchors run only with the dev/test local-file witness.",
       "next_step": "Security programme lead chooses the witness (RFC 3161 timestamp authority, transparency log, or object-lock bucket in a separate account), the Witness backend is implemented and aisw-anchor.timer is enabled, per docs/runbooks/evidence-integrity.md.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "6a2f1cfed4f756cee7dc48e5f2820503f4c6cfe9f668bf3ea8a2853e31d5dbfc",
+        "readiness": "NOT_READY",
+        "summary": "Only the local-file witness exists. The witness can be chosen now; operating it needs an implementation.",
+        "evidence": [
+          "`Witness` is an interface in `aisw/core/anchor.py`; the only implementation is `LocalFileWitness`, for dev and test (ADR-042)."
+        ],
+        "open_points": [
+          "Choose an RFC 3161 timestamp authority, a transparency log or a separate-account write-once bucket; then implement it and enable `aisw-anchor.timer`."
+        ]
+      }
     },
     {
       "id": "live-validation",
@@ -143,7 +321,23 @@
       "status": "PENDING",
       "label_while_pending": "The harness refuses every target in the M9 plan; real targets have been contacted only by the product owner's live runs of 2026-10-18, outside the harness.",
       "next_step": "Product owner fills each target's authorisation (who, reference, window), re-checks the scanme.nmap.org terms, replaces the Juice Shop selector with an owned instance, records expected outcomes, then records the decision with the plan's sha256, per docs/adr/ADR-045-live-validation-harness.md.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "70c101ee32b111305dfcf07e19d3e1302ea0ac3236bcfb1632a4891a9e34d45b",
+        "readiness": "NOT_READY",
+        "summary": "No target in the plan has an authorisation block yet, and the Juice Shop selector is a placeholder.",
+        "evidence": [
+          "Three targets: example.com passive smoke, a bounded Nmap of scanme.nmap.org and a ZAP baseline of Juice Shop; each has `authorisation: null`.",
+          "The Juice Shop selector is `http://juice-shop.invalid:3000/`.",
+          "The harness refuses every target until this sign-off approves the plan's exact hash (ADR-045)."
+        ],
+        "open_points": [
+          "Fill each target's authorisation (who, reference, window) and expected outcomes.",
+          "Re-check the scanme.nmap.org terms, and point Juice Shop at an instance you own."
+        ]
+      }
     },
     {
       "id": "accessibility-screen-reader",
@@ -154,7 +348,21 @@
       "status": "PENDING",
       "label_while_pending": "Accessibility is checked automatically only (axe WCAG 2.2 AA and structural rules, keyboard and reduced-motion tests).",
       "next_step": "An accessibility tester runs the 13 tasks in docs/runbooks/accessibility-screen-reader.md with VoiceOver and NVDA, records results in docs/implementation/accessibility-screen-reader-results.md, and the product owner records the decision once every FAIL is fixed or owned.",
-      "decision": null
+      "decision": null,
+      "engineering_review": {
+        "by": "Engineering (prepared with an AI coding agent for ameyar)",
+        "at": "2026-10-19",
+        "sha256": "fbc35ded2a079ff3e52be4b973b292dc5d009056ffff1f8827af6cba85db7ec7",
+        "readiness": "NOT_READY",
+        "summary": "The manual pass has not been run, so there are no results to decide on.",
+        "evidence": [
+          "Automated checks pass: axe WCAG 2.2 AA and structural rules on every scanned screen, plus keyboard and reduced-motion tests.",
+          "`docs/implementation/accessibility-screen-reader-results.md` does not exist yet."
+        ],
+        "open_points": [
+          "An accessibility tester runs the 13 tasks with VoiceOver and NVDA and records the results."
+        ]
+      }
     }
   ]
 }
