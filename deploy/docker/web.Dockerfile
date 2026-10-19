@@ -8,7 +8,7 @@ RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY web/ ./
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.29.0-alpine
+FROM nginxinc/nginx-unprivileged:1.30.6-alpine
 COPY deploy/docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /web/dist /usr/share/nginx/html
 USER 101

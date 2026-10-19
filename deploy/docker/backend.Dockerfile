@@ -2,7 +2,7 @@
 # AISW backend image: API (python -m aisw.api), worker (python -m aisw.orchestrator),
 # bootstrap (python -m aisw.bootstrap) and doctor (python -m aisw.doctor). Build from the repo root:
 #   docker build -f deploy/docker/backend.Dockerfile -t aisw-backend:<version> .
-FROM python:3.12.11-slim-bookworm AS build
+FROM python:3.12.15-alpine3.24 AS build
 COPY --from=ghcr.io/astral-sh/uv:0.12.13 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never UV_PROJECT_ENVIRONMENT=/app/.venv
 WORKDIR /app
@@ -14,10 +14,12 @@ COPY backend/alembic.ini ./
 # Editable on purpose: bootstrap and doctor find migrations/ beside the aisw package in /app.
 RUN uv sync --frozen --no-dev
 
-FROM python:3.12.11-slim-bookworm
-RUN groupadd --system --gid 10001 aisw \
- && useradd --system --uid 10001 --gid aisw --home-dir /nonexistent --shell /usr/sbin/nologin aisw \
- && install -d -o aisw -g aisw -m 0700 /var/lib/aisw /var/lib/aisw/evidence
+FROM python:3.12.15-alpine3.24
+RUN addgroup -S -g 10001 aisw \
+ && adduser -S -D -H -u 10001 -G aisw -h /nonexistent -s /sbin/nologin aisw \
+ && mkdir -p /var/lib/aisw/evidence \
+ && chown aisw:aisw /var/lib/aisw /var/lib/aisw/evidence \
+ && chmod 0700 /var/lib/aisw /var/lib/aisw/evidence
 WORKDIR /app
 COPY --from=build --chown=root:root /app /app
 ENV PATH=/app/.venv/bin:$PATH PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \

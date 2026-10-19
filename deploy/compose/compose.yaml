@@ -24,7 +24,7 @@ x-backend: &backend
 services:
   postgres:
     <<: *hardening
-    image: postgres:16.9-bookworm
+    image: postgres:16.15-bookworm
     cap_drop: [ALL]
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
     tmpfs: ["/tmp:size=64m,mode=1777", "/var/run/postgresql:size=8m,uid=999,gid=999"]

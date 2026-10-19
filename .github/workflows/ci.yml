@@ -120,6 +120,9 @@ jobs:
           docker run --rm --entrypoint python aisw-backend:ci -c \
             "from aisw.bootstrap import MIGRATIONS; assert (MIGRATIONS / 'versions').is_dir(), MIGRATIONS"
           docker run --rm aisw-backend:ci aisw.doctor --help > /dev/null
+          docker run --rm --entrypoint python aisw-backend:ci -c \
+            "import psycopg, pydantic_core, aisw.api.app; from cryptography.hazmat.primitives.asymmetric import ed25519; ed25519.Ed25519PrivateKey.generate(); assert psycopg.pq.__impl__ == 'binary', psycopg.pq.__impl__"
+          test "$(docker run --rm --entrypoint stat aisw-backend:ci -c '%u:%a' /var/lib/aisw/evidence)" = "10001:700"
       - name: Web image serves the console with security headers
         run: |
           docker run -d --name web --add-host api:127.0.0.1 -p 127.0.0.1:18080:8080 aisw-web:ci
