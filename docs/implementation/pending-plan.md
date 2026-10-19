@@ -88,8 +88,7 @@ Done on 2026-10-16:
    - put the base images' OS packages into the SBOM and run the licence gate over them;
    - sign release artefacts (images and SBOMs);
    - importers for the storage, logging, TLS, hardening and lifecycle facts the Rego pack already has rules for;
-   - reachability through cloud security groups, firewall rule shadowing and perimeter devices;
-   - Mission Control: say "showing N of M" when an estate has more than 200 assets (ADR-047).
+   - reachability through cloud security groups, firewall rule shadowing and perimeter devices.
 
 ## 8. Open questions for the product owner
 

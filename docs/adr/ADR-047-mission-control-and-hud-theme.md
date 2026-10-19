@@ -32,5 +32,5 @@ The product owner asked for a livelier console: a "Jarvis-style" view where real
 ## Consequences
 - The deferred "3D graphs" item is still deferred. This view carries no relationships and no reasoning; it presents existing records.
 - Colours need `finding:read`. Without it every asset shows as clear, and the roster says that severity colours need the permission.
-- Limits: the page loads at most 200 assets, 200 accepted findings and 500 events per run for the six newest runs. Larger estates are cut off without a notice; paging or a "showing N of M" note is a follow-up.
+- Limits: the page loads at most 200 assets and 200 accepted findings, and follows the six newest runs. When the estate is larger it says so under the scene ("Showing 200 of N tracked assets"; severity colours use the 200 most severe of N accepted findings) and links to the Asset Explorer and Findings & Exposure, which page through everything. Each run's events are read by cursor, 500 per request and up to 20 requests per poll, resuming from the last event seen, so a long run's feed reaches its newest event instead of stopping at the oldest 500.
 - While a run is in flight, the page polls its events every 2 s and the run list every 4 s. The live run timeline keeps using the event stream (server-sent events).
