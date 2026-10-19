@@ -10,7 +10,7 @@ import { useEventFeed } from '../components/mission/useEventFeed'
 import { PageHeader } from '../components/ui'
 import { deriveStages, describeEvent, type StageStatus } from '../lib/events'
 import { fmtTime } from '../lib/format'
-import { buildGroups, eventTone, pulseFor, STATUS_LABEL, type NodeStatus } from '../lib/mission'
+import { buildGroups, eventTone, pulseFor, STATUS_LABEL, truncationNotes, type NodeStatus } from '../lib/mission'
 import './mission.css'
 
 const NO_RUNS: RunListItem[] = []
@@ -70,6 +70,10 @@ export function MissionControl() {
   const assets = assetsQ.data?.items ?? NO_ASSETS
   const findings = (canFindings ? findingsQ.data?.items : undefined) ?? NO_FINDINGS
   const groups = useMemo(() => buildGroups(assets, findings), [assets, findings])
+  const notes = truncationNotes(
+    { shown: assets.length, total: assetsQ.data?.total ?? assets.length },
+    canFindings && findingsQ.data ? { shown: findings.length, total: findingsQ.data.total } : null,
+  )
   const { feed, byRun, live } = useEventFeed(runs)
 
   const scene = useRef<SceneHandle>(null)
@@ -167,6 +171,15 @@ export function MissionControl() {
             ) : null}
           </div>
           <MissionScene ref={scene} groups={groups} />
+          {notes.length ? (
+            <div className="mc-notes" data-testid="mission-truncation">
+              {notes.map((t) => <p key={t}>{t}</p>)}
+              <p>
+                <Link to="/assets">The Asset Explorer lists every asset</Link>
+                {canFindings ? <>; <Link to="/findings">Findings &amp; Exposure lists every finding</Link></> : null}.
+              </p>
+            </div>
+          ) : null}
           <p className="mc-replay" aria-live="polite">
             {replay ? `Replaying recorded events of run ${replay.runId.slice(0, 8)}: ${replay.done} of ${replay.total}` : ''}
           </p>

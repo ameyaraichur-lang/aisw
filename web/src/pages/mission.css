@@ -53,6 +53,8 @@
 .mc-scene__fallback[hidden] { display: none; }
 .mc-tip { position: absolute; top: 0; left: 0; pointer-events: none; font-family: var(--mono); font-size: .78rem; white-space: nowrap; background: rgb(4 10 24 / .92); color: var(--text); border: 1px solid var(--accent); border-radius: 6px; padding: .2rem .5rem; box-shadow: 0 0 16px -4px var(--glow); }
 .mc-replay { min-height: 1.3em; margin: 0; font-family: var(--mono); font-size: .8rem; color: var(--accent); }
+.mc-notes { border: 1px solid var(--warn); border-left-width: 4px; border-radius: 6px; background: var(--panel); padding: .35rem .7rem; font-size: .85rem; }
+.mc-notes p { margin: .2rem 0; }
 .mc-roster summary { cursor: pointer; color: var(--text-muted); font-size: .9rem; }
 .mc-roster__nodes { list-style: none; padding: .2rem 0 .2rem 1rem; margin: 0; font-size: .88rem; }
 

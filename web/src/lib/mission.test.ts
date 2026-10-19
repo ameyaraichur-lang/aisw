@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AssetRow, FindingRow, RunEvent, RunListItem } from '../api/types'
-import { assetLabel, buildGroups, eventTone, mergeFeed, pulseFor } from './mission'
+import { assetLabel, buildGroups, eventTone, mergeFeed, pulseFor, truncationNotes } from './mission'
 
 const asset = (project: string, id: string, native: Record<string, unknown> = {}): AssetRow => ({
   project_id: `p-${project}`, project_name: project, asset_id: id, asset_type: 'host', native_ids: native, attrs: {},
@@ -76,6 +76,21 @@ describe('mergeFeed', () => {
     expect(feed[1]).toMatchObject({ runId: 'rb', projectName: 'beta', tone: 'bad' })
     expect(feed.every((f) => f.text.length > 0)).toBe(true)
     expect(mergeFeed([{ run: a, events: [ev(1, 'x', 'a'), ev(2, 'x', 'b')] }], 1)).toHaveLength(1)
+  })
+})
+
+describe('truncationNotes', () => {
+  it('says nothing when everything is loaded', () => {
+    expect(truncationNotes({ shown: 7, total: 7 }, { shown: 5, total: 5 })).toEqual([])
+    expect(truncationNotes({ shown: 0, total: 0 }, null)).toEqual([])
+  })
+  it('names how many assets and findings are left out', () => {
+    const [a, f] = truncationNotes({ shown: 200, total: 1234 }, { shown: 200, total: 950 })
+    expect(a).toBe('Showing 200 of 1,234 tracked assets, the first by project, asset type and asset id.')
+    expect(f).toMatch(/^Severity colours use the 200 most severe of 950 accepted findings/)
+  })
+  it('makes no claim about findings the user may not read', () => {
+    expect(truncationNotes({ shown: 200, total: 300 }, null)).toHaveLength(1)
   })
 })
 

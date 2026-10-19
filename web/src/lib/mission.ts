@@ -64,6 +64,23 @@ export function buildGroups(assets: AssetRow[], findings: FindingRow[]): SceneGr
   return [...groups.values()].sort((x, y) => x.projectName.localeCompare(y.projectName))
 }
 
+/** What the view leaves out when the estate is larger than one page of assets or findings. */
+export function truncationNotes(
+  assets: { shown: number; total: number },
+  findings: { shown: number; total: number } | null,
+): string[] {
+  const n = (x: number) => x.toLocaleString('en-GB')
+  const out: string[] = []
+  if (assets.total > assets.shown) {
+    out.push(`Showing ${n(assets.shown)} of ${n(assets.total)} tracked assets, the first by project, asset type and asset id.`)
+  }
+  if (findings && findings.total > findings.shown) {
+    out.push(`Severity colours use the ${n(findings.shown)} most severe of ${n(findings.total)} accepted findings, `
+      + 'so an asset whose findings are all less severe than those may show a lower severity or none.')
+  }
+  return out
+}
+
 export type Tone = 'info' | 'ok' | 'warn' | 'bad' | 'ai'
 export interface FeedItem {
   key: string
