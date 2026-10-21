@@ -74,7 +74,12 @@ def test_every_local_gate_runs_in_ci() -> None:
     assert "sbom_crosscheck.py stage" in runs("licences") and "scancode --license" in runs(
         "licences"
     )
-    for job, var in (("hygiene", "GITLEAKS"), ("deploy", "SYFT")):
+    for image in ("aisw-backend:ci", "aisw-web:ci"):
+        assert f"--scanners vuln --format json -o scans/trivy-{image[:-3]}.json {image}" in runs(
+            "deploy"
+        )
+    assert "image_scan.py scans/trivy-aisw-backend.json scans/trivy-aisw-web.json" in runs("deploy")
+    for job, var in (("hygiene", "GITLEAKS"), ("deploy", "SYFT"), ("deploy", "TRIVY")):
         env = workflow()["jobs"][job]["env"]
         assert re.fullmatch(r"[0-9a-f]{64}", env[f"{var}_SHA256"]), job
         assert "sha256sum -c" in runs(job), job

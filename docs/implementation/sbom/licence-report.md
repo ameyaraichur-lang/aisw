@@ -8,7 +8,7 @@ Components: 76 Python, 120 npm; 37 are runtime (shipped) dependencies, the rest 
 
 | Component | Version | Eco | Scope | Licence | Acceptance |
 |---|---|---|---|---|---|
-| certifi | 2026.7.22 | pypi | excluded | MPL-2.0 | MPL-2.0 (file-level copyleft). Pulled only by dev tooling (requests, used by pip-audit); not shipped in the runtime image. |
+| certifi | 2026.10.19 | pypi | excluded | MPL-2.0 | MPL-2.0 (file-level copyleft). Pulled only by dev tooling (requests, used by pip-audit); not shipped in the runtime image. |
 | pathspec | 1.1.1 | pypi | excluded | MPL-2.0 | MPL-2.0 (file-level copyleft). Development tool dependency of linters; not shipped in the runtime image. |
 | psycopg | 3.3.6 | pypi | required | LGPL-3.0-only | LGPL-3.0-only. Imported unmodified as a separate, replaceable Python package (dynamic use); the platform's own code stays under its own licence. Obligations for redistribution (notice, ability to replace the library) must be met in packaging (M8 runbook). Legal review pending. |
 | psycopg-binary | 3.3.6 | pypi | excluded | LGPL-3.0-only | LGPL-3.0-only. Same position as psycopg; ships libpq inside the wheel, so its notices travel with the wheel. Legal review pending. |
