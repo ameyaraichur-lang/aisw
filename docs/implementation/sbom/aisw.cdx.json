@@ -156,10 +156,10 @@
      "value": "review"
     }
    ],
-   "purl": "pkg:pypi/certifi@2026.7.22",
+   "purl": "pkg:pypi/certifi@2026.10.19",
    "scope": "excluded",
    "type": "library",
-   "version": "2026.7.22"
+   "version": "2026.10.19"
   },
   {
    "licenses": [
@@ -4656,7 +4656,7 @@
    }
   ]
  },
- "serialNumber": "urn:uuid:5a0b9c36-8e79-5fa6-916b-67915e17bfa1",
+ "serialNumber": "urn:uuid:88cdaac2-98f9-5210-be20-9c0bb17320ba",
  "specVersion": "1.5",
  "version": 1
 }

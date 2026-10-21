@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "note": "Accepted fixable CRITICAL or HIGH vulnerabilities in the built images (tools/image_scan.py, ADR-048). Each entry names the image (aisw-backend or aisw-web), the vulnerability id and the package, with an owner, a reason and an expiry at most 90 days ahead. Prefer moving to a patched base image.",
+  "exceptions": []
+}
