@@ -15,7 +15,7 @@ Contact with reality so far is the product owner's live runs of 2026-10-18, made
 - a bounded Nmap scan of this workstation;
 - Trivy scans of the product's own base images.
 
-They found four defects, all fixed, and real critical and high vulnerabilities in both base images. Nothing has touched a real identity provider, a real KMS or a real deployment, and every importer other than Nmap and Trivy has seen synthetic data only. What remains is mostly the rest of that contact with reality, and the human decisions recorded as PENDING in [`signoffs.md`](signoffs.md) (14 entries, each with an owner and a next step).
+They found four defects, all fixed, and real critical and high vulnerabilities in both base images. Nothing has touched a real identity provider, a real KMS or a real deployment, and every importer other than Nmap and Trivy has seen synthetic data only. What remains is mostly the rest of that contact with reality, and the human decisions recorded as PENDING in [`signoffs.md`](signoffs.md) (14 entries, each with an owner, a next step and an engineering review that says whether a decision can be made now and what is still open; the reviews are not decisions).
 
 ## 2. Which plan governs: decided
 
@@ -78,7 +78,7 @@ Done on 2026-10-16:
 
 ## 7. Suggested sequence
 
-1. **Review and merge PR #1** (owner: repository owner). CI is green.
+1. ~~**Review and merge PR #1**~~ **Done 2026-10-19** (merge commit `48dac5d`; CI green on `main`).
 2. **M9b: live validation**, one authorised target at a time (sign-off `live-validation`).
 3. **M10: deployability** on real infrastructure (owner: platform admin): P0-1 IdP registration, P0-2 real KMS and rotation drill, P0-3 firewall rules on the hosts, P0-4 clean-machine install, then the write-once bucket and audit witness (§6 Evidence) and a soak across separate hosts (§6 Scale).
 4. **M11: governance**: P0-6 rubric, catalog, baselines, AI evaluation bar and trigger policy; the framework mapping review; P0-7 licence review; A-1 Astra data approval; ITSM delivery and retention auto-execute.
